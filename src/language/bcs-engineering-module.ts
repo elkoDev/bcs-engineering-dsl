@@ -17,6 +17,7 @@ import { registerBCSHardwareValidationChecks } from "./bcs-hardware-lang-validat
 import { registerBCSControlValidationChecks } from "./bcs-control-lang-validator.js";
 import {
   BCSControlGeneratedModule,
+  BCSEngineeringDSLGeneratedSharedModule,
   BCSHardwareGeneratedModule,
 } from "./generated/module.js";
 
@@ -44,7 +45,7 @@ export function createBcsEngineeringServices(
 } {
   const shared = inject(
     createDefaultSharedModule(context),
-    BcsEngineeringGeneratedSharedModule
+    BCSEngineeringDSLGeneratedSharedModule
   );
   const bcsControl = inject(
     createDefaultModule({ shared }),

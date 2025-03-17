@@ -4,3 +4,7 @@ logic Room1 for MainController {
         then HeatingValve.open;
     }
 }
+
+logic Room2 for MainController {
+
+}
