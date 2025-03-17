@@ -1,33 +1,25 @@
-import { type Module, inject } from 'langium';
-import { createDefaultModule, createDefaultSharedModule, type DefaultSharedModuleContext, type LangiumServices, type LangiumSharedServices, type PartialLangiumServices } from 'langium/lsp';
-import { BcsEngineeringGeneratedModule, BcsEngineeringGeneratedSharedModule } from './generated/module.js';
-import { BcsEngineeringValidator, registerValidationChecks } from './bcs-engineering-validator.js';
-
-/**
- * Declaration of custom services - add your own service classes here.
- */
-export type BcsEngineeringAddedServices = {
-    validation: {
-        BcsEngineeringValidator: BcsEngineeringValidator
-    }
-}
-
-/**
- * Union of Langium default services and your custom services - use this as constructor parameter
- * of custom service classes.
- */
-export type BcsEngineeringServices = LangiumServices & BcsEngineeringAddedServices
-
-/**
- * Dependency injection module that overrides Langium default services and contributes the
- * declared custom services. The Langium defaults can be partially specified to override only
- * selected services, while the custom services must be fully specified.
- */
-export const BcsEngineeringModule: Module<BcsEngineeringServices, PartialLangiumServices & BcsEngineeringAddedServices> = {
-    validation: {
-        BcsEngineeringValidator: () => new BcsEngineeringValidator()
-    }
-};
+import { inject } from "langium";
+import {
+  createDefaultModule,
+  createDefaultSharedModule,
+  type DefaultSharedModuleContext,
+  type LangiumSharedServices,
+} from "langium/lsp";
+import { BcsEngineeringGeneratedSharedModule } from "./generated/module.js";
+import {
+  BCSControlGeneratedModule,
+  BCSHardwareGeneratedModule,
+} from "../language-server/generated/module.js";
+import {
+  BCSHardwareLangModule,
+  BCSHardwareLangServices,
+} from "./bcs-hardware-lang-module.js";
+import {
+  BCSControlLangModule,
+  BCSControlLangServices,
+} from "./bcs-control-lang-module.js";
+import { registerBCSHardwareValidationChecks } from "./bcs-hardware-lang-validator.js";
+import { registerBCSControlValidationChecks } from "./bcs-control-lang-validator.js";
 
 /**
  * Create the full set of services required by Langium.
@@ -44,25 +36,35 @@ export const BcsEngineeringModule: Module<BcsEngineeringServices, PartialLangium
  * @param context Optional module context with the LSP connection
  * @returns An object wrapping the shared services and the language-specific services
  */
-export function createBcsEngineeringServices(context: DefaultSharedModuleContext): {
-    shared: LangiumSharedServices,
-    BcsEngineering: BcsEngineeringServices
+export function createBcsEngineeringServices(
+  context: DefaultSharedModuleContext
+): {
+  shared: LangiumSharedServices;
+  bcsControl: BCSControlLangServices;
+  bcsHardware: BCSHardwareLangServices;
 } {
-    const shared = inject(
-        createDefaultSharedModule(context),
-        BcsEngineeringGeneratedSharedModule
-    );
-    const BcsEngineering = inject(
-        createDefaultModule({ shared }),
-        BcsEngineeringGeneratedModule,
-        BcsEngineeringModule
-    );
-    shared.ServiceRegistry.register(BcsEngineering);
-    registerValidationChecks(BcsEngineering);
-    if (!context.connection) {
-        // We don't run inside a language server
-        // Therefore, initialize the configuration provider instantly
-        shared.workspace.ConfigurationProvider.initialized({});
-    }
-    return { shared, BcsEngineering };
+  const shared = inject(
+    createDefaultSharedModule(context),
+    BcsEngineeringGeneratedSharedModule
+  );
+  const bcsControl = inject(
+    createDefaultModule({ shared }),
+    BCSControlGeneratedModule,
+    BCSControlLangModule
+  );
+  const bcsHardware = inject(
+    createDefaultModule({ shared }),
+    BCSHardwareGeneratedModule,
+    BCSHardwareLangModule
+  );
+  shared.ServiceRegistry.register(bcsControl);
+  shared.ServiceRegistry.register(bcsHardware);
+  registerBCSControlValidationChecks(bcsControl);
+  registerBCSHardwareValidationChecks(bcsHardware);
+  if (!context.connection) {
+    // We don't run inside a language server
+    // Therefore, initialize the configuration provider instantly
+    shared.workspace.ConfigurationProvider.initialized({});
+  }
+  return { shared, bcsControl, bcsHardware };
 }
