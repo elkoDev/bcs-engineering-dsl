@@ -1,0 +1,22 @@
+{
+  "projectName": "BCSEngineeringDSL",
+  "languages": [
+    {
+      "id": "bcs-hardware-lang",
+      "grammar": "src/language/bcs-hardware.langium",
+      "fileExtensions": ["bcshw"],
+      "textMate": {
+        "out": "syntaxes/bcs-hardware.tmLanguage.json"
+      }
+    },
+    {
+      "id": "bcs-control-lang",
+      "grammar": "src/language/bcs-control.langium",
+      "fileExtensions": ["bcsctrl"],
+      "textMate": {
+        "out": "syntaxes/bcs-control.tmLanguage.json"
+      }
+    }
+  ],
+  "out": "src/language-server/generated"
+}
