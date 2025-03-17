@@ -1,3 +1,4 @@
+/*
 import {
   MonacoEditorLanguageClientWrapper,
   UserConfig,
@@ -31,3 +32,4 @@ export const executeClassic = async (htmlElement: HTMLElement) => {
   const wrapper = new MonacoEditorLanguageClientWrapper();
   await wrapper.initAndStart(userConfig, htmlElement);
 };
+*/

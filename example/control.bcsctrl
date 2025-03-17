@@ -5,6 +5,9 @@ logic Room1 for MainController {
     }
 }
 
-logic Room2 for MainController {
-
+logic Room2 for SideController {
+    rule OpenDoor {
+        if TempSensor.value < 20.0
+        then HeatingValve.open;
+    }
 }

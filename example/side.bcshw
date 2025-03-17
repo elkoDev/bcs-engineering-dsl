@@ -1,0 +1,13 @@
+controller SideController {
+    sensor TempSensor {
+        type: TEMPERATURE
+        ioType: DI
+        dataType: REAL
+    }
+
+    actuator HeatingValve {
+        type: VALVE
+        ioType: DO
+        dataType: BOOL
+    }
+}

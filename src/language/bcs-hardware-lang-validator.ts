@@ -18,8 +18,8 @@ export class BCSHardwareLangValidator {
     controller: Controller,
     accept: ValidationAcceptor
   ): void {
-    if (controller.name) {
-      accept("warning", `Controller should have a non empty name`, {
+    if (controller.name.length < 3) {
+      accept("warning", `Controller name must be at least 3 characters long`, {
         node: controller,
         property: "name",
       });
