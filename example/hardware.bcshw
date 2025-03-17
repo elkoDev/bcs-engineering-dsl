@@ -1,0 +1,5 @@
+controller MainController {
+    type: TEMPERATURE
+    ioType: AI
+    dataType: REAL
+}

@@ -1,7 +1,7 @@
 {
   "version": "0.0.1",
   "name": "bcs-engineering-dsl",
-  "displayName": "bcs-engineering-dsl",
+  "displayName": "BCS Engineering DSL",
   "publisher": "elkoDev",
   "description": "A Building Control System engineering language",
   "files": [
@@ -9,6 +9,9 @@
     "out",
     "src",
     "icon.png"
+  ],
+  "categories": [
+    "Programming Languages"
   ],
   "type": "module",
   "scripts": {
@@ -63,34 +66,48 @@
     "vscode": "^1.67.0",
     "node": ">=18.0.0"
   },
-  "categories": [
-    "Programming Languages"
-  ],
   "contributes": {
     "languages": [
       {
-        "id": "bcs-engineering",
+        "id": "bcs-control-lang",
         "aliases": [
-          "BCS Engineering",
-          "bcs-engineering"
+          "BCS Control Language",
+          "bcs-control-language"
         ],
         "extensions": [
-          ".bcshw",
           ".bcsctrl"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "bcs-hardware-lang",
+        "aliases": [
+          "BCS Hardware Language",
+          "bcs-hardware-language"
+        ],
+        "extensions": [
+          ".bcshw"
         ],
         "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
       {
-        "language": "bcs-engineering",
-        "scopeName": "source.bcs-engineering",
-        "path": "syntaxes/bcs-engineering.tmLanguage.json"
+        "language": "bcs-control-lang",
+        "scopeName": "source.bcs-control-lang",
+        "path": "syntaxes/bcs-control.tmLanguage.json"
+      },
+      {
+        "language": "bcs-hardware-lang",
+        "scopeName": "source.bcs-hardware-lang",
+        "path": "syntaxes/bcs-hardware.tmLanguage.json"
       }
     ]
   },
   "activationEvents": [
-    "onLanguage:bcs-engineering"
+    "onLanguage:bcs-engineering",
+    "onLanguage:bcs-control-lang",
+    "onLanguage:bcs-hardware-lang"
   ],
   "main": "./out/extension/main.cjs",
   "bin": {

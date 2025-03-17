@@ -1,8 +1,5 @@
 import { ValidationAcceptor, ValidationChecks } from "langium";
-import {
-  BCSEngineeringDSLAstType,
-  Controller,
-} from "../language-server/generated/ast.js";
+import { BCSEngineeringDSLAstType, Controller } from "./generated/ast.js";
 import { BCSHardwareLangServices } from "./bcs-hardware-lang-module.js";
 
 export function registerBCSHardwareValidationChecks(

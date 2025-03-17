@@ -7,6 +7,9 @@
       "fileExtensions": ["bcshw"],
       "textMate": {
         "out": "syntaxes/bcs-hardware.tmLanguage.json"
+      },
+      "monarch": {
+        "out": "syntaxes/bcs-hardware.monarch.ts"
       }
     },
     {
@@ -15,8 +18,11 @@
       "fileExtensions": ["bcsctrl"],
       "textMate": {
         "out": "syntaxes/bcs-control.tmLanguage.json"
+      },
+      "monarch": {
+        "out": "syntaxes/bcs-control.monarch.ts"
       }
     }
   ],
-  "out": "src/language-server/generated"
+  "out": "src/language/generated"
 }

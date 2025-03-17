@@ -1,0 +1,6 @@
+logic Room1 for MainController {
+    rule OpenDoor {
+        if TempSensor.value < 20.0
+        then HeatingValve.open;
+    }
+}

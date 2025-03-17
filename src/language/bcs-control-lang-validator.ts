@@ -1,10 +1,10 @@
 import { ValidationAcceptor, ValidationChecks } from "langium";
+import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
   BCSEngineeringDSLAstType,
-  isHardwareModel,
   LogicBlock,
-} from "../language-server/generated/ast.js";
-import { BCSControlLangServices } from "./bcs-control-lang-module.js";
+  isHardwareModel,
+} from "./generated/ast.js";
 
 export function registerBCSControlValidationChecks(
   services: BCSControlLangServices

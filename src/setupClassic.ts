@@ -1,30 +1,33 @@
-import { MonacoEditorLanguageClientWrapper, UserConfig } from 'monaco-editor-wrapper';
-import { configureWorker, defineUserServices } from './setupCommon.js';
+import {
+  MonacoEditorLanguageClientWrapper,
+  UserConfig,
+} from "monaco-editor-wrapper";
+import { configureWorker, defineUserServices } from "./setupCommon.js";
 import monarchSyntax from "./syntaxes/bcs-engineering.monarch.js";
 
 export const setupConfigClassic = (): UserConfig => {
-    return {
-        wrapperConfig: {
-            serviceConfig: defineUserServices(),
-            editorAppConfig: {
-                $type: 'classic',
-                languageId: 'bcs-engineering',
-                code: `// BCS Engineering is running in the web!`,
-                useDiffEditor: false,
-                languageExtensionConfig: { id: 'langium' },
-                languageDef: monarchSyntax,
-                editorOptions: {
-                    'semanticHighlighting.enabled': true,
-                    theme: 'vs-dark'
-                }
-            }
+  return {
+    wrapperConfig: {
+      serviceConfig: defineUserServices(),
+      editorAppConfig: {
+        $type: "classic",
+        languageId: "bcs-engineering",
+        code: `// BCS Engineering is running in the web!`,
+        useDiffEditor: false,
+        languageExtensionConfig: { id: "langium" },
+        languageDef: monarchSyntax,
+        editorOptions: {
+          "semanticHighlighting.enabled": true,
+          theme: "vs-dark",
         },
-        languageClientConfig: configureWorker()
-    };
+      },
+    },
+    languageClientConfig: configureWorker(),
+  };
 };
 
 export const executeClassic = async (htmlElement: HTMLElement) => {
-    const userConfig = setupConfigClassic();
-    const wrapper = new MonacoEditorLanguageClientWrapper();
-    await wrapper.initAndStart(userConfig, htmlElement);
+  const userConfig = setupConfigClassic();
+  const wrapper = new MonacoEditorLanguageClientWrapper();
+  await wrapper.initAndStart(userConfig, htmlElement);
 };

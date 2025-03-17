@@ -5,11 +5,6 @@ import {
   type DefaultSharedModuleContext,
   type LangiumSharedServices,
 } from "langium/lsp";
-import { BcsEngineeringGeneratedSharedModule } from "./generated/module.js";
-import {
-  BCSControlGeneratedModule,
-  BCSHardwareGeneratedModule,
-} from "../language-server/generated/module.js";
 import {
   BCSHardwareLangModule,
   BCSHardwareLangServices,
@@ -20,6 +15,10 @@ import {
 } from "./bcs-control-lang-module.js";
 import { registerBCSHardwareValidationChecks } from "./bcs-hardware-lang-validator.js";
 import { registerBCSControlValidationChecks } from "./bcs-control-lang-validator.js";
+import {
+  BCSControlGeneratedModule,
+  BCSHardwareGeneratedModule,
+} from "./generated/module.js";
 
 /**
  * Create the full set of services required by Langium.
