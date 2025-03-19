@@ -22,7 +22,7 @@ Action:
     'then' commands+=Command (',' commands+=Command)* ';';
 
 Command:
-    actuator=[Actuator] '.' action=ID; // Commands can reference actuators directly
+    actuator=[Actuator:ID] '.' action=ID; // Commands can reference actuators directly
 
 Expr: OrExpr;
 
@@ -51,7 +51,7 @@ Group:
     '(' ge=Expr ')';
 
 Ref:
-    sensor=[Sensor] '.' property=ID; // Sensors can be used as operands
+    sensor=[Sensor:ID] '.' property=ID; // Sensors can be used as operands
 
 PNumber returns number:
     P_INT | P_FLOAT;
