@@ -2,7 +2,8 @@ grammar BCSHardware
 import "./common"
 
 entry HardwareModel:
-    (controllers+=Controller)*;
+    (controllers+=Controller)*
+;
 
 Controller:
     'controller' name=ID '{'
@@ -10,21 +11,24 @@ Controller:
     '}';
 
 Component:
-    Sensor | Actuator;
+    Sensor | Actuator
+;
 
 Sensor:
     'sensor' name=ID '{'
         'type:' type=SensorType
         'ioType:' ioType=IOType
         'dataType:' dataType=DataType
-    '}';
+    '}'
+;
 
 Actuator:
     'actuator' name=ID '{'
         'type:' type=ActuatorType
         'ioType:' ioType=IOType
         'dataType:' dataType=DataType
-    '}';
+    '}'
+;
 
 
 type SensorType = 

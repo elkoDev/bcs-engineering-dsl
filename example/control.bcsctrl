@@ -1,13 +1,25 @@
 logic Room1 for MainController {
     rule OpenDoor {
-        if TempSensor.value < 20.0
-        then HeatingValve.open;
+        if MainTempSensor1.value < 20.0
+        then MainHeatingValve1.open;
     }
 }
 
 logic Room2 for SideController {
     rule OpenDoor {
-        if TempSensor.value < 20.0
-        then HeatingValve.open;
+        if SideTempSensor1.value < 20.0 
+        then SideHeatingValve1.open;
+    }
+}
+
+logic Room3 for MainController {
+    rule OpenDoor {
+        if MainTempSensor2.value < 20.0
+        then MainHeatingValve2.open;
+    }
+
+    rule CloseDoor {
+        if MainTempSensor1.value < 54.4
+        then MainHeatingValve1.carefulClose;
     }
 }
