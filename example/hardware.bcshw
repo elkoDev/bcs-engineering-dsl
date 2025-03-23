@@ -1,0 +1,31 @@
+controller RoomCtrl {
+    sensor tempSensor {
+        type: TEMPERATURE
+        ioType: AI
+        dataType: REAL
+    }
+
+    sensor presenceSensor {
+        type: OCCUPANCY
+        ioType: DI
+        dataType: BOOL
+    }
+
+    sensor windowContact {
+        type: CONTACT
+        ioType: DI
+        dataType: BOOL
+    }
+
+    actuator heater {
+        type: HEATER
+        ioType: DO
+        dataType: BOOL
+    }
+
+    actuator light {
+        type: LIGHT
+        ioType: DO
+        dataType: BOOL
+    }
+}

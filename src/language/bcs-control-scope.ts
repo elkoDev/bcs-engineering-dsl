@@ -1,5 +1,4 @@
 import { DefaultScopeProvider, ReferenceInfo, Scope } from "langium";
-import { Actuator, Condition, isCommand, isRef, Sensor } from "./generated/ast.js";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 
 export class BCSControlScopeProvider extends DefaultScopeProvider {
@@ -8,7 +7,9 @@ export class BCSControlScopeProvider extends DefaultScopeProvider {
   }
 
   override getScope(context: ReferenceInfo): Scope {
+    /*
     const container = context.container;
+    
     if (isCommand(container) && context.property === "actuator") {
       const command = container.$container;
       const controller = command.$container.$container.plc.ref;
@@ -24,7 +25,7 @@ export class BCSControlScopeProvider extends DefaultScopeProvider {
         controller?.components.filter((c) => c.$type === Sensor) ?? [];
       return this.createScopeForNodes(sensors);
     }
-
+    */
     return super.getScope(context);
   }
 }

@@ -1,25 +1,90 @@
-logic Room1 for MainController {
-    rule OpenDoor {
-        if MainTempSensor1.value < 20.0
-        then MainHeatingValve1.open;
-    }
-}
+control RoomCtrl {
 
-logic Room2 for SideController {
-    rule OpenDoor {
-        if SideTempSensor1.value < 20.0 
-        then SideHeatingValve1.open;
-    }
-}
+    // --- Enums
+    enum Mode { OFF, ECO, COMFORT }
+    enum State { IDLE, HEATING, ERROR }
 
-logic Room3 for MainController {
-    rule OpenDoor {
-        if MainTempSensor2.value < 20.0
-        then MainHeatingValve2.open;
+    // --- Vars
+    var mode : Mode = Mode.ECO;
+    var state : State = State.IDLE;
+    var currentTemp : REAL;
+    var windowOpen : BOOL;
+    var presence : BOOL;
+    var heating : BOOL;
+    var lighting : BOOL;
+    var errorCode : INT = 0;
+
+    // --- Function Block (with inputs, outputs, logic)
+    functionblock HeatingLogic {
+        inputs {
+            var temp : REAL;
+            var window : BOOL;
+            var mode : Mode;
+        }
+        outputs {
+            var heat : BOOL;
+        }
+        logic {
+            IF window THEN
+                heat := false;
+            ELSIF mode == Mode.COMFORT && temp < 21.0 THEN
+                heat := true;
+            ELSIF mode == Mode.ECO && temp < 18.0 THEN
+                heat := true;
+            ELSE
+                heat := false;
+            END_IF;
+        }
     }
 
-    rule CloseDoor {
-        if MainTempSensor1.value < 54.4
-        then MainHeatingValve1.carefulClose;
+    // --- Function Block Instance
+    var heatingController : HeatingLogic;
+
+    // --- Control Logic
+    unit ClimateControl when true {
+        // Sensor reading
+        currentTemp := tempSensor;
+        windowOpen := windowContact;
+        presence := presenceSensor;
+
+        // Call function block
+        heatingController(temp := currentTemp, window := windowOpen, mode := mode);
+
+        // Assign result to actuator
+        heater := heatingController.heat;
+    }
+
+    // --- CASE + IF + Timer + FOR
+    unit PresenceLighting when presence {
+        CASE mode OF
+            Mode.COMFORT: {
+                lighting := true;
+            }
+            Mode.ECO: {
+                IF currentTemp < 19.0 THEN
+                    lighting := true;
+                ELSE
+                    lighting := false;
+                END_IF;
+            }
+            Mode.OFF: {
+                lighting := false;
+            }
+        END_CASE;
+    }
+
+    // --- WHILE + TIMER
+    unit ErrorMonitoring {
+        var retry : INT = 0;
+        WHILE errorCode != 0 && retry < 3 DO
+            retry := retry + 1;
+        END_WHILE;
+    }
+
+    // --- FOR loop over test values (just for demo)
+    unit Debug {
+        FOR i := 0 TO 5 BY 1 DO
+            lighting := i < 3;
+        END_FOR;
     }
 }
