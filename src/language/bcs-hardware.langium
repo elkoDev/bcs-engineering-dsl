@@ -42,9 +42,9 @@ ActuatorType returns string:
     'VALVE' | 'FAN' | 'HEATER' | 'COOLING_UNIT' | 'DAMPER' | 'LIGHT' | 'BLINDS' | 'SWITCH';
 
 
-type IOType = 'AI' | 'AO' | 'DI' | 'DO';
+type IOType = 'ANALOG' | 'DIGITAL';
 IOType returns string:
-    'AI' | 'AO' | 'DI' | 'DO';
+    'ANALOG' | 'DIGITAL';
 
 type DataType = 'BOOL' | 'REAL' | 'INT' | 'STRING';
 DataType returns string:
