@@ -1,11 +1,11 @@
 grammar BCSControl
 import "./bcs-hardware"
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// 1) Entry Rule: A single 'control' block referencing a hardware controller. 
-//    Inside, you can place Declaration (enums, vars, function blocks) or 
-//    ControlUnit definitions.
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ==========================================================================
+// 1) Entry Rule: A control block references a hardware controller.
+//     Inside, you may define Declarations (enums, variables, function blocks),
+//     Units (for event‐based control), or Schedules (for time‐based control).
+// ==========================================================================
 entry ControlModel:
     'control' controller=[Controller] '{'
         (items+=ControlItem)*
@@ -14,12 +14,13 @@ entry ControlModel:
 
 ControlItem:
       Declaration
-    | ControlUnit
+    | Unit
+    | Schedule
 ;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ==========================================================================
 // 2) Declarations: Enums, Variables, Function Blocks
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ==========================================================================
 Declaration:
       EnumDecl
     | VarDecl
@@ -33,10 +34,12 @@ EnumDecl:
 ;
 
 fragment VarDeclCore:
-    name=ID ':' type=TypeRef ('=' init=Expr)? ';';
+    name=ID ':' type=TypeRef ('=' init=Expr)? ';'
+;
 
 VarDecl:
-    'var' VarDeclCore;
+    'var' VarDeclCore
+;
 
 FunctionBlockDecl:
     'functionblock' name=ID '{'
@@ -63,20 +66,26 @@ TypeRef infers TypeRef:
     | {infer TypeRef} ref=[TypeDecl]        // TODO: scope provider
 ;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// 3) Control Units: Replaces the idea of "rule", "scene", "schedule", "script" 
-//    with a single concept "unit name when expr" that can hold statements.
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-ControlUnit:
+// ==========================================================================
+// 3) Control Units & Schedules
+//    - A Unit is for general (typically event‐driven) control logic.
+//    - A Schedule is a special unit for time‐of‐day triggers.
+// ==========================================================================
+Unit:
     'unit' name=ID ('when' condition=Expr)? '{'
         (stmts+=Statement)*
     '}'
 ;
 
+Schedule:
+    'schedule' name=ID 'at' time=TodLiteral '{'
+        (stmts+=Statement)*
+    '}'
+;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// 4) Statements: from assignment to loops and conditionals.
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ==========================================================================
+// 4) Statements: Assignment, Conditionals, Loops, Calls, Timing & Edge actions
+// ==========================================================================
 Statement:
       AssignmentStmt
     | IfStmt
@@ -86,6 +95,9 @@ Statement:
     | FunctionBlockCallStmt
     | ExpressionStmt
     | LocalVarDeclStmt
+    | WaitStmt
+    | EdgeStmt
+    | RampStmt
 ;
 
 AssignmentStmt:
@@ -101,15 +113,17 @@ IfStmt:
 
 IfBranch:
     'IF' condition=Expr 'THEN'
-        (stmts+=Statement)*;
+        (stmts+=Statement)* 
+;
 
 ElsifBranch:
     'ELSIF' condition=Expr 'THEN'
-        (stmts+=Statement)*;
+        (stmts+=Statement)* 
+;
 
 ElseBranch:
-    'ELSE' (stmts+=Statement)*;
-
+    'ELSE' (stmts+=Statement)* 
+;
 
 WhileStmt:
     'WHILE' condition=Expr 'DO'
@@ -152,10 +166,27 @@ LocalVarDeclStmt infers VarDecl:
     'var' VarDeclCore
 ;
 
+// --------------------------------------------------------------------------
+// Timing and Edge Statements
+// --------------------------------------------------------------------------
+WaitStmt:
+    'WAIT' duration=TimeLiteral ';'
+;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+EdgeStmt:
+    ('ON_RISING' | 'ON_FALLING') '(' signal=Ref ')' '{'
+        (stmts+=Statement)*
+    '}'
+;
+
+RampStmt:
+    'RAMP' '(' target=Ref ',' fromExpr=Expr ',' toExpr=Expr ',' dur=TimeLiteral ')' ';'
+;
+
+// ==========================================================================
 // 5) Expressions & Literals
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//     - The "now" keyword returns the current time (type TOD).
+// ==========================================================================
 Literal infers Literal:
       {infer Literal} NumberLiteral
     | {infer Literal} BooleanLiteral
@@ -167,7 +198,6 @@ EnumMemberLiteral:
     value=[EnumDecl:ID] '.' member=ID
   | member=ID // fallback: unqualified name
 ;
-
 
 Expr:
     OrExpr
@@ -194,9 +224,11 @@ Mult infers Expr:
 ;
 
 Primary:
-    NumberLiteral
+    'now'                             // built-in keyword for current time (type TOD)
+  | NumberLiteral
   | BooleanLiteral
   | StringLiteral
+  | TodLiteral                      // e.g., TOD#08:00:00
   | ParenExpr
   | NegExpr
   | NotExpr
@@ -220,9 +252,17 @@ Ref:
 ;
 
 ComparisonOperator returns string:
-    '<' | '<=' | '==' | '!=' | '>=' | '>';
+    '<' | '<=' | '==' | '!=' | '>=' | '>'
+;
 
+// ==========================================================================
+// 6) Terminals
+// --------------------------------------------------------------------------
+// TIME literal: for durations (e.g., T#5s, T#10m)
+// TOD literal: for time-of-day (e.g., TOD#08:00:00)
+// ==========================================================================
 terminal TimeLiteral returns string: /T#[0-9]+(ms|s|m|h|d)/;
+terminal TodLiteral returns string: /TOD#((0\d|1\d|2[0-3]):[0-5]\d(:[0-5]\d)?)/;
 terminal NumberLiteral returns number: /-?[0-9]+(\.[0-9]+)?/;
 terminal BooleanLiteral returns boolean: /true|false/;
 terminal StringLiteral: /"([^"\\]|\\.)*"/;
