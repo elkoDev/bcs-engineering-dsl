@@ -14,7 +14,7 @@ entry ControlModel:
 
 ControlItem:
       Declaration
-    | Unit
+    | ControlUnit
     | Schedule
 ;
 
@@ -68,10 +68,10 @@ TypeRef infers TypeRef:
 
 // ==========================================================================
 // 3) Control Units & Schedules
-//    - A Unit is for general (typically event‐driven) control logic.
+//    - A ControlUnit is for general (typically event‐driven) control logic.
 //    - A Schedule is a special unit for time‐of‐day triggers.
 // ==========================================================================
-Unit:
+ControlUnit:
     'unit' name=ID ('when' condition=Expr)? '{'
         (stmts+=Statement)*
     '}'
