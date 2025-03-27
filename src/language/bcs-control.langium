@@ -2,9 +2,10 @@ grammar BCSControl
 import "./bcs-hardware"
 
 // ==========================================================================
-// 1) Entry Rule: A control block references a hardware controller.
-//     Inside, you may define Declarations (enums, variables, function blocks),
-//     Units (for event‐based control), or Schedules (for time‐based control).
+// 1) Entry Rule: A control block referencing a hardware controller.
+//    Inside, you may define Declarations (enums, variables, function blocks)
+//    and Units. Units are the primary construct for all control logic, whether
+//    time‐based (using TOD expressions) or event‐driven.
 // ==========================================================================
 entry ControlModel:
     'control' controller=[Controller] '{'
@@ -15,7 +16,6 @@ entry ControlModel:
 ControlItem:
       Declaration
     | ControlUnit
-    | Schedule
 ;
 
 // ==========================================================================
@@ -46,7 +46,7 @@ FunctionBlockDecl:
         ('inputs' '{' (inputs+=VarDecl)* '}' )?
         ('outputs' '{' (outputs+=VarDecl)* '}' )?
         ('locals' '{' (locals+=VarDecl)* '}' )?
-        ('logic' '{' (stmts+=Statement)* '}' )?
+        ('logic' Block)?
     '}'
 ;
 
@@ -67,31 +67,27 @@ TypeRef infers TypeRef:
 ;
 
 // ==========================================================================
-// 3) Control Units & Schedules
-//    - A ControlUnit is for general (typically event‐driven) control logic.
-//    - A Schedule is a special unit for time‐of‐day triggers.
+// 3) Units (Control Logic)
+//    A unit is a named block of control logic that may be triggered by any
+//    expression – for example, a time-of-day comparison using now or a TOD literal.
 // ==========================================================================
 ControlUnit:
-    'unit' name=ID ('when' condition=Expr)? '{'
-        (stmts+=Statement)*
-    '}'
-;
+    'unit' name=ID (('once'? 'when' '(' condition=Expr ')') | ('at' time=TodLiteral))? Block;
 
-Schedule:
-    'schedule' name=ID 'at' time=TodLiteral '{'
-        (stmts+=Statement)*
-    '}'
-;
 
 // ==========================================================================
-// 4) Statements: Assignment, Conditionals, Loops, Calls, Timing & Edge actions
+// 4) Block and Statements: Assignment, Conditionals, Loops, Calls, Timing & Edge actions
 // ==========================================================================
+fragment Block:
+    '{' (stmts+=Statement)* '}'
+;
+
 Statement:
       AssignmentStmt
     | IfStmt
     | WhileStmt
     | ForStmt
-    | CaseStmt
+    | SwitchStmt
     | FunctionBlockCallStmt
     | ExpressionStmt
     | LocalVarDeclStmt
@@ -105,49 +101,38 @@ AssignmentStmt:
 ;
 
 IfStmt:
-    ifBranch=IfBranch
-    elsifBranches+=ElsifBranch*
-    elseBranch=ElseBranch?
-    'END_IF' ';'
+    'if' '(' condition=Expr ')' Block ( elseIfStmts+=ElseIfStmt )* ( elseStmt=ElseStmt )?
 ;
 
-IfBranch:
-    'IF' condition=Expr 'THEN'
-        (stmts+=Statement)* 
+ElseIfStmt:
+    'else' 'if' '(' condition=Expr ')' Block
 ;
 
-ElsifBranch:
-    'ELSIF' condition=Expr 'THEN'
-        (stmts+=Statement)* 
-;
-
-ElseBranch:
-    'ELSE' (stmts+=Statement)* 
+ElseStmt:
+    'else' Block
 ;
 
 WhileStmt:
-    'WHILE' condition=Expr 'DO'
-        (stmts+=Statement)*
-    'END_WHILE' ';'?
+    'while' '(' condition=Expr ')' Block
 ;
 
 ForStmt:
-    'FOR' loopVar=ID ':=' start=Expr 'TO' end=Expr ('BY' step=Expr)?
-    'DO'
-        (stmts+=Statement)*
-    'END_FOR' ';'?
+    'for' '(' loopVar=ID ':=' start=Expr 'to' end=Expr ( 'by' step=Expr )? ')' Block
 ;
 
-CaseStmt:
-    'CASE' expr=Expr 'OF'
-        (cases+=CaseOption)+
-    'END_CASE' ';'?
+SwitchStmt:
+    'switch' '(' expr=Expr ')' '{'
+         cases+=CaseOption+
+         (default=DefaultOption)?
+    '}'
 ;
 
 CaseOption:
-    (literals+=Literal (',' literals+=Literal)*) ':' '{'
-        (stmts+=Statement)*
-    '}'
+    'case' (literals+=Literal (',' literals+=Literal)*) ':' Block
+;
+
+DefaultOption:
+    'default' ':' Block
 ;
 
 FunctionBlockCallStmt:
@@ -169,23 +154,22 @@ LocalVarDeclStmt infers VarDecl:
 // --------------------------------------------------------------------------
 // Timing and Edge Statements
 // --------------------------------------------------------------------------
-WaitStmt:
-    'WAIT' duration=TimeLiteral ';'
+WaitStmt infers WaitStmt:
+    'wait' time=TimeLiteral ';'
 ;
 
 EdgeStmt:
-    ('ON_RISING' | 'ON_FALLING') '(' signal=Ref ')' '{'
-        (stmts+=Statement)*
-    '}'
+    ( 'on_rising' | 'on_falling' ) '(' signal=Ref ')' Block
 ;
 
 RampStmt:
-    'RAMP' '(' target=Ref ',' fromExpr=Expr ',' toExpr=Expr ',' dur=TimeLiteral ')' ';'
+    'ramp' '(' target=Ref ',' fromExpr=Expr ',' toExpr=Expr ',' dur=TimeLiteral ')' ';'
 ;
 
 // ==========================================================================
 // 5) Expressions & Literals
-//     - The "now" keyword returns the current time (type TOD).
+//    The "now" keyword returns the current time-of-day (type TOD), and TOD
+//    literals (e.g. TOD#08:00:00) are supported.
 // ==========================================================================
 Literal infers Literal:
       {infer Literal} NumberLiteral
@@ -224,7 +208,7 @@ Mult infers Expr:
 ;
 
 Primary:
-    'now'                             // built-in keyword for current time (type TOD)
+    'now'                             // returns the current time (TOD)
   | NumberLiteral
   | BooleanLiteral
   | StringLiteral
