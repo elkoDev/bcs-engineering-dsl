@@ -97,7 +97,7 @@ Statement:
 ;
 
 AssignmentStmt:
-    target=Ref ':=' value=Expr ';'
+    target=Ref '=' value=Expr ';'
 ;
 
 IfStmt:
@@ -117,7 +117,7 @@ WhileStmt:
 ;
 
 ForStmt:
-    'for' '(' loopVar=ID ':=' start=Expr 'to' end=Expr ( 'by' step=Expr )? ')' Block
+    'for' '(' loopVar=ID '=' start=Expr 'to' end=Expr ( 'by' step=Expr )? ')' Block
 ;
 
 SwitchStmt:
@@ -140,7 +140,7 @@ FunctionBlockCallStmt:
 ;
 
 Argument:
-    name=ID ':=' value=Expr
+    name=ID ':' value=Expr
 ;
 
 ExpressionStmt:

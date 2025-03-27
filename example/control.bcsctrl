@@ -1,90 +1,133 @@
-control RoomCtrl {
+control MainController {
 
-    // --- Enums
     enum Mode { OFF, ECO, COMFORT }
-    enum State { IDLE, HEATING, ERROR }
 
-    // --- Vars
-    var mode : Mode = Mode.ECO;
-    var state : State = State.IDLE;
-    var currentTemp : REAL;
-    var windowOpen : BOOL;
-    var presence : BOOL;
-    var heating : BOOL;
-    var lighting : BOOL;
-    var errorCode : INT = 0;
+    var currentTemp: REAL;
+    var windowOpen: BOOL;
+    var isPresent: BOOL;
+    var mode: Mode = Mode.ECO;
+    var heat: BOOL;
+    var lightLevel: INT = 0;
+    var runCounter: INT = 0;
 
-    // --- Function Block (with inputs, outputs, logic)
     functionblock HeatingLogic {
         inputs {
-            var temp : REAL;
-            var window : BOOL;
-            var mode : Mode;
+            var temp: REAL;
+            var window: BOOL;
+            var mode: Mode;
         }
         outputs {
-            var heat : BOOL;
+            var heating: BOOL;
         }
         logic {
-            IF window THEN
-                heat := false;
-            ELSIF mode == Mode.COMFORT && temp < 21.0 THEN
-                heat := true;
-            ELSIF mode == Mode.ECO && temp < 18.0 THEN
-                heat := true;
-            ELSE
-                heat := false;
-            END_IF;
+            if (window) {
+                heating = false;
+            } else if (mode == Mode.COMFORT && temp < 21.0) {
+                heating = true;
+            } else if (mode == Mode.ECO && temp < 18.0) {
+                heating = true;
+            } else {
+                heating = false;
+            }
         }
     }
 
-    // --- Function Block Instance
-    var heatingController : HeatingLogic;
+    var heatingController: HeatingLogic;
 
-    // --- Control Logic
-    unit ClimateControl when true {
-        // Sensor reading
-        currentTemp := tempSensor;
-        windowOpen := windowContact;
-        presence := presenceSensor;
-
-        // Call function block
-        heatingController(temp := currentTemp, window := windowOpen, mode := mode);
-
-        // Assign result to actuator
-        heater := heatingController.heat;
+    // ------------------------------
+    // 1. Scheduled morning lighting
+    // ------------------------------
+    unit MorningLights at TOD#06:30:00 {
+        lights = true;
     }
 
-    // --- CASE + IF + Timer + FOR
-    unit PresenceLighting when presence {
-        CASE mode OF
-            Mode.COMFORT: {
-                lighting := true;
-            }
-            Mode.ECO: {
-                IF currentTemp < 19.0 THEN
-                    lighting := true;
-                ELSE
-                    lighting := false;
-                END_IF;
-            }
-            Mode.OFF: {
-                lighting := false;
-            }
-        END_CASE;
+    // ------------------------------
+    // 2. Adaptive heating control
+    // ------------------------------
+    unit ClimateControl {
+        currentTemp = tempSensor;
+        windowOpen = windowContact;
+        isPresent = presence;
+
+        heatingController(temp: currentTemp, window: windowOpen, mode: mode);
+        heater = heatingController.heating;
     }
 
-    // --- WHILE + TIMER
-    unit ErrorMonitoring {
-        var retry : INT = 0;
-        WHILE errorCode != 0 && retry < 3 DO
-            retry := retry + 1;
-        END_WHILE;
+    // ------------------------------
+    // 3. Presence-triggered light dimming
+    // ------------------------------
+    unit PresenceLighting when (isPresent) {
+        switch (mode) {
+            case Mode.COMFORT: {
+                lightLevel = 100;
+            }
+            case Mode.ECO: {
+                if (currentTemp < 19.0) {
+                    lightLevel = 60;
+                } else {
+                    lightLevel = 30;
+                }
+            }
+            case Mode.OFF: {
+                lightLevel = 0;
+            }
+        }
     }
 
-    // --- FOR loop over test values (just for demo)
-    unit Debug {
-        FOR i := 0 TO 5 BY 1 DO
-            lighting := i < 3;
-        END_FOR;
+    // ------------------------------
+    // 4. Close blinds at 8:00 once
+    // ------------------------------
+    unit CloseBlinds at TOD#08:00:00 {
+        blinds = true;
+    }
+
+    // ------------------------------
+    // 5. Ramp demo: Gradually dim lights
+    // ------------------------------
+    unit NightLightRamp at TOD#22:00:00 {
+        ramp(lights, false, true, T#10s);
+    }
+
+    // ------------------------------
+    // 6. Rising edge detection
+    // ------------------------------
+    unit DetectPresenceOnEntry {
+        on_rising(presence) {
+            lights = true;
+        }
+    }
+
+    // ------------------------------
+    // 7. While loop
+    // ------------------------------
+    unit ErrorMonitor when (mode != Mode.OFF) {
+        var retry: INT = 0;
+        while (retry < 3) {
+            retry = retry + 1;
+        }
+    }
+
+    // ------------------------------
+    // 8. For loop
+    // ------------------------------
+    unit DemoLoop {
+        for (i = 0 to 5 by 1) {
+            lightLevel = i * 20;
+        }
+    }
+
+    // ------------------------------
+    // 9. Expression statement
+    // ------------------------------
+    unit TimeCheck {
+        now; // just to test 'now' parsing
+    }
+
+    // ------------------------------
+    // 10. Wait statement
+    // ------------------------------
+    unit DelayStart once when (now >= TOD#07:00:00) {
+        wait T#10s;
+        lights = true;
     }
 }
