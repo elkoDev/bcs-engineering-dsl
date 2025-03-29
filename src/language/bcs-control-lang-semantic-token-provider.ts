@@ -8,6 +8,7 @@ import {
   isActuator,
   isArgument,
   isBinExpr,
+  isControlModel,
   isControlUnit,
   isEnumDecl,
   isEnumMemberLiteral,
@@ -30,11 +31,18 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
     node: AstNode,
     acceptor: SemanticTokenAcceptor
   ): void {
+    if (isControlModel(node)) {
+      acceptor({
+        node,
+        property: "controller",
+        type: SemanticTokenTypes.macro,
+      });
+    }
     if (isControlUnit(node)) {
       acceptor({
         node,
         property: "name",
-        type: SemanticTokenTypes.class,
+        type: SemanticTokenTypes.decorator,
       });
       if (node.time && node.$cstNode) {
         const fullText = node.$cstNode.text;

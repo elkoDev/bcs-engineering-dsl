@@ -4,7 +4,7 @@ import {
   SemanticTokenAcceptor,
 } from "langium/lsp";
 import { BCSHardwareLangServices } from "./bcs-hardware-lang-module.js";
-import { isActuator, isSensor } from "./generated/ast.js";
+import { isActuator, isController, isSensor } from "./generated/ast.js";
 import { SemanticTokenTypes } from "vscode-languageserver";
 
 export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenProvider {
@@ -16,7 +16,19 @@ export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenP
     node: AstNode,
     acceptor: SemanticTokenAcceptor
   ): void {
+    if (isController(node)) {
+      acceptor({
+        node,
+        property: "name",
+        type: SemanticTokenTypes.macro,
+      });
+    }
     if (isSensor(node) || isActuator(node)) {
+      acceptor({
+        node,
+        property: "name",
+        type: SemanticTokenTypes.decorator,
+      });
       acceptor({
         node,
         property: "type",
