@@ -4,7 +4,7 @@ import "./bcs-hardware"
 // ==========================================================================
 // 1) Entry Rule: A control block referencing a hardware controller.
 //    Inside, you may define Declarations (enums, variables, function blocks)
-//    and Units. Units are the primary construct for all control logic, whether
+//    and ControlUnits. ControlUnits are the primary construct for all control logic, whether
 //    time‐based (using TOD expressions) or event‐driven.
 // ==========================================================================
 entry ControlModel:
@@ -67,7 +67,7 @@ TypeRef infers TypeRef:
 ;
 
 // ==========================================================================
-// 3) Units (Control Logic)
+// 3) ControlUnits (Control Logic)
 //    A unit is a named block of control logic that may be triggered by any
 //    expression – for example, a time-of-day comparison using now or a TOD literal.
 // ==========================================================================
@@ -128,7 +128,7 @@ SwitchStmt:
 ;
 
 CaseOption:
-    'case' (literals+=Literal (',' literals+=Literal)*) ':' Block
+    'case' (literals+=CaseLiteral (',' literals+=CaseLiteral)*) ':' Block
 ;
 
 DefaultOption:
@@ -171,16 +171,15 @@ RampStmt:
 //    The "now" keyword returns the current time-of-day (type TOD), and TOD
 //    literals (e.g. TOD#08:00:00) are supported.
 // ==========================================================================
-Literal infers Literal:
-      {infer Literal} NumberLiteral
-    | {infer Literal} BooleanLiteral
-    | {infer Literal} StringLiteral
-    | {infer Literal} EnumMemberLiteral
+CaseLiteral infers CaseLiteral:
+      {infer CaseLiteral} NumberLiteral
+    | {infer CaseLiteral} BooleanLiteral
+    | {infer CaseLiteral} StringLiteral
+    | {infer CaseLiteral} EnumMemberLiteral
 ;
 
 EnumMemberLiteral:
     value=[EnumDecl:ID] '.' member=ID
-  | member=ID // fallback: unqualified name
 ;
 
 Expr:
@@ -212,6 +211,7 @@ Primary:
   | NumberLiteral
   | BooleanLiteral
   | StringLiteral
+  | EnumMemberLiteral
   | TodLiteral                      // e.g., TOD#08:00:00
   | ParenExpr
   | NegExpr
@@ -231,9 +231,10 @@ ParenExpr:
     '(' expr=Expr ')'
 ;
 
-Ref:
-    name=ID ('.' property=ID)?
-;
+
+Ref infers Ref:
+    ({infer Ref} varRef=[VarDecl] | sensorRef=[Sensor]) ('.' property=ID)?;
+
 
 ComparisonOperator returns string:
     '<' | '<=' | '==' | '!=' | '>=' | '>'
