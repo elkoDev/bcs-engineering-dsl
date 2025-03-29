@@ -3,6 +3,7 @@ import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
   Actuator,
   ControlModel,
+  EnumDecl,
   isRef,
   Sensor,
   VarDecl,
@@ -23,32 +24,18 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
         controller?.components.filter((c) => c.$type === Actuator) ?? [];
       const sensors =
         controller?.components.filter((c) => c.$type === Sensor) ?? [];
-
       const varDecls = controlModel.items.filter((i) => i.$type === VarDecl);
+      const enumDecls = controlModel.items.filter((i) => i.$type === EnumDecl);
 
-      // Combine actuators, sensors, and varDecls into a single array
-      const combinedComponents = [...actuators, ...sensors, ...varDecls];
-
+      const combinedComponents = [
+        ...actuators,
+        ...sensors,
+        ...varDecls,
+        ...enumDecls,
+      ];
       return this.createScopeForNodes(combinedComponents);
     }
 
     return super.getScope(context);
   }
-
-  // ----------------------------------------------------------------
-  /*if (isCommand(container) && context.property === "actuator") {
-      const command = container.$container;
-      const controller = command.$container.$container.plc.ref;
-      const actuators =
-        controller?.components.filter((c) => c.$type === Actuator) ?? [];
-      return this.createScopeForNodes(actuators);
-    }
-    if (isRef(container) && context.property === "sensor") {
-      const ref = container.$container;
-      const controller = (ref.$container as Condition).$container.$container.plc
-        .ref;
-      const sensors =
-        controller?.components.filter((c) => c.$type === Sensor) ?? [];
-      return this.createScopeForNodes(sensors);
-    }*/
 }

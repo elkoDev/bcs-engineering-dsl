@@ -226,7 +226,6 @@ Primary:
   | val=NumberLiteral
   | val=BooleanLiteral
   | val=StringLiteral
-  | val=EnumMemberLiteral
   | val=TodLiteral                      // e.g., TOD#08:00:00
 ;
 
@@ -242,7 +241,7 @@ ParenExpr:
     '(' expr=Expr ')'
 ;
 
-NamedElement: VarDecl | Sensor | Actuator;
+NamedElement: VarDecl | EnumDecl | Sensor | Actuator;
 
 Ref:
     (ref=[NamedElement]) ('.' property=ID)?;

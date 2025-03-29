@@ -58,7 +58,7 @@ control MainController {
     // ------------------------------
     unit PresenceLighting when (isPresent) {
         switch (mode) {
-            case Mode.COMFORT: {
+            case Mode.COMFORT_SHOULD_FAIL_VALIDATION: {
                 lightLevel = 100;
             }
             case Mode.ECO: {

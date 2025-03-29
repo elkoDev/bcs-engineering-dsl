@@ -5,6 +5,7 @@ import {
 } from "langium/lsp";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
+  isActuator,
   isArgument,
   isBinExpr,
   isEnumDecl,
@@ -12,6 +13,7 @@ import {
   isFunctionBlockCallStmt,
   isPrimary,
   isRef,
+  isSensor,
   isTypeRef,
   isVarDecl,
 } from "./generated/ast.js";
@@ -32,11 +34,6 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         property: "type",
         type: SemanticTokenTypes.type,
       });
-      acceptor({
-        node,
-        property: "ref",
-        type: SemanticTokenTypes.type,
-      });
     }
     if (isEnumDecl(node)) {
       acceptor({
@@ -51,11 +48,31 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
       });
     }
     if (isRef(node)) {
-      acceptor({
-        node,
-        property: "ref",
-        type: SemanticTokenTypes.variable,
-      });
+      let namedElement = node.ref.ref;
+      if (isVarDecl(namedElement)) {
+        acceptor({
+          node,
+          property: "ref",
+          type: SemanticTokenTypes.variable,
+        });
+      } else if (isEnumDecl(namedElement)) {
+        acceptor({
+          node,
+          property: "ref",
+          type: SemanticTokenTypes.enum,
+        });
+        acceptor({
+          node,
+          property: "property",
+          type: SemanticTokenTypes.enumMember,
+        });
+      } else if (isActuator(namedElement) || isSensor(namedElement)) {
+        acceptor({
+          node,
+          property: "ref",
+          type: SemanticTokenTypes.struct,
+        });
+      }
     }
     if (isVarDecl(node)) {
       acceptor({
