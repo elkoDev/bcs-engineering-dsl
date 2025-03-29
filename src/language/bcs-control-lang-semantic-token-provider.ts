@@ -14,10 +14,12 @@ import {
   isEnumMemberLiteral,
   isFunctionBlockCallStmt,
   isPrimary,
+  isRampStmt,
   isRef,
   isSensor,
   isTypeRef,
   isVarDecl,
+  isWaitStmt,
   Primary,
 } from "./generated/ast.js";
 import { Position, Range, SemanticTokenTypes } from "vscode-languageserver";
@@ -46,7 +48,7 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
       });
       if (node.time && node.$cstNode) {
         const fullText = node.$cstNode.text;
-        const match = fullText.match(/TOD#[0-9:]+/);
+        const match = RegExp(/TOD#[0-9:]+/).exec(fullText);
         if (match) {
           const matchIndex = fullText.indexOf(match[0]);
           const { line, character } = node.$cstNode.range.start;
@@ -174,6 +176,44 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         });
       }
     }
+    if (isWaitStmt(node)) {
+      if (node.time && node.$cstNode) {
+        const fullText = node.$cstNode.text;
+        const match = RegExp(/T#[0-9]+(ms|s|m|h|d)/).exec(fullText);
+        if (match) {
+          const matchIndex = fullText.indexOf(match[0]);
+          const { line, character } = node.$cstNode.range.start;
+          const startChar = character + matchIndex;
+          this.formatTimeLiteralRaw(
+            node,
+            match[0],
+            line,
+            startChar,
+            acceptor,
+            "time"
+          );
+        }
+      }
+    }
+    if (isRampStmt(node)) {
+      if (node.dur && node.$cstNode) {
+        const fullText = node.$cstNode.text;
+        const match = RegExp(/T#[0-9]+(ms|s|m|h|d)/).exec(fullText);
+        if (match) {
+          const matchIndex = fullText.indexOf(match[0]);
+          const { line, character } = node.$cstNode.range.start;
+          const startChar = character + matchIndex;
+          this.formatTimeLiteralRaw(
+            node,
+            match[0],
+            line,
+            startChar,
+            acceptor,
+            "dur"
+          );
+        }
+      }
+    }
   }
 
   getOffsetRange(
@@ -205,21 +245,54 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
     acceptor: SemanticTokenAcceptor,
     property: string
   ) {
-    // Highlight `TOD#`
+    // Highlight `TOD`
     const rangePrefix = Range.create(
       Position.create(line, char),
-      Position.create(line, char + 4)
+      Position.create(line, char + 3)
     );
     acceptor({
       node,
       property,
       range: rangePrefix,
-      type: SemanticTokenTypes.string,
+      type: SemanticTokenTypes.type,
     });
 
     // Highlight `08:00:00`
     const rangeTime = Range.create(
       Position.create(line, char + 4),
+      Position.create(line, char + text.length)
+    );
+    acceptor({
+      node,
+      property,
+      range: rangeTime,
+      type: SemanticTokenTypes.string,
+    });
+  }
+
+  formatTimeLiteralRaw(
+    node: AstNode,
+    text: string,
+    line: number,
+    char: number,
+    acceptor: SemanticTokenAcceptor,
+    property: string
+  ) {
+    // Highlight `T`
+    const rangePrefix = Range.create(
+      Position.create(line, char),
+      Position.create(line, char + 1)
+    );
+    acceptor({
+      node,
+      property,
+      range: rangePrefix,
+      type: SemanticTokenTypes.type,
+    });
+
+    // Highlight `10s`
+    const rangeTime = Range.create(
+      Position.create(line, char + 2),
       Position.create(line, char + text.length)
     );
     acceptor({
