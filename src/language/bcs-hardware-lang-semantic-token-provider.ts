@@ -3,12 +3,12 @@ import {
   AbstractSemanticTokenProvider,
   SemanticTokenAcceptor,
 } from "langium/lsp";
-import { BCSControlLangServices } from "./bcs-control-lang-module.js";
-import { isEnumDecl, isTypeRef } from "./generated/ast.js";
+import { BCSHardwareLangServices } from "./bcs-hardware-lang-module.js";
+import { isActuator, isSensor } from "./generated/ast.js";
 import { SemanticTokenTypes } from "vscode-languageserver";
 
-export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenProvider {
-  constructor(services: BCSControlLangServices) {
+export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenProvider {
+  constructor(services: BCSHardwareLangServices) {
     super(services);
   }
 
@@ -16,7 +16,7 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
     node: AstNode,
     acceptor: SemanticTokenAcceptor
   ): void {
-    if (isTypeRef(node)) {
+    if (isSensor(node) || isActuator(node)) {
       acceptor({
         node,
         property: "type",
@@ -24,20 +24,13 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
       });
       acceptor({
         node,
-        property: "ref",
+        property: "ioType",
         type: SemanticTokenTypes.type,
       });
-    }
-    if (isEnumDecl(node)) {
       acceptor({
         node,
-        property: "name",
-        type: SemanticTokenTypes.enum,
-      });
-      acceptor({
-        node,
-        property: "members",
-        type: SemanticTokenTypes.enumMember,
+        property: "dataType",
+        type: SemanticTokenTypes.type,
       });
     }
   }

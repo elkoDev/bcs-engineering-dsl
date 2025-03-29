@@ -190,7 +190,7 @@ CaseLiteral:
 
 
 EnumMemberLiteral:
-    value=[EnumDecl:ID] '.' member=ID
+    value=[EnumDecl:ID] op='.' member=ID
 ;
 
 Expr:
@@ -218,16 +218,16 @@ Mult infers Expr:
 ;
 
 Primary:
-    'now'                             // returns the current time (TOD)
+    'now'   
+  | ParenExpr
+  | NegExpr
+  | NotExpr
+  | Ref                          // returns the current time (TOD)
   | val=NumberLiteral
   | val=BooleanLiteral
   | val=StringLiteral
   | val=EnumMemberLiteral
   | val=TodLiteral                      // e.g., TOD#08:00:00
-  | ParenExpr
-  | NegExpr
-  | NotExpr
-  | Ref
 ;
 
 NegExpr:
