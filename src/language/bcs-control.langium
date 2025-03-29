@@ -55,15 +55,15 @@ TypeDecl:
     | FunctionBlockDecl
 ;
 
-TypeRef infers TypeRef:
-      {infer TypeRef} 'BOOL'
-    | {infer TypeRef} 'INT'
-    | {infer TypeRef} 'REAL'
-    | {infer TypeRef} 'STRING'
-    | {infer TypeRef} 'TIME'
-    | {infer TypeRef} 'TOD'
-    | {infer TypeRef} 'DT'
-    | {infer TypeRef} ref=[TypeDecl]        // TODO: scope provider
+TypeRef:
+      type='BOOL'
+    | type='INT'
+    | type='REAL'
+    | type='STRING'
+    | type='TIME'
+    | type='TOD'
+    | type='DT'
+    | ref=[TypeDecl]        // TODO: scope provider
 ;
 
 // ==========================================================================
@@ -154,12 +154,25 @@ LocalVarDeclStmt infers VarDecl:
 // --------------------------------------------------------------------------
 // Timing and Edge Statements
 // --------------------------------------------------------------------------
-WaitStmt infers WaitStmt:
+WaitStmt:
     'wait' time=TimeLiteral ';'
 ;
 
 EdgeStmt:
-    ( 'on_rising' | 'on_falling' ) '(' signal=Ref ')' Block
+     OnRisingEdgeStmt
+    | OnFallingEdgeStmt
+;
+
+fragment EdgeStatementCore:
+    '(' signal=Ref ')'
+;
+
+OnRisingEdgeStmt:
+    'on_rising' EdgeStatementCore Block
+;    
+
+OnFallingEdgeStmt:
+    'on_falling' EdgeStatementCore Block
 ;
 
 RampStmt:
@@ -168,15 +181,13 @@ RampStmt:
 
 // ==========================================================================
 // 5) Expressions & Literals
-//    The "now" keyword returns the current time-of-day (type TOD), and TOD
-//    literals (e.g. TOD#08:00:00) are supported.
+//    Expressions are the core of the control logic, allowing for complex evaluations and assignments.
+//    Literals are the basic building blocks of expressions, including numbers, booleans, strings, and enums.
 // ==========================================================================
-CaseLiteral infers CaseLiteral:
-      {infer CaseLiteral} NumberLiteral
-    | {infer CaseLiteral} BooleanLiteral
-    | {infer CaseLiteral} StringLiteral
-    | {infer CaseLiteral} EnumMemberLiteral
+CaseLiteral:
+       val=(NumberLiteral | BooleanLiteral | StringLiteral | EnumMemberLiteral)
 ;
+
 
 EnumMemberLiteral:
     value=[EnumDecl:ID] '.' member=ID
@@ -208,11 +219,11 @@ Mult infers Expr:
 
 Primary:
     'now'                             // returns the current time (TOD)
-  | NumberLiteral
-  | BooleanLiteral
-  | StringLiteral
-  | EnumMemberLiteral
-  | TodLiteral                      // e.g., TOD#08:00:00
+  | val=NumberLiteral
+  | val=BooleanLiteral
+  | val=StringLiteral
+  | val=EnumMemberLiteral
+  | val=TodLiteral                      // e.g., TOD#08:00:00
   | ParenExpr
   | NegExpr
   | NotExpr
@@ -232,8 +243,8 @@ ParenExpr:
 ;
 
 
-Ref infers Ref:
-    ({infer Ref} varRef=[VarDecl] | sensorRef=[Sensor]) ('.' property=ID)?;
+Ref:
+    (varRef=[VarDecl] | sensorRef=[Sensor] | actuatorRef=[Actuator]) ('.' property=ID)?;
 
 
 ComparisonOperator returns string:
