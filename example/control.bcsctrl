@@ -77,7 +77,7 @@ control MainController {
     // ------------------------------
     // 4. Close blinds at 8:00 once
     // ------------------------------
-    unit CloseBlinds at TOD#08:00:00 {
+    unit CloseBlinds at TOD#08:00:01 {
         blinds = true;
     }
 
@@ -126,7 +126,7 @@ control MainController {
     // ------------------------------
     // 10. Wait statement
     // ------------------------------
-    unit DelayStart once when (now >= TOD#07:00:00) {
+    unit DelayStart once when (now >= TOD#07:05:00) {
         wait T#10s;
         lights = true;
         presence = false;

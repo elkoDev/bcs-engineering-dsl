@@ -8,6 +8,7 @@ import {
   isActuator,
   isArgument,
   isBinExpr,
+  isControlUnit,
   isEnumDecl,
   isEnumMemberLiteral,
   isFunctionBlockCallStmt,
@@ -16,8 +17,9 @@ import {
   isSensor,
   isTypeRef,
   isVarDecl,
+  Primary,
 } from "./generated/ast.js";
-import { SemanticTokenTypes } from "vscode-languageserver";
+import { Position, Range, SemanticTokenTypes } from "vscode-languageserver";
 
 export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenProvider {
   constructor(services: BCSControlLangServices) {
@@ -28,6 +30,30 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
     node: AstNode,
     acceptor: SemanticTokenAcceptor
   ): void {
+    if (isControlUnit(node)) {
+      acceptor({
+        node,
+        property: "name",
+        type: SemanticTokenTypes.class,
+      });
+      if (node.time && node.$cstNode) {
+        const fullText = node.$cstNode.text;
+        const match = fullText.match(/TOD#[0-9:]+/);
+        if (match) {
+          const matchIndex = fullText.indexOf(match[0]);
+          const { line, character } = node.$cstNode.range.start;
+          const startChar = character + matchIndex;
+          this.formatTodLiteralRaw(
+            node,
+            match[0],
+            line,
+            startChar,
+            acceptor,
+            "time"
+          );
+        }
+      }
+    }
     if (isTypeRef(node)) {
       acceptor({
         node,
@@ -121,11 +147,9 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         });
       }
       if (typeof node.val === "string") {
-        acceptor({
-          node,
-          property: "val",
-          type: SemanticTokenTypes.string,
-        });
+        if (node.val.startsWith("TOD#")) {
+          this.formatTodLiteral(node, acceptor);
+        }
       }
       if (typeof node.val === "boolean") {
         acceptor({
@@ -142,5 +166,59 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         });
       }
     }
+  }
+
+  getOffsetRange(
+    line: number,
+    char: number,
+    skip: number,
+    length: number
+  ): Range {
+    return Range.create(
+      Position.create(line, char + skip),
+      Position.create(line, char + length)
+    );
+  }
+
+  formatTodLiteral(node: Primary, acceptor: SemanticTokenAcceptor) {
+    const nodeCst = node.$cstNode;
+    if (!nodeCst) return;
+
+    const text = nodeCst.text; // e.g. 'TOD#08:00:00'
+    const { line, character } = nodeCst.range.start;
+    this.formatTodLiteralRaw(node, text, line, character, acceptor, "val");
+  }
+
+  formatTodLiteralRaw(
+    node: AstNode,
+    text: string,
+    line: number,
+    char: number,
+    acceptor: SemanticTokenAcceptor,
+    property: string
+  ) {
+    // Highlight `TOD#`
+    const rangePrefix = Range.create(
+      Position.create(line, char),
+      Position.create(line, char + 4)
+    );
+    acceptor({
+      node,
+      property,
+      range: rangePrefix,
+      type: SemanticTokenTypes.string,
+    });
+
+    // Highlight `08:00:00`
+    const rangeTime = Range.create(
+      Position.create(line, char + 4),
+      Position.create(line, char + text.length)
+    );
+    acceptor({
+      node,
+      property,
+      range: rangeTime,
+      type: SemanticTokenTypes.string,
+    });
   }
 }
