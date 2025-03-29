@@ -1,7 +1,7 @@
 import type { Module } from "langium";
 import { LangiumServices, PartialLangiumServices } from "langium/lsp";
 import { BCSControlLangValidator } from "./bcs-control-lang-validator.js";
-import { BCSControlScopeProvider } from "./bcs-control-scope.js";
+import { BCSControlLangScopeProvider } from "./bcs-control-lang-scope.js";
 
 export type BCSControlAddedServices = {
   validation: {
@@ -17,7 +17,7 @@ export const BCSControlLangModule: Module<
 > = {
   references: {
     ScopeProvider: (services: BCSControlLangServices) =>
-      new BCSControlScopeProvider(services),
+      new BCSControlLangScopeProvider(services),
   },
   validation: {
     BCSControlLangValidator: (services: BCSControlLangServices) =>

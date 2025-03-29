@@ -62,7 +62,7 @@ control MainController {
                 lightLevel = 100;
             }
             case Mode.ECO: {
-                if (currentTemp < 19.0) {
+                if (currentTemp2 < 19.0 ) {
                     lightLevel = 60;
                 } else {
                     lightLevel = 30;
@@ -129,5 +129,6 @@ control MainController {
     unit DelayStart once when (now >= TOD#07:00:00) {
         wait T#10s;
         lights = true;
+        presence = false;
     }
 }

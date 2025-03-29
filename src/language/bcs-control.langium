@@ -242,9 +242,10 @@ ParenExpr:
     '(' expr=Expr ')'
 ;
 
+NamedElement: VarDecl | Sensor | Actuator;
 
 Ref:
-    (varRef=[VarDecl] | sensorRef=[Sensor] | actuatorRef=[Actuator]) ('.' property=ID)?;
+    (ref=[NamedElement]) ('.' property=ID)?;
 
 
 ComparisonOperator returns string:
