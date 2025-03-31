@@ -13,22 +13,22 @@ control MainController {
 
     functionblock HeatingLogic {
         inputs {
-            var temp: REAL;
-            var window: BOOL;
-            var mode: Mode;
+            var iTemp: REAL;
+            var iWindow: BOOL;
+            var iMode: Mode;
         }
         outputs {
-            var heating: BOOL;
+            var oHeating: BOOL;
         }
         logic {
-            if (window) {
-                heating = false;
-            } else if (mode == Mode.COMFORT && temp < 21.0) {
-                heating = true;
-            } else if (mode == Mode.ECO && temp < 18.0) {
-                heating = true;
+            if (iWindow) {
+                oHeating = false;
+            } else if (iMode == Mode.COMFORT && iTemp < 21.0) {
+                oHeating = true;
+            } else if (iMode == Mode.ECO && iTemp < 18.0) {
+                oHeating = true;
             } else {
-                heating = false;
+                oHeating = false;
             }
         }
     }
@@ -50,7 +50,7 @@ control MainController {
         windowOpen = windowContact;
         isPresent = presence;
 
-        use HeatingLogic(temp: currentTemp, window: windowOpen, mode: mode) -> isHeating;
+        use HeatingLogic(temp_should_not_be_possible_as_it_does_not_exist: currentTemp, iWindow: windowOpen, iMode: mode) -> isHeating;
         heater = isHeating;
     }
 
