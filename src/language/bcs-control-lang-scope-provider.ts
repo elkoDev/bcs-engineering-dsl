@@ -1,9 +1,9 @@
-import { DefaultScopeProvider, ReferenceInfo, Scope } from "langium";
+import { AstUtils, DefaultScopeProvider, ReferenceInfo, Scope } from "langium";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
   Actuator,
-  ControlModel,
   EnumDecl,
+  isControlModel,
   isRef,
   Sensor,
   VarDecl,
@@ -18,7 +18,10 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
     const container = context.container;
 
     if (isRef(container)) {
-      const controlModel = container.$cstNode?.root.astNode as ControlModel;
+      const controlModel = AstUtils.getContainerOfType(
+        context.container,
+        isControlModel
+      )!;
       const controller = controlModel?.controller.ref;
       const actuators =
         controller?.components.filter((c) => c.$type === Actuator) ?? [];

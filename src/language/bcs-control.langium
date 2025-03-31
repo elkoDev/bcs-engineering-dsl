@@ -72,6 +72,7 @@ TypeRef:
 //    expression – for example, a time-of-day comparison using now or a TOD literal.
 // ==========================================================================
 ControlUnit:
+    // Future Note: Support on `event` and raise `event` stmt
     'unit' name=ID (('once'? 'when' '(' condition=Expr ')') | ('at' time=TodLiteral))? Block;
 
 
@@ -88,12 +89,12 @@ Statement:
     | WhileStmt
     | ForStmt
     | SwitchStmt
-    | FunctionBlockCallStmt
     | ExpressionStmt
     | LocalVarDeclStmt
     | WaitStmt
     | EdgeStmt
     | RampStmt
+    | UseStmt
 ;
 
 AssignmentStmt:
@@ -135,14 +136,6 @@ DefaultOption:
     'default' ':' Block
 ;
 
-FunctionBlockCallStmt:
-    target=Ref '(' (args+=Argument (',' args+=Argument)*)? ')' ';'
-;
-
-Argument:
-    name=ID ':' value=Expr
-;
-
 ExpressionStmt:
     expr=Expr ';'
 ;
@@ -150,6 +143,29 @@ ExpressionStmt:
 LocalVarDeclStmt infers VarDecl:
     'var' VarDeclCore
 ;
+
+// --------------- Experimental ----------------------------------------------------
+
+UseStmt:
+    'use' functionBlockRef=[FunctionBlockDecl]
+    '(' args+=Argument (',' args+=Argument)* ')'
+    '->' (resultVars+=UseResult (',' resultVars+=UseResult)*) ';'
+;
+
+Argument:
+    name=ID ':' value=Expr
+;
+
+UseResult:
+    // supports both `outputName` and `{ target: source }` mapping
+    '{' assignments+=UseMapping (',' assignments+=UseMapping)* '}' |
+    ref=[VarDecl]           // just output name as is
+;
+
+UseMapping:
+    target=ID ':' source=[VarDecl]
+;
+
 
 // --------------------------------------------------------------------------
 // Timing and Edge Statements

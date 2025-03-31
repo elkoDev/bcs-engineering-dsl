@@ -3,9 +3,7 @@ import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
   BCSEngineeringDSLAstType,
   ControlUnit,
-  FunctionBlockCallStmt,
   FunctionBlockDecl,
-  isFunctionBlockDecl,
   isVarDecl,
   VarDecl,
 } from "./generated/ast.js";
@@ -18,7 +16,6 @@ export function registerBCSControlValidationChecks(
   const checks: ValidationChecks<BCSEngineeringDSLAstType> = {
     FunctionBlockDecl: [validator.checkUniqueVarNamesInFunctionBlock],
     ControlUnit: [validator.checkUniqueVarNamesInUnit],
-    FunctionBlockCallStmt: [validator.checkFunctionBlockCall],
   };
   registry.register(checks, validator);
 }
@@ -108,47 +105,6 @@ export class BCSControlLangValidator {
         );
       } else {
         seen.add(v.name);
-      }
-    }
-  }
-
-  // TODO: not working yet
-  checkFunctionBlockCall(
-    stmt: FunctionBlockCallStmt,
-    accept: ValidationAcceptor
-  ): void {
-    const targetDecl = stmt.target;
-
-    // 1. Check that target resolves to a FunctionBlockDecl
-    if (!targetDecl || !isFunctionBlockDecl(targetDecl)) {
-      accept(
-        "error",
-        `Cannot resolve function block '${
-          stmt.target.$cstNode?.text ?? "unknown"
-        }'.`,
-        {
-          node: stmt.target,
-        }
-      );
-      return;
-    }
-
-    // 2. Validate each arg exists in the inputs of the resolved FunctionBlockDecl
-    for (const arg of stmt.args) {
-      const found = (targetDecl as FunctionBlockDecl).inputs.some(
-        (input) => input.name === arg.name
-      );
-      if (!found) {
-        accept(
-          "error",
-          `Argument '${arg.name}' not found in inputs of function block '${
-            (targetDecl as FunctionBlockDecl).name
-          }'.`,
-          {
-            node: arg,
-            property: "name",
-          }
-        );
       }
     }
   }

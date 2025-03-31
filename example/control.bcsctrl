@@ -32,8 +32,6 @@ control MainController {
         }
     }
 
-    var heatingController: HeatingLogic;
-
     // ------------------------------
     // 1. Scheduled morning lighting
     // ------------------------------
@@ -45,12 +43,14 @@ control MainController {
     // 2. Adaptive heating control
     // ------------------------------
     unit ClimateControl {
+        var isHeating : BOOL = false;
+        
         currentTemp = tempSensor;
         windowOpen = windowContact;
         isPresent = presence;
 
-        heatingController(temp: currentTemp, window: windowOpen, mode: mode);
-        heater = heatingController.heating;
+        use HeatingLogic(temp: currentTemp, window: windowOpen, mode: mode) -> isHeating;
+        heater = isHeating;
     }
 
     // ------------------------------

@@ -12,12 +12,12 @@ import {
   isControlUnit,
   isEnumDecl,
   isEnumMemberLiteral,
-  isFunctionBlockCallStmt,
   isPrimary,
   isRampStmt,
   isRef,
   isSensor,
   isTypeRef,
+  isUseStmt,
   isVarDecl,
   isWaitStmt,
   Primary,
@@ -122,10 +122,10 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         type: SemanticTokenTypes.type,
       });
     }
-    if (isFunctionBlockCallStmt(node)) {
+    if (isUseStmt(node)) {
       acceptor({
         node,
-        property: "target",
+        property: "functionBlockRef",
         type: SemanticTokenTypes.function,
       });
     }
@@ -179,7 +179,7 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
     if (isWaitStmt(node)) {
       if (node.time && node.$cstNode) {
         const fullText = node.$cstNode.text;
-        const match = RegExp(/T#[0-9]+(ms|s|m|h|d)/).exec(fullText);
+        const match = RegExp(/T#\d+(ms|s|m|h|d)/).exec(fullText);
         if (match) {
           const matchIndex = fullText.indexOf(match[0]);
           const { line, character } = node.$cstNode.range.start;
@@ -198,7 +198,7 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
     if (isRampStmt(node)) {
       if (node.dur && node.$cstNode) {
         const fullText = node.$cstNode.text;
-        const match = RegExp(/T#[0-9]+(ms|s|m|h|d)/).exec(fullText);
+        const match = RegExp(/T#\d+(ms|s|m|h|d)/).exec(fullText);
         if (match) {
           const matchIndex = fullText.indexOf(match[0]);
           const { line, character } = node.$cstNode.range.start;
