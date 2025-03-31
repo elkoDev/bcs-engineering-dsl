@@ -29,9 +29,12 @@ Declaration:
 
 EnumDecl:
     'enum' name=ID '{'
-        members+=ID (',' members+=ID)*
+        members+=EnumMemberDecl (',' members+=EnumMemberDecl)*
     '}'
 ;
+
+EnumMemberDecl:
+    name=ID;
 
 fragment VarDeclCore:
     name=ID ':' type=TypeRef ('=' init=Expr)? ';'
@@ -206,7 +209,7 @@ CaseLiteral:
 
 
 EnumMemberLiteral:
-    value=[EnumDecl:ID] op='.' member=ID
+    value=[EnumDecl:ID] op='.' member=[EnumMemberDecl:ID]  
 ;
 
 Expr:
@@ -260,7 +263,7 @@ ParenExpr:
 NamedElement: VarDecl | EnumDecl | Sensor | Actuator;
 
 Ref:
-    (ref=[NamedElement]) ('.' property=ID)?;
+    ref=[NamedElement] ('.' property=[EnumMemberDecl])?;
 
 
 ComparisonOperator returns string:

@@ -5,7 +5,8 @@ control MainController {
     var currentTemp: REAL;
     var windowOpen: BOOL;
     var isPresent: BOOL;
-    var mode: Mode = Mode.ECO;
+    var mode: Mode = Mode.OFF;
+    var mode_same_name_as_in_global_should_fail : Mode = Mode.OFF;
     var heat: BOOL;
     var lightLevel: INT = 0;
     var runCounter: INT = 0;
@@ -58,7 +59,7 @@ control MainController {
     // ------------------------------
     unit PresenceLighting when (isPresent) {
         switch (mode) {
-            case Mode.COMFORT_SHOULD_FAIL_VALIDATION: {
+            case Mode.COMFORT: {
                 lightLevel = 100;
             }
             case Mode.ECO: {
@@ -127,8 +128,9 @@ control MainController {
     // 10. Wait statement
     // ------------------------------
     unit DelayStart once when (now >= TOD#07:05:00) {
+        var mode_same_name_as_in_global_should_fail: Mode = Mode.OFF;
         wait T#10s;
-        lights = true;
+        lights = (5 + 7) * 2 == ((4)) * 3 + 2;
         presence = false;
     }
 }

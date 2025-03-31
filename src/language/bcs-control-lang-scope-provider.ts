@@ -4,6 +4,8 @@ import {
   Actuator,
   EnumDecl,
   isControlModel,
+  isEnumDecl,
+  isEnumMemberLiteral,
   isRef,
   Sensor,
   VarDecl,
@@ -17,7 +19,7 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
   override getScope(context: ReferenceInfo): Scope {
     const container = context.container;
 
-    if (isRef(container)) {
+    if (isRef(container) && context.property === "ref") {
       const controlModel = AstUtils.getContainerOfType(
         context.container,
         isControlModel
@@ -37,6 +39,18 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
         ...enumDecls,
       ];
       return this.createScopeForNodes(combinedComponents);
+    }
+    if (isRef(container) && context.property === "property") {
+      const enumDecl = container.ref?.ref;
+      if (enumDecl && isEnumDecl(enumDecl)) {
+        return this.createScopeForNodes(enumDecl.members);
+      }
+    }
+    if (isEnumMemberLiteral(container) && context.property === "member") {
+      const enumDecl = container.value?.ref; // already resolved EnumDecl
+      if (enumDecl) {
+        return this.createScopeForNodes(enumDecl.members);
+      }
     }
 
     return super.getScope(context);
