@@ -118,7 +118,7 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
       });
       acceptor({
         node,
-        property: "type",
+        property: "typeRef",
         type: SemanticTokenTypes.type,
       });
     }
@@ -133,7 +133,7 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
       acceptor({
         node,
         property: "name",
-        type: SemanticTokenTypes.property,
+        type: SemanticTokenTypes.comment,
       });
     }
     if (isEnumMemberLiteral(node)) {

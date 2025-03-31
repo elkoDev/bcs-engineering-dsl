@@ -37,7 +37,7 @@ EnumMemberDecl:
     name=ID;
 
 fragment VarDeclCore:
-    name=ID ':' type=TypeRef ('=' init=Expr)? ';'
+    name=ID ':' typeRef=TypeRef ('=' init=Expr)? ';'
 ;
 
 VarDecl:
@@ -121,7 +121,11 @@ WhileStmt:
 ;
 
 ForStmt:
-    'for' '(' loopVar=ID '=' start=Expr 'to' end=Expr ( 'by' step=Expr )? ')' Block
+    'for' '(' loopVar=LoopVarDecl 'to' end=Expr ( 'by' step=Expr )? ')' Block
+;
+
+LoopVarDecl infers VarDecl:
+    'var' name=ID ':' type=TypeRef '=' start=Expr
 ;
 
 SwitchStmt:
@@ -156,7 +160,7 @@ UseStmt:
 ;
 
 Argument:
-    name=ID ':' value=Expr
+    name=[VarDecl] ':' value=Expr
 ;
 
 UseResult:
@@ -260,11 +264,10 @@ ParenExpr:
     '(' expr=Expr ')'
 ;
 
-NamedElement: VarDecl | EnumDecl | Sensor | Actuator;
-
 Ref:
     ref=[NamedElement] ('.' property=[EnumMemberDecl])?;
 
+NamedElement: VarDecl | EnumDecl | Sensor | Actuator;
 
 ComparisonOperator returns string:
     '<' | '<=' | '==' | '!=' | '>=' | '>'

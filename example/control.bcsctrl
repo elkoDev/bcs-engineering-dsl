@@ -44,14 +44,13 @@ control MainController {
     // 2. Adaptive heating control
     // ------------------------------
     unit ClimateControl {
-        var isHeating : BOOL = false;
+        var isHeating_should_fail_type_matching : BOOL = false;
         
-        currentTemp = tempSensor;
         windowOpen = windowContact;
         isPresent = presence;
 
-        use HeatingLogic(temp_should_not_be_possible_as_it_does_not_exist: currentTemp, iWindow: windowOpen, iMode: mode) -> isHeating;
-        heater = isHeating;
+        use HeatingLogic(iTemp: tempSensor, iWindow: windowOpen, iMode: isHeating_should_fail_type_matching) -> isHeating_should_fail_type_matching;
+        heater = isHeating_should_fail_type_matching;
     }
 
     // ------------------------------
@@ -112,8 +111,16 @@ control MainController {
     // 8. For loop
     // ------------------------------
     unit DemoLoop {
-        for (i = 0 to 5 by 1) {
+        for (var i: INT = 0 to 5 by 1) {
             lightLevel = i * 20;
+            /*
+            if (i == 5) {
+                lights = false;
+            } else {
+                lights = true;
+            }
+            */
+            lights = i != 5;
         }
     }
 
