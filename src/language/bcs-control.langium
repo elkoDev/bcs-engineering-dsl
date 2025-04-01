@@ -160,7 +160,7 @@ UseStmt:
 ;
 
 Argument:
-    name=[VarDecl] ':' value=Expr
+    var=[VarDecl] ':' value=Expr
 ;
 
 UseResult:

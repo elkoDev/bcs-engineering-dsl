@@ -128,11 +128,16 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         property: "functionBlockRef",
         type: SemanticTokenTypes.function,
       });
+      acceptor({
+        node,
+        property: "resultVars",
+        type: SemanticTokenTypes.variable,
+      });
     }
     if (isArgument(node)) {
       acceptor({
         node,
-        property: "name",
+        property: "var",
         type: SemanticTokenTypes.comment,
       });
     }

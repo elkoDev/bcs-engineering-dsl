@@ -11,7 +11,7 @@ control MainController {
     var lightLevel: INT = 0;
     var runCounter: INT = 0;
 
-    functionblock HeatingLogic {
+    functionblock HeatingLogicFB {
         inputs {
             var iTemp: REAL;
             var iWindow: BOOL;
@@ -49,7 +49,7 @@ control MainController {
         windowOpen = windowContact;
         isPresent = presence;
 
-        use HeatingLogic(iTemp: tempSensor, iWindow: windowOpen, iMode: isHeating_should_fail_type_matching) -> isHeating_should_fail_type_matching;
+        use HeatingLogicFB(iTemp: tempSensor, iWindow: windowOpen, iMode: isHeating_should_fail_type_matching || 5 + 54 /* should fail as wrong expr type */) -> isHeating_should_fail_type_matching;
         heater = isHeating_should_fail_type_matching;
     }
 
@@ -134,7 +134,7 @@ control MainController {
     // ------------------------------
     // 10. Wait statement
     // ------------------------------
-    unit DelayStart once when (now >= TOD#07:05:00) {
+    unit DelayStart once when (now >= TOD#07:05:00) { // same as "at TOD#07:05:00"
         var mode_same_name_as_in_global_should_fail: Mode = Mode.OFF;
         wait T#10s;
         lights = (5 + 7) * 2 == ((4)) * 3 + 2;
