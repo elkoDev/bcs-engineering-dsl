@@ -14,13 +14,13 @@ control ValidTestController {
 
         for (var i: INT = 0 to 5 by 1) {
             lightLevel = i * 20;
-            /*
+            
             if (i == 5) {
                 lights = false;
             } else {
                 lights = true;
             }
-            */
+            
             lights = i != 5;
         }
     }
