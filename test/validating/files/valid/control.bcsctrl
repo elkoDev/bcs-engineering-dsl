@@ -1,11 +1,27 @@
 control ValidTestController {
     var windowOpen: BOOL;
     var temp: REAL = 0.0;
+    var intTemp: INT = 4;
     var heater: BOOL;
+    var lights: BOOL;
+    var lightLevel: INT = 0;
 
     unit TestUnit {
         heater = (temp > 5.5) || (temp < 4.5) || (temp > 6.0 && temp < 7.0) && false;
         temp = 5.0 + 5 - 4.0 / 4;
         windowOpen = windowContact;
+        heater = intTemp != 5;
+
+        for (var i: INT = 0 to 5 by 1) {
+            lightLevel = i * 20;
+            /*
+            if (i == 5) {
+                lights = false;
+            } else {
+                lights = true;
+            }
+            */
+            lights = i != 5;
+        }
     }
 }
