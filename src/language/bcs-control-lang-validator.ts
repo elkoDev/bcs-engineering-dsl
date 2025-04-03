@@ -1,9 +1,12 @@
 import { ValidationAcceptor, ValidationChecks } from "langium";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
+  AssignmentStmt,
   BCSEngineeringDSLAstType,
   ControlUnit,
   FunctionBlockDecl,
+  isActuator,
+  isSensor,
   isVarDecl,
   VarDecl,
 } from "./generated/ast.js";
@@ -16,6 +19,8 @@ export function registerBCSControlValidationChecks(
   const checks: ValidationChecks<BCSEngineeringDSLAstType> = {
     FunctionBlockDecl: [validator.checkUniqueVarNamesInFunctionBlock],
     ControlUnit: [validator.checkUniqueVarNamesInUnit],
+    AssignmentStmt: [validator.checkAssignmentTypes],
+    UseStmt: [],
   };
   registry.register(checks, validator);
 }
@@ -107,5 +112,186 @@ export class BCSControlLangValidator {
         seen.add(v.name);
       }
     }
+  }
+
+  checkAssignmentTypes(stmt: AssignmentStmt, accept: ValidationAcceptor) {
+    const leftType = this.inferType(stmt.target, accept);
+    const rightType = this.inferType(stmt.value, accept);
+
+    if (!leftType || !rightType) {
+      accept(
+        "warning",
+        `Cannot infer type for assignment: ${stmt.target.ref.ref?.name} = ${stmt.value}`,
+        { node: stmt }
+      );
+      return;
+    }
+
+    if (!this.isTypeAssignable(rightType, leftType)) {
+      accept(
+        "error",
+        `Type mismatch: Cannot assign "${rightType}" to "${leftType}".`,
+
+        { node: stmt, property: "value" }
+      );
+    }
+  }
+
+  private inferType(expr: any, accept: ValidationAcceptor): string | undefined {
+    if (!expr) return undefined;
+
+    if (expr.$type === "BinExpr") {
+      const left = this.inferType(expr.e1, accept);
+      const right = this.inferType(expr.e2, accept);
+      const op = expr.op;
+
+      if (!left || !right) {
+        return left ?? right;
+      }
+
+      // Comparison operators: ==, !=, <, <=, >, >=
+      if (["==", "!=", "<", "<=", ">", ">="].includes(op)) {
+        if (this.areTypesComparable(left, right)) {
+          return "BOOL";
+        } else {
+          accept(
+            "error",
+            `Cannot compare values of types '${left}' and '${right}' with '${op}'.`,
+            {
+              node: expr,
+            }
+          );
+          return undefined;
+        }
+      }
+
+      // Boolean operators: AND, OR, XOR
+      if ((op === "&&" || op === "||") && left === "BOOL" && right === "BOOL") {
+        return "BOOL";
+      }
+
+      // Arithmetic operators: +, -, *, /
+      if (["+", "-", "*", "/"].includes(op)) {
+        if (
+          (left === "INT" || left === "REAL") &&
+          (right === "INT" || right === "REAL")
+        ) {
+          return left === "REAL" || right === "REAL" ? "REAL" : "INT";
+        } else {
+          accept(
+            "error",
+            `Operator '${op}' not applicable to types '${left}' and '${right}'.`,
+            {
+              node: expr,
+            }
+          );
+          return undefined;
+        }
+      }
+      return undefined;
+    }
+
+    // 2) If Negation / Not / Paren
+    if (
+      expr.$type === "NegExpr" ||
+      expr.$type === "NotExpr" ||
+      expr.$type === "ParenExpr"
+    ) {
+      return this.inferType(expr.expr, accept);
+    }
+
+    // 3) Falls Ref => schaue, worauf es zeigt
+    if (expr.$type === "Ref") {
+      const ref = expr.ref?.ref;
+      if (!ref) return undefined;
+      if (isVarDecl(ref)) {
+        return this.inferVarDeclType(ref);
+      }
+      if (isSensor(ref) || isActuator(ref)) {
+        return ref.dataType;
+      }
+      return this.inferVarDeclType(expr.ref?.ref);
+    }
+
+    // 4) Falls literal: number, boolean, string, TOD etc.
+    if (typeof expr.val === "number") {
+      if (expr.val.toString().includes(".")) {
+        return "REAL";
+      } else if (Number.isFinite(expr.val)) {
+        return "INT";
+      }
+    }
+    if (typeof expr.val === "boolean") {
+      return "BOOL";
+    }
+    if (typeof expr.val === "string") {
+      // "TOD#" => Zeit-Of-Day
+      // "T#"   => TIME
+      // "..."  => STRING
+      if (expr.val.startsWith("TOD#")) {
+        return "TOD";
+      } else if (expr.val.startsWith("T#")) {
+        return "TIME";
+      } else {
+        return "STRING";
+      }
+    }
+    return undefined;
+  }
+
+  private inferVarDeclType(varDecl: VarDecl | undefined): string | undefined {
+    if (!varDecl) return undefined;
+    if (!varDecl.typeRef) return undefined;
+
+    // Either builtin DataType => "BOOL"/"INT"/"REAL"/"STRING" etc.
+    if (varDecl.typeRef.type) {
+      return varDecl.typeRef.type;
+    }
+
+    // Or referencing (EnumDecl | FunctionBlockDecl)
+    if (varDecl.typeRef.ref) {
+      const typeDecl = varDecl.typeRef.ref.ref;
+      if (!typeDecl) return undefined;
+      if (typeDecl.$type === "EnumDecl") {
+        return `Enum:${typeDecl.name}`;
+      }
+      // Ist es ein FunctionBlockDecl?
+      if (typeDecl.$type === "FunctionBlockDecl") {
+        return `FB:${typeDecl.name}`;
+      }
+    }
+
+    return undefined;
+  }
+
+  private isTypeAssignable(sourceType: string, targetType: string): boolean {
+    if (sourceType === targetType) return true;
+
+    if (sourceType === "INT" && targetType === "REAL") {
+      return true;
+    }
+
+    // e.g. source="Enum:Color" target="Enum:Color"
+    if (sourceType.startsWith("Enum:") && targetType === sourceType) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private areTypesComparable(type1: string, type2: string): boolean {
+    const comparableGroups: string[][] = [
+      ["INT", "REAL"],
+      ["STRING"],
+      ["BOOL"],
+    ];
+
+    for (const group of comparableGroups) {
+      if (group.includes(type1) && group.includes(type2)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }

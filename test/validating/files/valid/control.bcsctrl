@@ -1,0 +1,11 @@
+control ValidTestController {
+    var windowOpen: BOOL;
+    var temp: REAL = 0.0;
+    var heater: BOOL;
+
+    unit TestUnit {
+        heater = (temp > 5.5) || (temp < 4.5) || (temp > 6.0 && temp < 7.0) && false;
+        temp = 5.0 + 5 - 4.0 / 4;
+        windowOpen = windowContact;
+    }
+}

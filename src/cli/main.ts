@@ -1,7 +1,6 @@
-import chalk from "chalk";
+/*import chalk from "chalk";
 import { Command } from "commander";
 import { createBcsEngineeringServices } from "../language/bcs-engineering-module.js";
-import { extractAstNode } from "./cli-util.js";
 import { generateJavaScript } from "./generator.js";
 import { NodeFileSystem } from "langium/node";
 import * as url from "node:url";
@@ -50,3 +49,4 @@ export default function (): void {
 
   program.parse(process.argv);
 }
+*/

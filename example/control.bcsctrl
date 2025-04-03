@@ -22,7 +22,7 @@ control MainController {
         }
         logic {
             if (iWindow) {
-                oHeating = false;
+                oHeating = false || (iTemp < 18.0);
             } else if (iMode == Mode.COMFORT && iTemp < 21.0) {
                 oHeating = true;
             } else if (iMode == Mode.ECO && iTemp < 18.0) {

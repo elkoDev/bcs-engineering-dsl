@@ -1,51 +1,124 @@
-import type { AstNode, LangiumCoreServices, LangiumDocument } from 'langium';
-import chalk from 'chalk';
-import * as path from 'node:path';
-import * as fs from 'node:fs';
-import { URI } from 'langium';
+import type {
+  LangiumDocument,
+  LangiumCoreServices,
+  WorkspaceFolder,
+} from "langium";
+import chalk from "chalk";
+import * as path from "node:path";
+import * as fs from "node:fs";
+import { URI } from "langium";
+import {
+  ControlModel,
+  HardwareModel,
+  isHardwareModel,
+} from "../language/generated/ast.js";
 
-export async function extractDocument(fileName: string, services: LangiumCoreServices): Promise<LangiumDocument> {
-    const extensions = services.LanguageMetaData.fileExtensions;
-    if (!extensions.includes(path.extname(fileName))) {
-        console.error(chalk.yellow(`Please choose a file with one of these extensions: ${extensions}.`));
-        process.exit(1);
-    }
+/**
+ * Read a requirement document with the complete workspace (with requirements and
+ * tests) located in the folder of the file.
+ * @param fileName the main requirement model file
+ * @param services the language services
+ * @returns a tuple with the document indicated by the fileName and a list of
+ *          documents from the workspace.
+ */
+export async function extractDocuments(
+  fileName: string,
+  services: LangiumCoreServices,
+  exitOnError: boolean = true
+): Promise<[LangiumDocument, LangiumDocument[]]> {
+  const extensions = services.LanguageMetaData.fileExtensions;
+  if (!extensions.includes(path.extname(fileName))) {
+    console.error(
+      chalk.yellow(
+        `Please choose a file with one of these extensions: ${extensions}.`
+      )
+    );
+    process.exit(1);
+  }
 
-    if (!fs.existsSync(fileName)) {
-        console.error(chalk.red(`File ${fileName} does not exist.`));
-        process.exit(1);
-    }
+  if (!fs.existsSync(fileName)) {
+    console.error(chalk.red(`File ${fileName} does not exist.`));
+    process.exit(1);
+  }
 
-    const document = await services.shared.workspace.LangiumDocuments.getOrCreateDocument(URI.file(path.resolve(fileName)));
-    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+  const folders: WorkspaceFolder[] = [
+    {
+      uri: URI.file(path.resolve(path.dirname(fileName))).toString(),
+      name: "main",
+    },
+  ];
+  await services.shared.workspace.WorkspaceManager.initializeWorkspace(folders);
 
-    const validationErrors = (document.diagnostics ?? []).filter(e => e.severity === 1);
+  const documents = services.shared.workspace.LangiumDocuments.all.toArray();
+  await services.shared.workspace.DocumentBuilder.build(documents, {
+    validation: true,
+  });
+
+  documents.forEach((document) => {
+    const validationErrors = (document.diagnostics ?? []).filter(
+      (e) => e.severity === 1
+    );
     if (validationErrors.length > 0) {
-        console.error(chalk.red('There are validation errors:'));
-        for (const validationError of validationErrors) {
-            console.error(chalk.red(
-                `line ${validationError.range.start.line + 1}: ${validationError.message} [${document.textDocument.getText(validationError.range)}]`
-            ));
-        }
+      console.error(chalk.red("There are validation errors:"));
+      for (const validationError of validationErrors) {
+        console.error(
+          chalk.red(
+            `line ${validationError.range.start.line + 1}: ${
+              validationError.message
+            } [${document.textDocument.getText(validationError.range)}]`
+          )
+        );
+      }
+      if (exitOnError) {
         process.exit(1);
+      }
     }
+  });
+  const mainDocument =
+    await services.shared.workspace.LangiumDocuments.getOrCreateDocument(
+      URI.file(path.resolve(fileName))
+    );
 
-    return document;
+  return [mainDocument, documents];
 }
 
-export async function extractAstNode<T extends AstNode>(fileName: string, services: LangiumCoreServices): Promise<T> {
-    return (await extractDocument(fileName, services)).parseResult?.value as T;
+/**
+ * Read a requirement model with the test models from workspace located in the same folder.
+ * @param fileName the main requirement model file
+ * @param services the language services
+ * @returns a tuple with the model indicated by the fileName and a list of
+ *          test models from the workspace.
+chr */
+export async function extractRequirementModelWithTestModels(
+  fileName: string,
+  services: LangiumCoreServices
+): Promise<[ControlModel, HardwareModel[]]> {
+  const [mainDocument, allDocuments] = await extractDocuments(
+    fileName,
+    services
+  );
+  return [
+    mainDocument.parseResult?.value as ControlModel,
+    allDocuments
+      .filter((d) => isHardwareModel(d.parseResult?.value))
+      .map((d) => d.parseResult?.value as HardwareModel),
+  ];
 }
 
 interface FilePathData {
-    destination: string,
-    name: string
+  destination: string;
+  name: string;
 }
 
-export function extractDestinationAndName(filePath: string, destination: string | undefined): FilePathData {
-    filePath = path.basename(filePath, path.extname(filePath)).replace(/[.-]/g, '');
-    return {
-        destination: destination ?? path.join(path.dirname(filePath), 'generated'),
-        name: path.basename(filePath)
-    };
+export function extractDestinationAndName(
+  filePath: string,
+  destination: string | undefined
+): FilePathData {
+  filePath = path
+    .basename(filePath, path.extname(filePath))
+    .replace(/[.-]/g, "");
+  return {
+    destination: destination ?? path.join(path.dirname(filePath), "generated"),
+    name: path.basename(filePath),
+  };
 }
