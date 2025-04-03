@@ -59,14 +59,8 @@ TypeDecl:
 ;
 
 TypeRef:
-      type='BOOL'
-    | type='INT'
-    | type='REAL'
-    | type='STRING'
-    | type='TIME'
-    | type='TOD'
-    | type='DT'
-    | ref=[TypeDecl]        // TODO: scope provider
+      type=DataType
+    | ref=[TypeDecl]
 ;
 
 // ==========================================================================
@@ -150,8 +144,6 @@ ExpressionStmt:
 LocalVarDeclStmt infers VarDecl:
     'var' VarDeclCore
 ;
-
-// --------------- Experimental ----------------------------------------------------
 
 UseStmt:
     'use' functionBlockRef=[FunctionBlockDecl]
@@ -245,11 +237,11 @@ Primary:
   | ParenExpr
   | NegExpr
   | NotExpr
-  | Ref                          // returns the current time (TOD)
+  | Ref                          
   | val=NumberLiteral
   | val=BooleanLiteral
   | val=StringLiteral
-  | val=TodLiteral                      // e.g., TOD#08:00:00
+  | val=TodLiteral                     
 ;
 
 NegExpr:
