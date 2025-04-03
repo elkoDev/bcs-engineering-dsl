@@ -2,7 +2,7 @@ controller MainController {
     sensor tempSensor {
         type: TEMPERATURE
         ioType: ANALOG
-        dataType: REAL
+        dataType: REAL  
     }
 
     sensor windowContact {

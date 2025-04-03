@@ -12,6 +12,7 @@ import {
   isControlUnit,
   isEnumDecl,
   isEnumMemberLiteral,
+  isFunctionBlockDecl,
   isPrimary,
   isRampStmt,
   isRef,
@@ -120,6 +121,13 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         node,
         property: "typeRef",
         type: SemanticTokenTypes.type,
+      });
+    }
+    if (isFunctionBlockDecl(node)) {
+      acceptor({
+        node,
+        property: "name",
+        type: SemanticTokenTypes.function,
       });
     }
     if (isUseStmt(node)) {

@@ -75,7 +75,7 @@ control MainController {
     }
 
     // ------------------------------
-    // 4. Close blinds at 8:00 once
+    // 4. Close blinds at 8:00 AM
     // ------------------------------
     unit CloseBlinds at TOD#08:00:01 {
         blinds = true;
@@ -85,7 +85,7 @@ control MainController {
     // 5. Ramp demo: Gradually dim lights
     // ------------------------------
     unit NightLightRamp at TOD#22:00:00 {
-        ramp(lights, false, true, T#10s);
+        ramp(lightLevel, 0, 100, T#10s);
     }
 
     // ------------------------------
