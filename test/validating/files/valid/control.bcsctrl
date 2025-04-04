@@ -11,6 +11,8 @@ control ValidTestController {
         temp = 5.0 + 5 - 4.0 / 4;
         windowOpen = windowContact || (temp > 5.0 && temp < 6.0) && (intTemp == 4 || intTemp == 5);
         heater = intTemp != 5;
+        temp = intTemp;
+        //intTemp = temp; TODO: check if this is allowed in the future
 
         for (var i: INT = 0 to 5 by 1) {
             lightLevel = i * 20;

@@ -7,6 +7,7 @@ import {
   FunctionBlockDecl,
   isActuator,
   isEnumDecl,
+  isFunctionBlockDecl,
   isSensor,
   isVarDecl,
   VarDecl,
@@ -21,7 +22,8 @@ export function registerBCSControlValidationChecks(
     FunctionBlockDecl: [validator.checkUniqueVarNamesInFunctionBlock],
     ControlUnit: [validator.checkUniqueVarNamesInUnit],
     AssignmentStmt: [validator.checkAssignmentTypes],
-    //UseStmt: [validator.checkUseStmtTypes],
+    //UseStmt: [validator.checkUseStmtTypes], TODO
+    //VarDecl: [], TODO
   };
   registry.register(checks, validator);
 }
@@ -141,6 +143,7 @@ export class BCSControlLangValidator {
   private inferType(expr: any, accept: ValidationAcceptor): string | undefined {
     if (!expr) return undefined;
 
+    // 1) If BinaryExpr => check left and right side
     if (expr.$type === "BinExpr") {
       const left = this.inferType(expr.e1, accept);
       const right = this.inferType(expr.e2, accept);
@@ -150,7 +153,6 @@ export class BCSControlLangValidator {
         return left ?? right;
       }
 
-      // Comparison operators: ==, !=, <, <=, >, >=
       if (["==", "!=", "<", "<=", ">", ">="].includes(op)) {
         if (this.areTypesComparable(left, right)) {
           return "BOOL";
@@ -166,12 +168,10 @@ export class BCSControlLangValidator {
         }
       }
 
-      // Boolean operators: AND, OR, XOR
       if ((op === "&&" || op === "||") && left === "BOOL" && right === "BOOL") {
         return "BOOL";
       }
 
-      // Arithmetic operators: +, -, *, /
       if (["+", "-", "*", "/"].includes(op)) {
         if (
           (left === "INT" || left === "REAL") &&
@@ -201,7 +201,7 @@ export class BCSControlLangValidator {
       return this.inferType(expr.expr, accept);
     }
 
-    // 3) Falls Ref => schaue, worauf es zeigt
+    // 3) If Ref => check what it points to
     if (expr.$type === "Ref") {
       const ref = expr.ref?.ref;
       if (!ref) return undefined;
@@ -217,7 +217,7 @@ export class BCSControlLangValidator {
       return this.inferVarDeclType(expr.ref?.ref);
     }
 
-    // 4) Falls literal: number, boolean, string, TOD etc.
+    // 4) If literal => check type
     if (typeof expr.val === "number") {
       if (expr.val.toString().includes(".")) {
         return "REAL";
@@ -229,7 +229,7 @@ export class BCSControlLangValidator {
       return "BOOL";
     }
     if (typeof expr.val === "string") {
-      // "TOD#" => Zeit-Of-Day
+      // "TOD#" => TIME OF DAY
       // "T#"   => TIME
       // "..."  => STRING
       if (expr.val.startsWith("TOD#")) {
@@ -256,11 +256,11 @@ export class BCSControlLangValidator {
     if (varDecl.typeRef.ref) {
       const typeDecl = varDecl.typeRef.ref.ref;
       if (!typeDecl) return undefined;
-      if (typeDecl.$type === "EnumDecl") {
+      if (isEnumDecl(typeDecl)) {
         return `Enum:${typeDecl.name}`;
       }
       // Ist es ein FunctionBlockDecl?
-      if (typeDecl.$type === "FunctionBlockDecl") {
+      if (isFunctionBlockDecl(typeDecl)) {
         return `FB:${typeDecl.name}`;
       }
     }
