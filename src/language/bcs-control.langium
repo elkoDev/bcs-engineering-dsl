@@ -241,7 +241,8 @@ Primary:
   | val=NumberLiteral
   | val=BooleanLiteral
   | val=StringLiteral
-  | val=TodLiteral                     
+  | val=TodLiteral   
+  | val=TimeLiteral                  
 ;
 
 NegExpr:

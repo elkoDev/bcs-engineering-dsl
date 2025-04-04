@@ -6,6 +6,7 @@ import {
   ControlUnit,
   FunctionBlockDecl,
   isActuator,
+  isEnumDecl,
   isSensor,
   isVarDecl,
   VarDecl,
@@ -20,7 +21,7 @@ export function registerBCSControlValidationChecks(
     FunctionBlockDecl: [validator.checkUniqueVarNamesInFunctionBlock],
     ControlUnit: [validator.checkUniqueVarNamesInUnit],
     AssignmentStmt: [validator.checkAssignmentTypes],
-    UseStmt: [],
+    //UseStmt: [validator.checkUseStmtTypes],
   };
   registry.register(checks, validator);
 }
@@ -209,6 +210,9 @@ export class BCSControlLangValidator {
       }
       if (isSensor(ref) || isActuator(ref)) {
         return ref.dataType;
+      }
+      if (isEnumDecl(ref)) {
+        return `Enum:${ref.name}`;
       }
       return this.inferVarDeclType(expr.ref?.ref);
     }

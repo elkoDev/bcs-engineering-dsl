@@ -1,0 +1,11 @@
+control InvalidEnumTestController {
+    enum Mode { OFF, ECO, COMFORT }
+    enum Status { ON, OFF }
+
+    var mode_should_fail : Mode;
+
+    unit TestUnit {
+        mode_should_fail = Status.ON; // should fail as wrong enum type
+    }
+}
+ 

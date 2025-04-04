@@ -1,12 +1,13 @@
 control MainController {
 
     enum Mode { OFF, ECO, COMFORT }
+    enum Status { ON, OFF }
 
     var currentTemp: REAL;
     var windowOpen: BOOL;
     var isPresent: BOOL;
     var mode: Mode = Mode.OFF;
-    var mode_same_name_as_in_global_should_fail : Mode = Mode.OFF;
+    var mode_same_name_as_in_global_should_fail : Mode = Status.OFF; // should fail as wrong enum type
     var heat: BOOL;
     var lightLevel: INT = 0;
     var runCounter: INT = 0;

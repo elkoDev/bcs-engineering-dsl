@@ -35,4 +35,42 @@ describe("BCS Control Validation Tests", () => {
 
     expect(diagString).toMatch(/Cannot assign "REAL" to "BOOL"/);
   });
+
+  test("Detect enum type mismatch", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    const [mainDoc, allDocs] = await extractDocuments(
+      path.join(__dirname, "files", "invalid_enum", "control_enum.bcsctrl"),
+      services.bcsControl,
+      false
+    );
+
+    const allDiagnostics = allDocs.flatMap((doc) => doc.diagnostics ?? []);
+    const diagString = allDiagnostics.map((d) => d.message).join("\n");
+
+    expect(allDiagnostics.length).toBe(1);
+
+    expect(diagString).toMatch(
+      'Type mismatch: Cannot assign "Enum:Status" to "Enum:Mode".'
+    );
+  });
+
+  test("Detect enum type mismatch", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    const [mainDoc, allDocs] = await extractDocuments(
+      path.join(__dirname, "files", "invalid_vardecl", "control_vardecl.bcsctrl"),
+      services.bcsControl,
+      false
+    );
+
+    const allDiagnostics = allDocs.flatMap((doc) => doc.diagnostics ?? []);
+    const diagString = allDiagnostics.map((d) => d.message).join("\n");
+
+    expect(allDiagnostics.length).toBe(7);
+
+    expect(diagString).toMatch(
+      'Type mismatch: Cannot assign "Enum:Status" to "Enum:Mode".'
+    );
+  });
 });

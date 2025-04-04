@@ -174,6 +174,11 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
           this.formatTodLiteral(node, acceptor);
         }
       }
+      if (typeof node.val === "string") {
+        if (node.val.startsWith("T#")) {
+          this.formatTimeLiteral(node, acceptor);
+        }
+      }
       if (typeof node.val === "boolean") {
         acceptor({
           node,
@@ -250,7 +255,16 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
     this.formatTodLiteralRaw(node, text, line, character, acceptor, "val");
   }
 
-  formatTodLiteralRaw(
+  formatTimeLiteral(node: Primary, acceptor: SemanticTokenAcceptor) {
+    const nodeCst = node.$cstNode;
+    if (!nodeCst) return;
+
+    const text = nodeCst.text; // e.g. 'T#10s'
+    const { line, character } = nodeCst.range.start;
+    this.formatTimeLiteralRaw(node, text, line, character, acceptor, "val");
+  }
+
+  private formatTodLiteralRaw(
     node: AstNode,
     text: string,
     line: number,
@@ -283,7 +297,7 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
     });
   }
 
-  formatTimeLiteralRaw(
+  private formatTimeLiteralRaw(
     node: AstNode,
     text: string,
     line: number,

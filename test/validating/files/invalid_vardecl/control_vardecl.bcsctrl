@@ -1,0 +1,13 @@
+control InvalidVarDeclTestController {
+    enum Mode { OFF, ECO, COMFORT }
+    enum Status { ON, OFF }
+
+    var int_should_fail : INT = true; // should fail as wrong type
+    var bool_should_fail : BOOL = 1; // should fail as wrong type
+    var string_should_fail : STRING = 1; // should fail as wrong type
+    var t_should_fail : TIME = TOD#08:04:10; // should fail as wrong type
+    var tod_should_fail : TOD = T#10s; // should fail as wrong type
+    var mode_should_fail : Mode = Status.ON; // should fail as wrong enum type
+    var status_should_fail : Status = Mode.OFF; // should fail as wrong enum type
+}
+ 

@@ -1,0 +1,7 @@
+controller InvalidEnumTestController {
+    sensor windowContact {
+        type: CONTACT
+        ioType: DIGITAL
+        dataType: BOOL
+    }
+}
