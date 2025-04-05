@@ -346,13 +346,29 @@ export class BCSControlLangValidator {
   }
 
   private stringifyExpression(expr: any): string {
-    if (typeof expr === "object" && expr !== null) {
-      if (expr.$type) {
+    if (!expr) return "undefined";
+
+    switch (expr.$type) {
+      case "BinExpr":
+        return `${this.stringifyExpression(expr.e1)} ${
+          expr.op
+        } ${this.stringifyExpression(expr.e2)}`;
+      case "NegExpr":
+        return `-${this.stringifyExpression(expr.expr)}`;
+      case "NotExpr":
+        return `!${this.stringifyExpression(expr.expr)}`;
+      case "ParenExpr":
+        return `(${this.stringifyExpression(expr.expr)})`;
+      case "Ref":
+        return expr.ref?.ref?.name ?? "[unresolved ref]";
+      case "EnumMemberLiteral":
+        return `${expr.value.ref?.name}.${expr.member.ref?.name}`;
+      default:
+        if (typeof expr.val !== "undefined") {
+          return `${expr.val}`;
+        }
         return `[${expr.$type}]`;
-      }
-      return JSON.stringify(expr);
     }
-    return String(expr);
   }
 
   private inferType(expr: any, accept: ValidationAcceptor): string | undefined {
