@@ -6,17 +6,19 @@ import {
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
   isActuator,
-  isArgument,
   isBinExpr,
   isControlModel,
   isControlUnit,
   isEnumDecl,
   isEnumMemberLiteral,
   isFunctionBlockDecl,
+  isInputMapping,
+  isMappingUseResult,
   isPrimary,
   isRampStmt,
   isRef,
   isSensor,
+  isSimpleUseResult,
   isTypeRef,
   isUseStmt,
   isVarDecl,
@@ -136,16 +138,30 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         property: "functionBlockRef",
         type: SemanticTokenTypes.function,
       });
+    }
+    if (isMappingUseResult(node)) {
       acceptor({
         node,
-        property: "resultVars",
+        property: "outputVar",
+        type: SemanticTokenTypes.comment,
+      });
+      acceptor({
+        node,
+        property: "fbOutput",
         type: SemanticTokenTypes.variable,
       });
     }
-    if (isArgument(node)) {
+    if (isSimpleUseResult(node)) {
       acceptor({
         node,
-        property: "var",
+        property: "outputVar",
+        type: SemanticTokenTypes.variable,
+      });
+    }
+    if (isInputMapping(node)) {
+      acceptor({
+        node,
+        property: "inputVar",
         type: SemanticTokenTypes.comment,
       });
     }

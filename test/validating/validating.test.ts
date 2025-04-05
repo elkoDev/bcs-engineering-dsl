@@ -88,4 +88,53 @@ describe("BCS Control Validation Tests", () => {
       expect(diagString).toContain(msg);
     });
   });
+
+  test("Test UseStmt errors", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    const [mainDoc, allDocs] = await extractDocuments(
+      path.join(
+        __dirname,
+        "files",
+        "invalid_usestmt",
+        "control_usestmt.bcsctrl"
+      ),
+      services.bcsControl,
+      false
+    );
+
+    const allDiagnostics = allDocs.flatMap((doc) => doc.diagnostics ?? []);
+    const diagString = allDiagnostics.map((d) => d.message).join("\n");
+
+    expect(allDiagnostics.length).toBe(14);
+    const expectedMessages = [
+      // 1. Too many inputs (duplicate key)
+      "Duplicate mapping for input 'iWindow' in use of function block 'HeatingLogicFB'.",
+      // 2. Missing input (iMode)
+      "Function block 'HeatingLogicFB' expects 3 input arguments, but got 2.",
+      // 3. Wrong input types
+      "Type mismatch for input 'iWindow': expected 'BOOL', got 'REAL'.",
+      "Type mismatch for input 'iMode': expected 'Enum:Mode', got 'Enum:Status'.",
+      "Logical operator '||' can only be applied to BOOL operands, but got 'INT' and 'INT'.",
+      "Type mismatch for input 'iTemp': expected 'REAL', got 'BOOL'.",
+      // 4. Output count mismatch for single assignment
+      "Function block 'LightLogicFB' has 2 outputs, cannot use direct assignment. Use mapping instead.",
+      // 5. Mapping output count mismatch
+      "Function block 'LightLogicFB' expects 2 outputs, but got 1.",
+      "Function block 'LightLogicFB' expects 2 outputs, but got 3.",
+      // 6. Output type mismatch (single)
+      "Type mismatch for output 'oHeating': cannot assign to 'isHeating_should_fail_type_matching' of type 'INT', expected 'BOOL'.",
+      // 7. Output type mismatch (mapping)
+      "Type mismatch for mapped output 'oHeating': expected 'BOOL', got 'INT'.",
+      // 8. Output mapping could not resolve
+      "Could not resolve reference to VarDecl named 'oExtra'.",
+      "Could not resolve reference to VarDecl named 'oWrong'.",
+      // 9. Input mapping could not resolve
+      "Could not resolve reference to VarDecl named 'iWrong'.",
+    ];
+
+    expectedMessages.forEach((msg) => {
+      expect(diagString).toContain(msg);
+    });
+  });
 });

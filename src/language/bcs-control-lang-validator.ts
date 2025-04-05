@@ -10,6 +10,7 @@ import {
   isFunctionBlockDecl,
   isSensor,
   isVarDecl,
+  UseStmt,
   VarDecl,
 } from "./generated/ast.js";
 
@@ -23,7 +24,7 @@ export function registerBCSControlValidationChecks(
     ControlUnit: [validator.checkUniqueVarNamesInUnit],
     AssignmentStmt: [validator.checkAssignmentTypes],
     VarDecl: [validator.checkVarDeclTypes],
-    //UseStmt: [validator.checkUseStmtTypes], TODO
+    UseStmt: [validator.checkUseStmtTypes],
   };
   registry.register(checks, validator);
 }
@@ -106,6 +107,161 @@ export class BCSControlLangValidator {
         );
       } else {
         seen.add(v.name);
+      }
+    }
+  }
+
+  checkUseStmtTypes(useStmt: UseStmt, accept: ValidationAcceptor) {
+    const fb = useStmt.functionBlockRef?.ref;
+    if (!fb) return;
+
+    // 1) Check: Number of input arguments vs number of inputs
+    if (useStmt.inputArgs.length !== fb.inputs.length) {
+      accept(
+        "error",
+        `Function block '${fb.name}' expects ${fb.inputs.length} input arguments, but got ${useStmt.inputArgs.length}.`,
+        { node: useStmt, property: "inputArgs" }
+      );
+    }
+
+    // 2) Check: Input types
+    for (const arg of useStmt.inputArgs) {
+      const paramName = arg.inputVar.ref?.name;
+      const paramDecl = fb.inputs.find((i) => i.name === paramName);
+      const expectedType = this.inferVarDeclType(paramDecl);
+      const actualType = this.inferType(arg.value, accept);
+
+      if (
+        expectedType &&
+        actualType &&
+        !this.isTypeAssignable(actualType, expectedType)
+      ) {
+        accept(
+          "error",
+          `Type mismatch for input '${paramName}': expected '${expectedType}', got '${actualType}'.`,
+          { node: arg.value }
+        );
+      }
+    }
+
+    // 3) Check: Duplicate input mappings
+    const seenInputs = new Set<string>();
+    for (const arg of useStmt.inputArgs) {
+      const varName = arg.inputVar.ref?.name;
+      if (varName) {
+        if (seenInputs.has(varName)) {
+          accept(
+            "error",
+            `Duplicate mapping for input '${varName}' in use of function block '${fb.name}'.`,
+            { node: arg, property: "inputVar" }
+          );
+        }
+        seenInputs.add(varName);
+      }
+    }
+
+    const output = useStmt.useOutput;
+    if (!output) return;
+
+    // Determine if output is single or mapping
+    const isSingle = !!output.singleOutput;
+    const isMapping =
+      !!output.mappingOutputs && output.mappingOutputs.length > 0;
+
+    if (isSingle && isMapping) {
+      accept("error", "Cannot mix single and mapped outputs.", {
+        node: useStmt,
+        property: "useOutput",
+      });
+      return;
+    }
+
+    // 4) Single output result (direct reference)
+    if (isSingle) {
+      if (fb.outputs.length !== 1) {
+        accept(
+          "error",
+          `Function block '${fb.name}' has ${fb.outputs.length} outputs, cannot use direct assignment. Use mapping instead.`,
+          { node: useStmt, property: "useOutput" }
+        );
+        return;
+      }
+
+      const expected = fb.outputs[0];
+      const actual = output.singleOutput!.outputVar?.ref;
+
+      if (actual) {
+        const expectedType = this.inferVarDeclType(expected);
+        const actualType = this.inferVarDeclType(actual);
+
+        if (
+          expectedType &&
+          actualType &&
+          !this.isTypeAssignable(expectedType, actualType)
+        ) {
+          accept(
+            "error",
+            `Type mismatch for output '${expected.name}': cannot assign to '${actual.name}' of type '${actualType}', expected '${expectedType}'.`,
+            { node: output.singleOutput!, property: "outputVar" }
+          );
+        }
+      }
+    }
+
+    // 5) Output mapping list (explicit mappings)
+    else if (isMapping) {
+      if (output.mappingOutputs.length !== fb.outputs.length) {
+        accept(
+          "error",
+          `Function block '${fb.name}' expects ${fb.outputs.length} outputs, but got ${output.mappingOutputs.length}.`,
+          { node: useStmt, property: "useOutput" }
+        );
+      }
+
+      const seen = new Set<string>();
+      for (const map of output.mappingOutputs) {
+        const targetVar = map.outputVar?.ref;
+        const fbOutputVar = map.fbOutput?.ref;
+
+        if (!targetVar || !fbOutputVar) continue;
+
+        if (seen.has(targetVar.name)) {
+          accept(
+            "error",
+            `Duplicate output mapping to variable '${targetVar.name}' in use of '${fb.name}'.`,
+            { node: map, property: "outputVar" }
+          );
+        }
+        seen.add(targetVar.name);
+
+        const expected = fb.outputs.find((o) => o.name === targetVar.name);
+        const expectedType = expected
+          ? this.inferVarDeclType(expected)
+          : undefined;
+        const actualType = this.inferVarDeclType(fbOutputVar);
+
+        if (
+          expectedType &&
+          actualType &&
+          !this.isTypeAssignable(expectedType, actualType)
+        ) {
+          accept(
+            "error",
+            `Type mismatch for mapped output '${targetVar.name}': expected '${expectedType}', got '${actualType}'.`,
+            { node: map, property: "outputVar" }
+          );
+        }
+      }
+    }
+
+    // 6) No outputs provided
+    else {
+      if (fb.outputs.length > 0) {
+        accept(
+          "error",
+          `Function block '${fb.name}' expects ${fb.outputs.length} outputs, but got 0.`,
+          { node: useStmt, property: "useOutput" }
+        );
       }
     }
   }
@@ -227,8 +383,17 @@ export class BCSControlLangValidator {
         }
       }
 
-      if ((op === "&&" || op === "||") && left === "BOOL" && right === "BOOL") {
-        return "BOOL";
+      if (op === "&&" || op === "||") {
+        if (left === "BOOL" && right === "BOOL") {
+          return "BOOL";
+        } else {
+          accept(
+            "error",
+            `Logical operator '${op}' can only be applied to BOOL operands, but got '${left}' and '${right}'.`,
+            { node: expr }
+          );
+          return undefined;
+        }
       }
 
       if (["+", "-", "*", "/"].includes(op)) {
@@ -278,9 +443,11 @@ export class BCSControlLangValidator {
 
     // 4) If literal => check type
     if (typeof expr.val === "number") {
-      if (expr.val.toString().includes(".")) {
+      const raw = expr.$cstNode?.text;
+
+      if (raw?.includes(".")) {
         return "REAL";
-      } else if (Number.isFinite(expr.val)) {
+      } else {
         return "INT";
       }
     }

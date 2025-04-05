@@ -9,13 +9,14 @@ import {
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
   Actuator,
-  isArgument,
   isControlModel,
   isControlUnit,
   isEnumDecl,
   isEnumMemberLiteral,
   isForStmt,
   isFunctionBlockDecl,
+  isInputMapping,
+  isMappingUseResult,
   isRef,
   isUseStmt,
   isVarDecl,
@@ -79,12 +80,22 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
       }
     }
 
-    if (isArgument(container)) {
+    if (isInputMapping(container)) {
       const useStmt = AstUtils.getContainerOfType(container, isUseStmt);
       if (!useStmt?.functionBlockRef?.ref) return EMPTY_SCOPE;
 
       const fb = useStmt.functionBlockRef.ref;
       const fbParams = [...(fb.inputs ?? [])];
+
+      return this.createScopeForNodes(fbParams);
+    }
+
+    if (isMappingUseResult(container) && context.property === "outputVar") {
+      const useStmt = AstUtils.getContainerOfType(container, isUseStmt);
+      if (!useStmt?.functionBlockRef?.ref) return EMPTY_SCOPE;
+
+      const fb = useStmt.functionBlockRef.ref;
+      const fbParams = [...(fb.outputs ?? [])];
 
       return this.createScopeForNodes(fbParams);
     }

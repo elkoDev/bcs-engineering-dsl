@@ -1,0 +1,81 @@
+control InvalidUseStmtTestController {
+    enum Mode { OFF, ECO, COMFORT }
+    enum Status { ON, OFF }
+
+    functionblock HeatingLogicFB {
+        inputs {
+            var iTemp: REAL;
+            var iWindow: BOOL;
+            var iMode: Mode;
+        }
+        outputs {
+            var oHeating: BOOL;
+        }
+        logic {
+            if (iWindow) {
+                oHeating = false || (iTemp < 18.0);
+            } else if (iMode == Mode.COMFORT && iTemp < 21.0) {
+                oHeating = true;
+            } else if (iMode == Mode.ECO && iTemp < 18.0) {
+                oHeating = true;
+            } else {
+                oHeating = false;
+            }
+        }
+    }
+
+    functionblock LightLogicFB {
+        inputs {
+            var iLightLevel: INT;
+        }
+        outputs {
+            var oLight: BOOL;
+            var oDimmedLight: INT;
+        }
+        logic {
+            if (iLightLevel > 50) {
+                oLight = true;
+                oDimmedLight = iLightLevel - 50;
+            } else {
+                oLight = false;
+                oDimmedLight = 0;
+            }
+        }
+    }
+
+    unit Test {
+        var isHeating_should_fail_type_matching : INT = 0;
+        var isHeating : BOOL;
+        var light: BOOL = false;
+        var dimmedLight: INT = 0;
+
+        // 1. Too many inputs 
+       use HeatingLogicFB(iTemp: 25.0, iWindow: false, iWindow: false) -> { oHeating: isHeating };
+
+        // 2. Missing required input (iMode)
+        use HeatingLogicFB(iTemp: 25.0, iWindow: false) -> isHeating;
+
+        // 3. Wrong type in input mapping
+        use HeatingLogicFB(iTemp: 25.0, iWindow: 5.0, iMode: Mode.ECO) -> { oHeating: isHeating };
+        use HeatingLogicFB(iTemp: 25.0, iWindow: dimmedLight < 50, iMode: Status.OFF) -> { oHeating: isHeating };
+        use HeatingLogicFB(iTemp: 25.0, iWindow: dimmedLight < 50, iMode: (isHeating_should_fail_type_matching || 5 + 54)) -> { oHeating: isHeating };
+        use HeatingLogicFB(iTemp: dimmedLight < 50, iWindow: dimmedLight < 50, iMode: Mode.ECO) -> { oHeating: isHeating };
+
+        // 3. Missing output result (should be two for LightLogicFB)
+        use LightLogicFB(iLightLevel: 60) -> light;
+        use LightLogicFB(iLightLevel: 60) -> { oLight: light };
+
+        // 4. Wrong type in output mapping (INT instead of BOOL)
+        use HeatingLogicFB(iTemp: 25.0, iWindow: false, iMode: Mode.ECO) -> isHeating_should_fail_type_matching;
+        use HeatingLogicFB(iTemp: 25.0, iWindow: false, iMode: Mode.ECO) -> { oHeating: isHeating_should_fail_type_matching };
+
+        // 5. Output count mismatch
+        use LightLogicFB(iLightLevel: 60) -> { oLight: light, oDimmedLight: dimmedLight, oExtra: isHeating_should_fail_type_matching };
+
+        // 6. Wrong inputMapping resolving
+        use HeatingLogicFB(iTemp: 25.0, iWrong: false, iMode: Mode.ECO) -> { oHeating: isHeating };
+
+        // 7. Wrong outputMapping resolving
+        use HeatingLogicFB(iTemp: 25.0, iWindow: false, iMode: Mode.ECO) -> { oWrong: isHeating_should_fail_type_matching };
+    }
+}
