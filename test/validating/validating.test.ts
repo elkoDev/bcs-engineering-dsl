@@ -1,66 +1,140 @@
-import { beforeAll, describe, expect, test } from "vitest";
-import { EmptyFileSystem, type LangiumDocument } from "langium";
-import { expandToString as s } from "langium/generate";
-import { parseHelper } from "langium/test";
-import type { Diagnostic } from "vscode-languageserver-types";
+import { describe, expect, test } from "vitest";
 import { createBcsEngineeringServices } from "../../src/language/bcs-engineering-module.js";
-import { Model, isModel } from "../../src/language/generated/ast.js";
+import { extractDocuments } from "../../src/cli/cli-util.js";
+import * as path from "node:path";
+import { NodeFileSystem } from "langium/node";
 
-let services: ReturnType<typeof createBcsEngineeringServices>;
-let parse:    ReturnType<typeof parseHelper<Model>>;
-let document: LangiumDocument<Model> | undefined;
+describe("BCS Control Validation Tests", () => {
+  test("No errors in valid control/hardware files", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
 
-beforeAll(async () => {
-    services = createBcsEngineeringServices(EmptyFileSystem);
-    const doParse = parseHelper<Model>(services.BcsEngineering);
-    parse = (input: string) => doParse(input, { validation: true });
+    const [mainDoc, allDocs] = await extractDocuments(
+      path.join(__dirname, "files", "valid", "control.bcsctrl"),
+      services.bcsControl,
+      false
+    );
 
-    // activate the following if your linking test requires elements from a built-in library, for example
-    // await services.shared.workspace.WorkspaceManager.initializeWorkspace([]);
-});
+    expect(mainDoc.diagnostics ?? []).toEqual([]);
 
-describe('Validating', () => {
-  
-    test('check no errors', async () => {
-        document = await parse(`
-            person Langium
-        `);
-
-        expect(
-            // here we first check for validity of the parsed document object by means of the reusable function
-            //  'checkDocumentValid()' to sort out (critical) typos first,
-            // and then evaluate the diagnostics by converting them into human readable strings;
-            // note that 'toHaveLength()' works for arrays and strings alike ;-)
-            checkDocumentValid(document) || document?.diagnostics?.map(diagnosticToString)?.join('\n')
-        ).toHaveLength(0);
+    allDocs.forEach((doc) => {
+      expect(doc.diagnostics ?? []).toEqual([]);
     });
+  });
 
-    test('check capital letter validation', async () => {
-        document = await parse(`
-            person langium
-        `);
+  test("Detect Assignment type mismatch", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
 
-        expect(
-            checkDocumentValid(document) || document?.diagnostics?.map(diagnosticToString)?.join('\n')
-        ).toEqual(
-            // 'expect.stringContaining()' makes our test robust against future additions of further validation rules
-            expect.stringContaining(s`
-                [1:19..1:26]: Person name should start with a capital.
-            `)
-        );
+    const [mainDoc, allDocs] = await extractDocuments(
+      path.join(__dirname, "files", "invalid", "control.bcsctrl"),
+      services.bcsControl,
+      false
+    );
+
+    const allDiagnostics = allDocs.flatMap((doc) => doc.diagnostics ?? []);
+    const diagString = allDiagnostics.map((d) => d.message).join("\n");
+
+    expect(diagString).toMatch(/Cannot assign "REAL" to "BOOL"/);
+  });
+
+  test("Detect Enum type mismatch", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    const [mainDoc, allDocs] = await extractDocuments(
+      path.join(__dirname, "files", "invalid_enum", "control_enum.bcsctrl"),
+      services.bcsControl,
+      false
+    );
+
+    const allDiagnostics = allDocs.flatMap((doc) => doc.diagnostics ?? []);
+    const diagString = allDiagnostics.map((d) => d.message).join("\n");
+
+    expect(allDiagnostics.length).toBe(1);
+
+    expect(diagString).toMatch(
+      'Type mismatch: Cannot assign "Enum:Status" to "Enum:Mode".'
+    );
+  });
+
+  test("Detect VarDecl type mismatch", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    const [mainDoc, allDocs] = await extractDocuments(
+      path.join(
+        __dirname,
+        "files",
+        "invalid_vardecl",
+        "control_vardecl.bcsctrl"
+      ),
+      services.bcsControl,
+      false
+    );
+
+    const allDiagnostics = allDocs.flatMap((doc) => doc.diagnostics ?? []);
+    const diagString = allDiagnostics.map((d) => d.message).join("\n");
+
+    expect(allDiagnostics.length).toBe(9);
+    const expectedMessages = [
+      'Type mismatch: Cannot assign "BOOL" to "INT".',
+      'Type mismatch: Cannot assign "INT" to "BOOL".',
+      'Type mismatch: Cannot assign "INT" to "STRING".',
+      'Type mismatch: Cannot assign "TOD" to "TIME".',
+      'Type mismatch: Cannot assign "TIME" to "TOD".',
+      'Type mismatch: Cannot assign "Enum:Status" to "Enum:Mode".',
+      'Type mismatch: Cannot assign "Enum:Mode" to "Enum:Status".',
+      'Type mismatch: Cannot assign "Enum:Status" to "INT".',
+    ];
+
+    expectedMessages.forEach((msg) => {
+      expect(diagString).toContain(msg);
     });
+  });
+
+  test("Test UseStmt errors", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    const [mainDoc, allDocs] = await extractDocuments(
+      path.join(
+        __dirname,
+        "files",
+        "invalid_usestmt",
+        "control_usestmt.bcsctrl"
+      ),
+      services.bcsControl,
+      false
+    );
+
+    const allDiagnostics = allDocs.flatMap((doc) => doc.diagnostics ?? []);
+    const diagString = allDiagnostics.map((d) => d.message).join("\n");
+
+    expect(allDiagnostics.length).toBe(14);
+    const expectedMessages = [
+      // 1. Too many inputs (duplicate key)
+      "Duplicate mapping for input 'iWindow' in use of function block 'HeatingLogicFB'.",
+      // 2. Missing input (iMode)
+      "Function block 'HeatingLogicFB' expects 3 input arguments, but got 2.",
+      // 3. Wrong input types
+      "Type mismatch for input 'iWindow': expected 'BOOL', got 'REAL'.",
+      "Type mismatch for input 'iMode': expected 'Enum:Mode', got 'Enum:Status'.",
+      "Logical operator '||' can only be applied to BOOL operands, but got 'INT' and 'INT'.",
+      "Type mismatch for input 'iTemp': expected 'REAL', got 'BOOL'.",
+      // 4. Output count mismatch for single assignment
+      "Function block 'LightLogicFB' has 2 outputs, cannot use direct assignment. Use mapping instead.",
+      // 5. Mapping output count mismatch
+      "Function block 'LightLogicFB' expects 2 outputs, but got 1.",
+      "Function block 'LightLogicFB' expects 2 outputs, but got 3.",
+      // 6. Output type mismatch (single)
+      "Type mismatch for output 'oHeating': cannot assign to 'isHeating_should_fail_type_matching' of type 'INT', expected 'BOOL'.",
+      // 7. Output type mismatch (mapping)
+      "Type mismatch for mapped output 'oHeating': expected 'BOOL', got 'INT'.",
+      // 8. Output mapping could not resolve
+      "Could not resolve reference to VarDecl named 'oExtra'.",
+      "Could not resolve reference to VarDecl named 'oWrong'.",
+      // 9. Input mapping could not resolve
+      "Could not resolve reference to VarDecl named 'iWrong'.",
+    ];
+
+    expectedMessages.forEach((msg) => {
+      expect(diagString).toContain(msg);
+    });
+  });
 });
-
-function checkDocumentValid(document: LangiumDocument): string | undefined {
-    return document.parseResult.parserErrors.length && s`
-        Parser errors:
-          ${document.parseResult.parserErrors.map(e => e.message).join('\n  ')}
-    `
-        || document.parseResult.value === undefined && `ParseResult is 'undefined'.`
-        || !isModel(document.parseResult.value) && `Root AST object is a ${document.parseResult.value.$type}, expected a '${Model}'.`
-        || undefined;
-}
-
-function diagnosticToString(d: Diagnostic) {
-    return `[${d.range.start.line}:${d.range.start.character}..${d.range.end.line}:${d.range.end.character}]: ${d.message}`;
-}

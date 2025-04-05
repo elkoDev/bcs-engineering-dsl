@@ -59,14 +59,8 @@ TypeDecl:
 ;
 
 TypeRef:
-      type='BOOL'
-    | type='INT'
-    | type='REAL'
-    | type='STRING'
-    | type='TIME'
-    | type='TOD'
-    | type='DT'
-    | ref=[TypeDecl]        // TODO: scope provider
+      type=DataType
+    | ref=[TypeDecl]
 ;
 
 // ==========================================================================
@@ -125,7 +119,7 @@ ForStmt:
 ;
 
 LoopVarDecl infers VarDecl:
-    'var' name=ID ':' type=TypeRef '=' start=Expr
+    'var' name=ID ':' typeRef=TypeRef '=' init=Expr
 ;
 
 SwitchStmt:
@@ -151,26 +145,27 @@ LocalVarDeclStmt infers VarDecl:
     'var' VarDeclCore
 ;
 
-// --------------- Experimental ----------------------------------------------------
-
 UseStmt:
     'use' functionBlockRef=[FunctionBlockDecl]
-    '(' args+=Argument (',' args+=Argument)* ')'
-    '->' (resultVars+=UseResult (',' resultVars+=UseResult)*) ';'
+    '(' inputArgs+=InputMapping (',' inputArgs+=InputMapping)* ')'
+    '->' useOutput=UseOutput ';'
 ;
 
-Argument:
-    var=[VarDecl] ':' value=Expr
+InputMapping:
+    inputVar=[VarDecl] ':' value=Expr
 ;
 
-UseResult:
-    // supports both `outputName` and `{ target: source }` mapping
-    '{' assignments+=UseMapping (',' assignments+=UseMapping)* '}' |
-    ref=[VarDecl]           // just output name as is
+UseOutput:
+    singleOutput=SimpleUseResult
+    | '{' mappingOutputs+=MappingUseResult (',' mappingOutputs+=MappingUseResult)* '}'
 ;
 
-UseMapping:
-    target=ID ':' source=[VarDecl]
+SimpleUseResult:
+    outputVar=[VarDecl]
+;
+
+MappingUseResult:
+    outputVar=[VarDecl] ':' fbOutput=[VarDecl]
 ;
 
 
@@ -245,11 +240,12 @@ Primary:
   | ParenExpr
   | NegExpr
   | NotExpr
-  | Ref                          // returns the current time (TOD)
+  | Ref                          
   | val=NumberLiteral
   | val=BooleanLiteral
   | val=StringLiteral
-  | val=TodLiteral                      // e.g., TOD#08:00:00
+  | val=TodLiteral   
+  | val=TimeLiteral                  
 ;
 
 NegExpr:

@@ -6,17 +6,19 @@ import {
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
   isActuator,
-  isArgument,
   isBinExpr,
   isControlModel,
   isControlUnit,
   isEnumDecl,
   isEnumMemberLiteral,
   isFunctionBlockDecl,
+  isInputMapping,
+  isMappingUseResult,
   isPrimary,
   isRampStmt,
   isRef,
   isSensor,
+  isSimpleUseResult,
   isTypeRef,
   isUseStmt,
   isVarDecl,
@@ -136,16 +138,30 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         property: "functionBlockRef",
         type: SemanticTokenTypes.function,
       });
+    }
+    if (isMappingUseResult(node)) {
       acceptor({
         node,
-        property: "resultVars",
+        property: "outputVar",
+        type: SemanticTokenTypes.comment,
+      });
+      acceptor({
+        node,
+        property: "fbOutput",
         type: SemanticTokenTypes.variable,
       });
     }
-    if (isArgument(node)) {
+    if (isSimpleUseResult(node)) {
       acceptor({
         node,
-        property: "var",
+        property: "outputVar",
+        type: SemanticTokenTypes.variable,
+      });
+    }
+    if (isInputMapping(node)) {
+      acceptor({
+        node,
+        property: "inputVar",
         type: SemanticTokenTypes.comment,
       });
     }
@@ -172,6 +188,11 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
       if (typeof node.val === "string") {
         if (node.val.startsWith("TOD#")) {
           this.formatTodLiteral(node, acceptor);
+        }
+      }
+      if (typeof node.val === "string") {
+        if (node.val.startsWith("T#")) {
+          this.formatTimeLiteral(node, acceptor);
         }
       }
       if (typeof node.val === "boolean") {
@@ -250,7 +271,16 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
     this.formatTodLiteralRaw(node, text, line, character, acceptor, "val");
   }
 
-  formatTodLiteralRaw(
+  formatTimeLiteral(node: Primary, acceptor: SemanticTokenAcceptor) {
+    const nodeCst = node.$cstNode;
+    if (!nodeCst) return;
+
+    const text = nodeCst.text; // e.g. 'T#10s'
+    const { line, character } = nodeCst.range.start;
+    this.formatTimeLiteralRaw(node, text, line, character, acceptor, "val");
+  }
+
+  private formatTodLiteralRaw(
     node: AstNode,
     text: string,
     line: number,
@@ -283,7 +313,7 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
     });
   }
 
-  formatTimeLiteralRaw(
+  private formatTimeLiteralRaw(
     node: AstNode,
     text: string,
     line: number,

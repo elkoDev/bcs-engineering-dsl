@@ -1,12 +1,12 @@
 control MainController {
 
     enum Mode { OFF, ECO, COMFORT }
+    enum Status { ON, OFF }
 
     var currentTemp: REAL;
     var windowOpen: BOOL;
     var isPresent: BOOL;
     var mode: Mode = Mode.OFF;
-    var mode_same_name_as_in_global_should_fail : Mode = Mode.OFF;
     var heat: BOOL;
     var lightLevel: INT = 0;
     var runCounter: INT = 0;
@@ -22,7 +22,7 @@ control MainController {
         }
         logic {
             if (iWindow) {
-                oHeating = false;
+                oHeating = false || (iTemp < 18.0);
             } else if (iMode == Mode.COMFORT && iTemp < 21.0) {
                 oHeating = true;
             } else if (iMode == Mode.ECO && iTemp < 18.0) {
@@ -44,13 +44,13 @@ control MainController {
     // 2. Adaptive heating control
     // ------------------------------
     unit ClimateControl {
-        var isHeating_should_fail_type_matching : BOOL = false;
+        var ouputHeating: BOOL;
         
         windowOpen = windowContact;
         isPresent = presence;
 
-        use HeatingLogicFB(iTemp: tempSensor, iWindow: windowOpen, iMode: isHeating_should_fail_type_matching || 5 + 54 /* should fail as wrong expr type */) -> isHeating_should_fail_type_matching;
-        heater = isHeating_should_fail_type_matching;
+        use HeatingLogicFB(iTemp: tempSensor, iWindow: windowOpen, iMode: mode) -> ouputHeating;
+        heater = ouputHeating;
     }
 
     // ------------------------------
@@ -113,14 +113,11 @@ control MainController {
     unit DemoLoop {
         for (var i: INT = 0 to 5 by 1) {
             lightLevel = i * 20;
-            /*
             if (i == 5) {
                 lights = false;
             } else {
                 lights = true;
             }
-            */
-            lights = i != 5;
         }
     }
 

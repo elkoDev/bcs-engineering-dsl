@@ -1,10 +1,16 @@
 import { ValidationAcceptor, ValidationChecks } from "langium";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
+  AssignmentStmt,
   BCSEngineeringDSLAstType,
   ControlUnit,
   FunctionBlockDecl,
+  isActuator,
+  isEnumDecl,
+  isFunctionBlockDecl,
+  isSensor,
   isVarDecl,
+  UseStmt,
   VarDecl,
 } from "./generated/ast.js";
 
@@ -16,17 +22,14 @@ export function registerBCSControlValidationChecks(
   const checks: ValidationChecks<BCSEngineeringDSLAstType> = {
     FunctionBlockDecl: [validator.checkUniqueVarNamesInFunctionBlock],
     ControlUnit: [validator.checkUniqueVarNamesInUnit],
+    AssignmentStmt: [validator.checkAssignmentTypes],
+    VarDecl: [validator.checkVarDeclTypes],
+    UseStmt: [validator.checkUseStmtTypes],
   };
   registry.register(checks, validator);
 }
 
 export class BCSControlLangValidator {
-  //private readonly services: BCSControlLangServices;
-
-  constructor(services: BCSControlLangServices) {
-    //this.services = services;
-  }
-
   /**
    * Validates that all variable names within a given function block are unique.
    * This includes inputs, outputs, local variables, and variables declared within logic statements.
@@ -52,7 +55,6 @@ export class BCSControlLangValidator {
       ...(fb.outputs ?? []),
       ...(fb.locals ?? []),
     ];
-    // Also gather 'LocalVarDeclStmt' from logic statements, if you want
     for (const stmt of fb.stmts) {
       if (isVarDecl(stmt)) {
         allVars.push(stmt);
@@ -107,5 +109,435 @@ export class BCSControlLangValidator {
         seen.add(v.name);
       }
     }
+  }
+
+  checkUseStmtTypes(useStmt: UseStmt, accept: ValidationAcceptor) {
+    const fb = useStmt.functionBlockRef?.ref;
+    if (!fb) return;
+
+    // 1) Check: Number of input arguments vs number of inputs
+    if (useStmt.inputArgs.length !== fb.inputs.length) {
+      accept(
+        "error",
+        `Function block '${fb.name}' expects ${fb.inputs.length} input arguments, but got ${useStmt.inputArgs.length}.`,
+        { node: useStmt, property: "inputArgs" }
+      );
+    }
+
+    // 2) Check: Input types
+    for (const arg of useStmt.inputArgs) {
+      const paramName = arg.inputVar.ref?.name;
+      const paramDecl = fb.inputs.find((i) => i.name === paramName);
+      const expectedType = this.inferVarDeclType(paramDecl);
+      const actualType = this.inferType(arg.value, accept);
+
+      if (
+        expectedType &&
+        actualType &&
+        !this.isTypeAssignable(actualType, expectedType)
+      ) {
+        accept(
+          "error",
+          `Type mismatch for input '${paramName}': expected '${expectedType}', got '${actualType}'.`,
+          { node: arg.value }
+        );
+      }
+    }
+
+    // 3) Check: Duplicate input mappings
+    const seenInputs = new Set<string>();
+    for (const arg of useStmt.inputArgs) {
+      const varName = arg.inputVar.ref?.name;
+      if (varName) {
+        if (seenInputs.has(varName)) {
+          accept(
+            "error",
+            `Duplicate mapping for input '${varName}' in use of function block '${fb.name}'.`,
+            { node: arg, property: "inputVar" }
+          );
+        }
+        seenInputs.add(varName);
+      }
+    }
+
+    const output = useStmt.useOutput;
+    if (!output) return;
+
+    // Determine if output is single or mapping
+    const isSingle = !!output.singleOutput;
+    const isMapping =
+      !!output.mappingOutputs && output.mappingOutputs.length > 0;
+
+    if (isSingle && isMapping) {
+      accept("error", "Cannot mix single and mapped outputs.", {
+        node: useStmt,
+        property: "useOutput",
+      });
+      return;
+    }
+
+    // 4) Single output result (direct reference)
+    if (isSingle) {
+      if (fb.outputs.length !== 1) {
+        accept(
+          "error",
+          `Function block '${fb.name}' has ${fb.outputs.length} outputs, cannot use direct assignment. Use mapping instead.`,
+          { node: useStmt, property: "useOutput" }
+        );
+        return;
+      }
+
+      const expected = fb.outputs[0];
+      const actual = output.singleOutput!.outputVar?.ref;
+
+      if (actual) {
+        const expectedType = this.inferVarDeclType(expected);
+        const actualType = this.inferVarDeclType(actual);
+
+        if (
+          expectedType &&
+          actualType &&
+          !this.isTypeAssignable(expectedType, actualType)
+        ) {
+          accept(
+            "error",
+            `Type mismatch for output '${expected.name}': cannot assign to '${actual.name}' of type '${actualType}', expected '${expectedType}'.`,
+            { node: output.singleOutput!, property: "outputVar" }
+          );
+        }
+      }
+    }
+
+    // 5) Output mapping list (explicit mappings)
+    else if (isMapping) {
+      if (output.mappingOutputs.length !== fb.outputs.length) {
+        accept(
+          "error",
+          `Function block '${fb.name}' expects ${fb.outputs.length} outputs, but got ${output.mappingOutputs.length}.`,
+          { node: useStmt, property: "useOutput" }
+        );
+      }
+
+      const seen = new Set<string>();
+      for (const map of output.mappingOutputs) {
+        const targetVar = map.outputVar?.ref;
+        const fbOutputVar = map.fbOutput?.ref;
+
+        if (!targetVar || !fbOutputVar) continue;
+
+        if (seen.has(targetVar.name)) {
+          accept(
+            "error",
+            `Duplicate output mapping to variable '${targetVar.name}' in use of '${fb.name}'.`,
+            { node: map, property: "outputVar" }
+          );
+        }
+        seen.add(targetVar.name);
+
+        const expected = fb.outputs.find((o) => o.name === targetVar.name);
+        const expectedType = expected
+          ? this.inferVarDeclType(expected)
+          : undefined;
+        const actualType = this.inferVarDeclType(fbOutputVar);
+
+        if (
+          expectedType &&
+          actualType &&
+          !this.isTypeAssignable(expectedType, actualType)
+        ) {
+          accept(
+            "error",
+            `Type mismatch for mapped output '${targetVar.name}': expected '${expectedType}', got '${actualType}'.`,
+            { node: map, property: "outputVar" }
+          );
+        }
+      }
+    }
+
+    // 6) No outputs provided
+    else {
+      if (fb.outputs.length > 0) {
+        accept(
+          "error",
+          `Function block '${fb.name}' expects ${fb.outputs.length} outputs, but got 0.`,
+          { node: useStmt, property: "useOutput" }
+        );
+      }
+    }
+  }
+
+  /**
+   * Validates the type of a variable declaration by checking if the declared type
+   * and the initialization type (if present) are compatible. Reports errors using
+   * the provided `ValidationAcceptor` if:
+   * - The type of the variable declaration cannot be inferred.
+   * - The type of the variable initialization cannot be inferred.
+   * - The initialization type is not assignable to the declared type.
+   *
+   * @param varDecl - The variable declaration to validate.
+   * @param accept - A function to report validation errors.
+   */
+  checkVarDeclTypes(varDecl: VarDecl, accept: ValidationAcceptor) {
+    const type = this.inferVarDeclType(varDecl);
+    if (!type) {
+      accept(
+        "error",
+        `Cannot infer type for variable declaration: ${varDecl.name}`,
+        { node: varDecl, property: "typeRef" }
+      );
+      return;
+    }
+    if (varDecl.init) {
+      const initType = this.inferType(varDecl.init, accept);
+      if (!initType) {
+        accept(
+          "error",
+          `Cannot infer type for variable initialization: ${
+            varDecl.name
+          } = ${JSON.stringify(varDecl.init)}`,
+          { node: varDecl, property: "init" }
+        );
+        return;
+      }
+      if (!this.isTypeAssignable(initType, type)) {
+        accept(
+          "error",
+          `Type mismatch: Cannot assign "${initType}" to "${type}".`,
+          { node: varDecl, property: "init" }
+        );
+      }
+    }
+  }
+
+  /**
+   * Validates the types of an assignment statement by checking if the type of the
+   * right-hand side expression is assignable to the type of the left-hand side target.
+   *
+   * @param stmt - The assignment statement to validate.
+   * @param accept - A function to report validation issues, such as warnings or errors.
+   *
+   * @remarks
+   * - If the type of either the target or the value cannot be inferred, a warning is reported.
+   * - If the type of the value is not assignable to the type of the target, an error is reported.
+   */
+  checkAssignmentTypes(stmt: AssignmentStmt, accept: ValidationAcceptor) {
+    const leftType = this.inferType(stmt.target, accept);
+    const rightType = this.inferType(stmt.value, accept);
+
+    if (!leftType || !rightType) {
+      accept(
+        "warning",
+        `Cannot infer type for assignment: ${
+          stmt.target.ref.ref?.name
+        } = ${this.stringifyExpression(stmt.value)}`,
+        { node: stmt }
+      );
+      return;
+    }
+
+    if (!this.isTypeAssignable(rightType, leftType)) {
+      accept(
+        "error",
+        `Type mismatch: Cannot assign "${rightType}" to "${leftType}".`,
+
+        { node: stmt, property: "value" }
+      );
+    }
+  }
+
+  private stringifyExpression(expr: any): string {
+    if (!expr) return "undefined";
+
+    switch (expr.$type) {
+      case "BinExpr":
+        return `${this.stringifyExpression(expr.e1)} ${
+          expr.op
+        } ${this.stringifyExpression(expr.e2)}`;
+      case "NegExpr":
+        return `-${this.stringifyExpression(expr.expr)}`;
+      case "NotExpr":
+        return `!${this.stringifyExpression(expr.expr)}`;
+      case "ParenExpr":
+        return `(${this.stringifyExpression(expr.expr)})`;
+      case "Ref":
+        return expr.ref?.ref?.name ?? "[unresolved ref]";
+      case "EnumMemberLiteral":
+        return `${expr.value.ref?.name}.${expr.member.ref?.name}`;
+      default:
+        if (typeof expr.val !== "undefined") {
+          return `${expr.val}`;
+        }
+        return `[${expr.$type}]`;
+    }
+  }
+
+  private inferType(expr: any, accept: ValidationAcceptor): string | undefined {
+    if (!expr) return undefined;
+
+    // 1) If BinaryExpr => check left and right side
+    if (expr.$type === "BinExpr") {
+      const left = this.inferType(expr.e1, accept);
+      const right = this.inferType(expr.e2, accept);
+      const op = expr.op;
+
+      if (!left || !right) {
+        return left ?? right;
+      }
+
+      if (["==", "!=", "<", "<=", ">", ">="].includes(op)) {
+        if (this.areTypesComparable(left, right)) {
+          return "BOOL";
+        } else {
+          accept(
+            "error",
+            `Cannot compare values of types '${left}' and '${right}' with '${op}'.`,
+            {
+              node: expr,
+            }
+          );
+          return undefined;
+        }
+      }
+
+      if (op === "&&" || op === "||") {
+        if (left === "BOOL" && right === "BOOL") {
+          return "BOOL";
+        } else {
+          accept(
+            "error",
+            `Logical operator '${op}' can only be applied to BOOL operands, but got '${left}' and '${right}'.`,
+            { node: expr }
+          );
+          return undefined;
+        }
+      }
+
+      if (["+", "-", "*", "/"].includes(op)) {
+        if (
+          (left === "INT" || left === "REAL") &&
+          (right === "INT" || right === "REAL")
+        ) {
+          return left === "REAL" || right === "REAL" ? "REAL" : "INT";
+        } else {
+          accept(
+            "error",
+            `Operator '${op}' not applicable to types '${left}' and '${right}'.`,
+            {
+              node: expr,
+            }
+          );
+          return undefined;
+        }
+      }
+      return undefined;
+    }
+
+    // 2) If Negation / Not / Paren
+    if (
+      expr.$type === "NegExpr" ||
+      expr.$type === "NotExpr" ||
+      expr.$type === "ParenExpr"
+    ) {
+      return this.inferType(expr.expr, accept);
+    }
+
+    // 3) If Ref => check what it points to
+    if (expr.$type === "Ref") {
+      const ref = expr.ref?.ref;
+      if (!ref) return undefined;
+      if (isVarDecl(ref)) {
+        return this.inferVarDeclType(ref);
+      }
+      if (isSensor(ref) || isActuator(ref)) {
+        return ref.dataType;
+      }
+      if (isEnumDecl(ref)) {
+        return `Enum:${ref.name}`;
+      }
+      return this.inferVarDeclType(expr.ref?.ref);
+    }
+
+    // 4) If literal => check type
+    if (typeof expr.val === "number") {
+      const raw = expr.$cstNode?.text;
+
+      if (raw?.includes(".")) {
+        return "REAL";
+      } else {
+        return "INT";
+      }
+    }
+    if (typeof expr.val === "boolean") {
+      return "BOOL";
+    }
+    if (typeof expr.val === "string") {
+      // "TOD#" => TIME OF DAY
+      // "T#"   => TIME
+      // "..."  => STRING
+      if (expr.val.startsWith("TOD#")) {
+        return "TOD";
+      } else if (expr.val.startsWith("T#")) {
+        return "TIME";
+      } else {
+        return "STRING";
+      }
+    }
+    return undefined;
+  }
+
+  private inferVarDeclType(varDecl: VarDecl | undefined): string | undefined {
+    if (!varDecl) return undefined;
+    if (!varDecl.typeRef) return undefined;
+
+    // Either builtin DataType => "BOOL"/"INT"/"REAL"/"STRING" etc.
+    if (varDecl.typeRef.type) {
+      return varDecl.typeRef.type;
+    }
+
+    // Or referencing (EnumDecl | FunctionBlockDecl)
+    if (varDecl.typeRef.ref) {
+      const typeDecl = varDecl.typeRef.ref.ref;
+      if (!typeDecl) return undefined;
+      if (isEnumDecl(typeDecl)) {
+        return `Enum:${typeDecl.name}`;
+      }
+      // Ist es ein FunctionBlockDecl?
+      if (isFunctionBlockDecl(typeDecl)) {
+        return `FB:${typeDecl.name}`;
+      }
+    }
+
+    return undefined;
+  }
+
+  private isTypeAssignable(sourceType: string, targetType: string): boolean {
+    if (sourceType === targetType) return true;
+
+    if (sourceType === "INT" && targetType === "REAL") {
+      return true;
+    }
+
+    // e.g. source="Enum:Color" target="Enum:Color"
+    if (sourceType.startsWith("Enum:") && targetType === sourceType) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private areTypesComparable(type1: string, type2: string): boolean {
+    const comparableGroups: string[][] = [
+      ["INT", "REAL"],
+      ["STRING"],
+      ["BOOL"],
+    ];
+
+    for (const group of comparableGroups) {
+      if (group.includes(type1) && group.includes(type2)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }

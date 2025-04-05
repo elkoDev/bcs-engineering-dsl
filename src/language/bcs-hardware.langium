@@ -45,7 +45,3 @@ ActuatorType returns string:
 type IOType = 'ANALOG' | 'DIGITAL';
 IOType returns string:
     'ANALOG' | 'DIGITAL';
-
-type DataType = 'BOOL' | 'REAL' | 'INT' | 'STRING';
-DataType returns string:
-    'BOOL' | 'REAL' | 'INT' | 'STRING';
