@@ -29,12 +29,6 @@ export function registerBCSControlValidationChecks(
 }
 
 export class BCSControlLangValidator {
-  //private readonly services: BCSControlLangServices;
-
-  constructor(services: BCSControlLangServices) {
-    //this.services = services;
-  }
-
   /**
    * Validates that all variable names within a given function block are unique.
    * This includes inputs, outputs, local variables, and variables declared within logic statements.
@@ -159,6 +153,17 @@ export class BCSControlLangValidator {
     }
   }
 
+  /**
+   * Validates the types of an assignment statement by checking if the type of the
+   * right-hand side expression is assignable to the type of the left-hand side target.
+   *
+   * @param stmt - The assignment statement to validate.
+   * @param accept - A function to report validation issues, such as warnings or errors.
+   *
+   * @remarks
+   * - If the type of either the target or the value cannot be inferred, a warning is reported.
+   * - If the type of the value is not assignable to the type of the target, an error is reported.
+   */
   checkAssignmentTypes(stmt: AssignmentStmt, accept: ValidationAcceptor) {
     const leftType = this.inferType(stmt.target, accept);
     const rightType = this.inferType(stmt.value, accept);

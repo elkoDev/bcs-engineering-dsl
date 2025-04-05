@@ -22,7 +22,7 @@ export const BCSControlLangModule: Module<
   },
   validation: {
     BCSControlLangValidator: (services: BCSControlLangServices) =>
-      new BCSControlLangValidator(services),
+      new BCSControlLangValidator(),
   },
   lsp: {
     SemanticTokenProvider: (services: BCSControlLangServices) =>
