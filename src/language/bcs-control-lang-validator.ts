@@ -60,7 +60,6 @@ export class BCSControlLangValidator {
       ...(fb.outputs ?? []),
       ...(fb.locals ?? []),
     ];
-    // Also gather 'LocalVarDeclStmt' from logic statements, if you want
     for (const stmt of fb.stmts) {
       if (isVarDecl(stmt)) {
         allVars.push(stmt);
@@ -117,6 +116,17 @@ export class BCSControlLangValidator {
     }
   }
 
+  /**
+   * Validates the type of a variable declaration by checking if the declared type
+   * and the initialization type (if present) are compatible. Reports errors using
+   * the provided `ValidationAcceptor` if:
+   * - The type of the variable declaration cannot be inferred.
+   * - The type of the variable initialization cannot be inferred.
+   * - The initialization type is not assignable to the declared type.
+   *
+   * @param varDecl - The variable declaration to validate.
+   * @param accept - A function to report validation errors.
+   */
   checkVarDeclTypes(varDecl: VarDecl, accept: ValidationAcceptor) {
     const type = this.inferVarDeclType(varDecl);
     if (!type) {

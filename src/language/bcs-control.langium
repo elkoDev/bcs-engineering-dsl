@@ -119,7 +119,7 @@ ForStmt:
 ;
 
 LoopVarDecl infers VarDecl:
-    'var' name=ID ':' typeRef=TypeRef '=' start=Expr
+    'var' name=ID ':' typeRef=TypeRef '=' init=Expr
 ;
 
 SwitchStmt:

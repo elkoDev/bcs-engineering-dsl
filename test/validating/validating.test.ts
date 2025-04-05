@@ -72,7 +72,7 @@ describe("BCS Control Validation Tests", () => {
     const allDiagnostics = allDocs.flatMap((doc) => doc.diagnostics ?? []);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
-    expect(allDiagnostics.length).toBe(8);
+    expect(allDiagnostics.length).toBe(9);
     const expectedMessages = [
       'Type mismatch: Cannot assign "BOOL" to "INT".',
       'Type mismatch: Cannot assign "INT" to "BOOL".',
@@ -81,6 +81,7 @@ describe("BCS Control Validation Tests", () => {
       'Type mismatch: Cannot assign "TIME" to "TOD".',
       'Type mismatch: Cannot assign "Enum:Status" to "Enum:Mode".',
       'Type mismatch: Cannot assign "Enum:Mode" to "Enum:Status".',
+      'Type mismatch: Cannot assign "Enum:Status" to "INT".',
     ];
 
     expectedMessages.forEach((msg) => {
