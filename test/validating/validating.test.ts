@@ -21,7 +21,7 @@ describe("BCS Control Validation Tests", () => {
     });
   });
 
-  test("Detect type mismatch between REAL and BOOL", async () => {
+  test("Detect Assignment type mismatch", async () => {
     const services = createBcsEngineeringServices(NodeFileSystem);
 
     const [mainDoc, allDocs] = await extractDocuments(
@@ -36,7 +36,7 @@ describe("BCS Control Validation Tests", () => {
     expect(diagString).toMatch(/Cannot assign "REAL" to "BOOL"/);
   });
 
-  test("Detect enum type mismatch", async () => {
+  test("Detect Enum type mismatch", async () => {
     const services = createBcsEngineeringServices(NodeFileSystem);
 
     const [mainDoc, allDocs] = await extractDocuments(
@@ -55,7 +55,7 @@ describe("BCS Control Validation Tests", () => {
     );
   });
 
-  test("Detect enum type mismatch", async () => {
+  test("Detect VarDecl type mismatch", async () => {
     const services = createBcsEngineeringServices(NodeFileSystem);
 
     const [mainDoc, allDocs] = await extractDocuments(
@@ -72,7 +72,7 @@ describe("BCS Control Validation Tests", () => {
     const allDiagnostics = allDocs.flatMap((doc) => doc.diagnostics ?? []);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
-    expect(allDiagnostics.length).toBe(7);
+    expect(allDiagnostics.length).toBe(8);
     const expectedMessages = [
       'Type mismatch: Cannot assign "BOOL" to "INT".',
       'Type mismatch: Cannot assign "INT" to "BOOL".',
