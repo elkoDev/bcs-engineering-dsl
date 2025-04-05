@@ -22,8 +22,8 @@ export function registerBCSControlValidationChecks(
     FunctionBlockDecl: [validator.checkUniqueVarNamesInFunctionBlock],
     ControlUnit: [validator.checkUniqueVarNamesInUnit],
     AssignmentStmt: [validator.checkAssignmentTypes],
+    VarDecl: [validator.checkVarDeclTypes],
     //UseStmt: [validator.checkUseStmtTypes], TODO
-    //VarDecl: [], TODO
   };
   registry.register(checks, validator);
 }
@@ -117,6 +117,38 @@ export class BCSControlLangValidator {
     }
   }
 
+  checkVarDeclTypes(varDecl: VarDecl, accept: ValidationAcceptor) {
+    const type = this.inferVarDeclType(varDecl);
+    if (!type) {
+      accept(
+        "error",
+        `Cannot infer type for variable declaration: ${varDecl.name}`,
+        { node: varDecl, property: "typeRef" }
+      );
+      return;
+    }
+    if (varDecl.init) {
+      const initType = this.inferType(varDecl.init, accept);
+      if (!initType) {
+        accept(
+          "error",
+          `Cannot infer type for variable initialization: ${
+            varDecl.name
+          } = ${JSON.stringify(varDecl.init)}`,
+          { node: varDecl, property: "init" }
+        );
+        return;
+      }
+      if (!this.isTypeAssignable(initType, type)) {
+        accept(
+          "error",
+          `Type mismatch: Cannot assign "${initType}" to "${type}".`,
+          { node: varDecl, property: "init" }
+        );
+      }
+    }
+  }
+
   checkAssignmentTypes(stmt: AssignmentStmt, accept: ValidationAcceptor) {
     const leftType = this.inferType(stmt.target, accept);
     const rightType = this.inferType(stmt.value, accept);
@@ -124,7 +156,9 @@ export class BCSControlLangValidator {
     if (!leftType || !rightType) {
       accept(
         "warning",
-        `Cannot infer type for assignment: ${stmt.target.ref.ref?.name} = ${stmt.value}`,
+        `Cannot infer type for assignment: ${
+          stmt.target.ref.ref?.name
+        } = ${this.stringifyExpression(stmt.value)}`,
         { node: stmt }
       );
       return;
@@ -138,6 +172,16 @@ export class BCSControlLangValidator {
         { node: stmt, property: "value" }
       );
     }
+  }
+
+  private stringifyExpression(expr: any): string {
+    if (typeof expr === "object" && expr !== null) {
+      if (expr.$type) {
+        return `[${expr.$type}]`;
+      }
+      return JSON.stringify(expr);
+    }
+    return String(expr);
   }
 
   private inferType(expr: any, accept: ValidationAcceptor): string | undefined {

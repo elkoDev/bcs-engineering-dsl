@@ -59,7 +59,12 @@ describe("BCS Control Validation Tests", () => {
     const services = createBcsEngineeringServices(NodeFileSystem);
 
     const [mainDoc, allDocs] = await extractDocuments(
-      path.join(__dirname, "files", "invalid_vardecl", "control_vardecl.bcsctrl"),
+      path.join(
+        __dirname,
+        "files",
+        "invalid_vardecl",
+        "control_vardecl.bcsctrl"
+      ),
       services.bcsControl,
       false
     );
@@ -68,9 +73,18 @@ describe("BCS Control Validation Tests", () => {
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
     expect(allDiagnostics.length).toBe(7);
+    const expectedMessages = [
+      'Type mismatch: Cannot assign "BOOL" to "INT".',
+      'Type mismatch: Cannot assign "INT" to "BOOL".',
+      'Type mismatch: Cannot assign "INT" to "STRING".',
+      'Type mismatch: Cannot assign "TOD" to "TIME".',
+      'Type mismatch: Cannot assign "TIME" to "TOD".',
+      'Type mismatch: Cannot assign "Enum:Status" to "Enum:Mode".',
+      'Type mismatch: Cannot assign "Enum:Mode" to "Enum:Status".',
+    ];
 
-    expect(diagString).toMatch(
-      'Type mismatch: Cannot assign "Enum:Status" to "Enum:Mode".'
-    );
+    expectedMessages.forEach((msg) => {
+      expect(diagString).toContain(msg);
+    });
   });
 });
