@@ -400,16 +400,14 @@ export class BCSControlLangValidator {
     }
 
     // 6) No outputs provided
-    else {
-      if (getOutputs(fb).length > 0) {
-        accept(
-          "error",
-          `Function block '${fb.name}' expects ${
-            getOutputs(fb).length
-          } outputs, but got 0.`,
-          { node: useStmt, property: "useOutput" }
-        );
-      }
+    else if (getOutputs(fb).length > 0) {
+      accept(
+        "error",
+        `Function block '${fb.name}' expects ${
+          getOutputs(fb).length
+        } outputs, but got 0.`,
+        { node: useStmt, property: "useOutput" }
+      );
     }
   }
 
