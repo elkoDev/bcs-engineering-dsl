@@ -1,0 +1,9 @@
+control InvalidWhenTestController {
+
+    unit Test when (5 + 1.0) {
+    }
+
+    unit Test2 once when (now > TOD#08:00:00) {
+    }
+}
+ 

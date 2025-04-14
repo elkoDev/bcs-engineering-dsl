@@ -1,0 +1,25 @@
+controller InvalidDuplicateController {
+    sensor windowContact {
+        type: CONTACT
+        ioType: DIGITAL
+        dataType: BOOL
+    }
+
+    sensor windowContact {
+        type: CONTACT
+        ioType: DIGITAL
+        dataType: BOOL
+    }
+
+    actuator motor {
+        type: BLINDS
+        ioType: DIGITAL
+        dataType: BOOL
+    }
+
+    actuator motor {
+        type: BLINDS
+        ioType: DIGITAL
+        dataType: BOOL
+    }
+}

@@ -23,6 +23,11 @@ import {
   Sensor,
   VarDecl,
 } from "./generated/ast.js";
+import {
+  getInputs,
+  getLocals,
+  getOutputs,
+} from "./utils/function-block-utils.js";
 
 export class BCSControlLangScopeProvider extends DefaultScopeProvider {
   constructor(services: BCSControlLangServices) {
@@ -85,7 +90,7 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
       if (!useStmt?.functionBlockRef?.ref) return EMPTY_SCOPE;
 
       const fb = useStmt.functionBlockRef.ref;
-      const fbParams = [...(fb.inputs ?? [])];
+      const fbParams = getInputs(fb);
 
       return this.createScopeForNodes(fbParams);
     }
@@ -95,7 +100,7 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
       if (!useStmt?.functionBlockRef?.ref) return EMPTY_SCOPE;
 
       const fb = useStmt.functionBlockRef.ref;
-      const fbParams = [...(fb.outputs ?? [])];
+      const fbParams = getOutputs(fb);
 
       return this.createScopeForNodes(fbParams);
     }
@@ -122,11 +127,7 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
     }
 
     if (fb) {
-      vars.push(
-        ...(fb.inputs ?? []),
-        ...(fb.outputs ?? []),
-        ...(fb.locals ?? [])
-      );
+      vars.push(...getInputs(fb), ...getOutputs(fb), ...getLocals(fb));
     }
 
     return vars;

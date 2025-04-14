@@ -3,16 +3,30 @@ import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
   AssignmentStmt,
   BCSEngineeringDSLAstType,
+  ControlModel,
   ControlUnit,
   FunctionBlockDecl,
   isActuator,
+  isBinExpr,
+  isControlUnit,
   isEnumDecl,
   isFunctionBlockDecl,
+  isFunctionBlockInputs,
+  isFunctionBlockLocals,
+  isFunctionBlockLogic,
+  isFunctionBlockOutputs,
+  isPrimary,
   isSensor,
   isVarDecl,
   UseStmt,
   VarDecl,
 } from "./generated/ast.js";
+import {
+  getInputs,
+  getOutputs,
+  getLocals,
+  getLogic,
+} from "./utils/function-block-utils.js";
 
 export function registerBCSControlValidationChecks(
   services: BCSControlLangServices
@@ -20,8 +34,16 @@ export function registerBCSControlValidationChecks(
   const registry = services.validation.ValidationRegistry;
   const validator = services.validation.BCSControlLangValidator;
   const checks: ValidationChecks<BCSEngineeringDSLAstType> = {
-    FunctionBlockDecl: [validator.checkUniqueVarNamesInFunctionBlock],
-    ControlUnit: [validator.checkUniqueVarNamesInUnit],
+    FunctionBlockDecl: [
+      validator.checkUniqueVarNamesInFunctionBlock,
+      validator.checkSingleBlockSectionsInFunctionBlock,
+    ],
+    ControlUnit: [
+      validator.checkUniqueVarNamesInUnit,
+      validator.checkScanCycleUnits,
+      validator.checkWhenConditionType,
+    ],
+    ControlModel: [validator.checkUniqueEnumsAndTypesAndUnits],
     AssignmentStmt: [validator.checkAssignmentTypes],
     VarDecl: [validator.checkVarDeclTypes],
     UseStmt: [validator.checkUseStmtTypes],
@@ -30,6 +52,139 @@ export function registerBCSControlValidationChecks(
 }
 
 export class BCSControlLangValidator {
+  checkWhenConditionType(unit: ControlUnit, accept: ValidationAcceptor) {
+    if (unit.condition) {
+      const type = this.inferType(unit.condition, accept);
+      if (type && type !== "BOOL") {
+        accept(
+          "error",
+          `Condition in 'when (...)' of unit '${unit.name}' must be of type BOOL, but got '${type}'.`,
+          { node: unit, property: "condition" }
+        );
+      }
+    }
+  }
+
+  checkScanCycleUnits(unit: ControlUnit, accept: ValidationAcceptor) {
+    if (!unit.condition && !unit.time && unit.stmts.length > 0) {
+      accept(
+        "hint",
+        `Unit '${unit.name}' runs every scan cycle (no 'at' or 'when' clause).`,
+        {
+          node: unit,
+          property: "name",
+        }
+      );
+    }
+  }
+
+  checkUniqueEnumsAndTypesAndUnits(
+    model: ControlModel,
+    accept: ValidationAcceptor
+  ) {
+    const enumNames = new Set<string>();
+    const fbNames = new Set<string>();
+    const unitNames = new Set<string>();
+    const globalVarNames = new Set<string>();
+
+    for (const item of model.items) {
+      if (isEnumDecl(item)) {
+        if (enumNames.has(item.name)) {
+          accept("error", `Duplicate enum '${item.name}'.`, {
+            node: item,
+            property: "name",
+          });
+        } else {
+          enumNames.add(item.name);
+        }
+      }
+      if (isFunctionBlockDecl(item)) {
+        if (fbNames.has(item.name)) {
+          accept("error", `Duplicate function block '${item.name}'.`, {
+            node: item,
+            property: "name",
+          });
+        } else {
+          fbNames.add(item.name);
+        }
+      }
+      if (isControlUnit(item)) {
+        if (unitNames.has(item.name)) {
+          accept("error", `Duplicate control unit '${item.name}'.`, {
+            node: item,
+            property: "name",
+          });
+        } else {
+          unitNames.add(item.name);
+        }
+      }
+      if (isVarDecl(item)) {
+        if (globalVarNames.has(item.name)) {
+          accept("error", `Duplicate global variable '${item.name}'.`, {
+            node: item,
+            property: "name",
+          });
+        } else {
+          globalVarNames.add(item.name);
+        }
+      }
+    }
+  }
+
+  checkSingleBlockSectionsInFunctionBlock(
+    fb: FunctionBlockDecl,
+    accept: ValidationAcceptor
+  ) {
+    let countInputs = 0;
+    let countOutputs = 0;
+    let countLocals = 0;
+    let countLogic = 0;
+
+    for (const member of fb.members) {
+      if (isFunctionBlockInputs(member)) countInputs++;
+      else if (isFunctionBlockOutputs(member)) countOutputs++;
+      else if (isFunctionBlockLocals(member)) countLocals++;
+      else if (isFunctionBlockLogic(member)) countLogic++;
+    }
+
+    if (countInputs > 1) {
+      accept(
+        "error",
+        `Only one 'inputs' block allowed in function block '${fb.name}', found ${countInputs}.`,
+        {
+          node: fb,
+        }
+      );
+    }
+    if (countOutputs > 1) {
+      accept(
+        "error",
+        `Only one 'outputs' block allowed in function block '${fb.name}', found ${countOutputs}.`,
+        {
+          node: fb,
+        }
+      );
+    }
+    if (countLocals > 1) {
+      accept(
+        "error",
+        `Only one 'locals' block allowed in function block '${fb.name}', found ${countLocals}.`,
+        {
+          node: fb,
+        }
+      );
+    }
+    if (countLogic > 1) {
+      accept(
+        "error",
+        `Only one 'logic' block allowed in function block '${fb.name}', found ${countLogic}.`,
+        {
+          node: fb,
+        }
+      );
+    }
+  }
+
   /**
    * Validates that all variable names within a given function block are unique.
    * This includes inputs, outputs, local variables, and variables declared within logic statements.
@@ -51,11 +206,11 @@ export class BCSControlLangValidator {
     accept: ValidationAcceptor
   ) {
     const allVars: VarDecl[] = [
-      ...(fb.inputs ?? []),
-      ...(fb.outputs ?? []),
-      ...(fb.locals ?? []),
+      ...getInputs(fb),
+      ...getOutputs(fb),
+      ...getLocals(fb),
     ];
-    for (const stmt of fb.stmts) {
+    for (const stmt of getLogic(fb)?.stmts ?? []) {
       if (isVarDecl(stmt)) {
         allVars.push(stmt);
       }
@@ -116,10 +271,12 @@ export class BCSControlLangValidator {
     if (!fb) return;
 
     // 1) Check: Number of input arguments vs number of inputs
-    if (useStmt.inputArgs.length !== fb.inputs.length) {
+    if (useStmt.inputArgs.length !== getInputs(fb).length) {
       accept(
         "error",
-        `Function block '${fb.name}' expects ${fb.inputs.length} input arguments, but got ${useStmt.inputArgs.length}.`,
+        `Function block '${fb.name}' expects ${
+          getInputs(fb).length
+        } input arguments, but got ${useStmt.inputArgs.length}.`,
         { node: useStmt, property: "inputArgs" }
       );
     }
@@ -127,7 +284,7 @@ export class BCSControlLangValidator {
     // 2) Check: Input types
     for (const arg of useStmt.inputArgs) {
       const paramName = arg.inputVar.ref?.name;
-      const paramDecl = fb.inputs.find((i) => i.name === paramName);
+      const paramDecl = getInputs(fb).find((i) => i.name === paramName);
       const expectedType = this.inferVarDeclType(paramDecl);
       const actualType = this.inferType(arg.value, accept);
 
@@ -178,16 +335,18 @@ export class BCSControlLangValidator {
 
     // 4) Single output result (direct reference)
     if (isSingle) {
-      if (fb.outputs.length !== 1) {
+      if (getOutputs(fb).length !== 1) {
         accept(
           "error",
-          `Function block '${fb.name}' has ${fb.outputs.length} outputs, cannot use direct assignment. Use mapping instead.`,
+          `Function block '${fb.name}' has ${
+            getOutputs(fb).length
+          } outputs, cannot use direct assignment. Use mapping instead.`,
           { node: useStmt, property: "useOutput" }
         );
         return;
       }
 
-      const expected = fb.outputs[0];
+      const expected = getOutputs(fb)[0];
       const actual = output.singleOutput!.outputVar?.ref;
 
       if (actual) {
@@ -210,10 +369,12 @@ export class BCSControlLangValidator {
 
     // 5) Output mapping list (explicit mappings)
     else if (isMapping) {
-      if (output.mappingOutputs.length !== fb.outputs.length) {
+      if (output.mappingOutputs.length !== getOutputs(fb).length) {
         accept(
           "error",
-          `Function block '${fb.name}' expects ${fb.outputs.length} outputs, but got ${output.mappingOutputs.length}.`,
+          `Function block '${fb.name}' expects ${
+            getOutputs(fb).length
+          } outputs, but got ${output.mappingOutputs.length}.`,
           { node: useStmt, property: "useOutput" }
         );
       }
@@ -234,7 +395,7 @@ export class BCSControlLangValidator {
         }
         seen.add(targetVar.name);
 
-        const expected = fb.outputs.find((o) => o.name === targetVar.name);
+        const expected = getOutputs(fb).find((o) => o.name === targetVar.name);
         const expectedType = expected
           ? this.inferVarDeclType(expected)
           : undefined;
@@ -255,14 +416,14 @@ export class BCSControlLangValidator {
     }
 
     // 6) No outputs provided
-    else {
-      if (fb.outputs.length > 0) {
-        accept(
-          "error",
-          `Function block '${fb.name}' expects ${fb.outputs.length} outputs, but got 0.`,
-          { node: useStmt, property: "useOutput" }
-        );
-      }
+    else if (getOutputs(fb).length > 0) {
+      accept(
+        "error",
+        `Function block '${fb.name}' expects ${
+          getOutputs(fb).length
+        } outputs, but got 0.`,
+        { node: useStmt, property: "useOutput" }
+      );
     }
   }
 
@@ -375,7 +536,7 @@ export class BCSControlLangValidator {
     if (!expr) return undefined;
 
     // 1) If BinaryExpr => check left and right side
-    if (expr.$type === "BinExpr") {
+    if (isBinExpr(expr)) {
       const left = this.inferType(expr.e1, accept);
       const right = this.inferType(expr.e2, accept);
       const op = expr.op;
@@ -467,7 +628,7 @@ export class BCSControlLangValidator {
         return "INT";
       }
     }
-    if (typeof expr.val === "boolean") {
+    if (typeof expr.val === "boolean" && expr.$cstNode?.text !== "now") {
       return "BOOL";
     }
     if (typeof expr.val === "string") {
@@ -482,6 +643,10 @@ export class BCSControlLangValidator {
         return "STRING";
       }
     }
+    if (isPrimary(expr) && expr.$cstNode?.text === "now") {
+      return "TOD";
+    }
+
     return undefined;
   }
 
@@ -530,12 +695,21 @@ export class BCSControlLangValidator {
       ["INT", "REAL"],
       ["STRING"],
       ["BOOL"],
+      ["TOD"],
     ];
 
     for (const group of comparableGroups) {
       if (group.includes(type1) && group.includes(type2)) {
         return true;
       }
+    }
+
+    if (
+      type1.startsWith("Enum:") &&
+      type2.startsWith("Enum:") &&
+      type1 === type2
+    ) {
+      return true;
     }
 
     return false;

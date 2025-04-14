@@ -1,0 +1,60 @@
+control InvalidDuplicateController {
+    enum DuplicateMode {
+        COMFORT,
+        ECO,
+        OFF
+    }
+    enum DuplicateMode {
+        COMFORT2,
+        ECO2,
+        OFF2
+    }
+
+    functionblock DuplicateFB {
+        inputs {
+            var iDuplicate: REAL;
+            var iDuplicate: BOOL;
+        }
+        inputs {
+            var iDuplicate2: REAL;
+            var iDuplicate3: BOOL;
+        }
+        locals {
+            var lDuplicate: BOOL;
+            var lDuplicate: BOOL;
+        }
+        locals {
+            var lDuplicate2: BOOL;
+            var lDuplicate3: BOOL;
+        }
+        outputs {
+            var oDuplicate: BOOL;
+            var oDuplicate: BOOL;
+        }
+        outputs {
+            var oDuplicate2: BOOL;
+            var oDuplicate3: BOOL;
+        }
+        logic {
+            var duplicateFBVar: BOOL;
+            var duplicateFBVar: BOOL;
+        }
+        logic {
+            var duplicateFBVar2: BOOL;
+            var duplicateFBVar3: BOOL;
+        }
+    }
+    functionblock DuplicateFB {
+    }
+
+    var duplicateVar: BOOL;
+    var duplicateVar: BOOL;
+
+    unit DuplicateUnit {
+        var duplicateUnitVar: BOOL;
+        var duplicateUnitVar: BOOL;
+    }
+    unit DuplicateUnit {
+
+    }
+}
