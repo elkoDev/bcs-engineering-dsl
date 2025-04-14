@@ -695,7 +695,7 @@ export class BCSControlLangValidator {
       ["INT", "REAL"],
       ["STRING"],
       ["BOOL"],
-      ["TOD"]
+      ["TOD"],
     ];
 
     for (const group of comparableGroups) {

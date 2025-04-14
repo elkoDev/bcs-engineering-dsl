@@ -20,8 +20,8 @@ jobs:
         with:
           node-version-file: ".nvmrc"
 
-      - name: Clean install with npm ci
-        run: npm ci
+      - name: Install with npm install
+        run: npm install
 
       - name: Generate langium files
         run: npm run langium:generate
