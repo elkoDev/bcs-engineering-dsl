@@ -16,32 +16,32 @@ control InvalidDuplicateController {
             var iDuplicate: BOOL;
         }
         inputs {
-            var iDuplicate: REAL;
-            var iDuplicate: BOOL;
+            var iDuplicate2: REAL;
+            var iDuplicate3: BOOL;
         }
         locals {
             var lDuplicate: BOOL;
             var lDuplicate: BOOL;
         }
         locals {
-            var lDuplicate: BOOL;
-            var lDuplicate: BOOL;
+            var lDuplicate2: BOOL;
+            var lDuplicate3: BOOL;
         }
         outputs {
             var oDuplicate: BOOL;
             var oDuplicate: BOOL;
         }
         outputs {
-            var oDuplicate: BOOL;
-            var oDuplicate: BOOL;
+            var oDuplicate2: BOOL;
+            var oDuplicate3: BOOL;
         }
         logic {
-            oDuplicate = iDuplicate;
-            oDuplicate = iDuplicate;
+            var duplicateFBVar: BOOL;
+            var duplicateFBVar: BOOL;
         }
         logic {
-            oDuplicate = iDuplicate;
-            oDuplicate = iDuplicate;
+            var duplicateFBVar2: BOOL;
+            var duplicateFBVar3: BOOL;
         }
     }
     functionblock DuplicateFB {
@@ -51,7 +51,8 @@ control InvalidDuplicateController {
     var duplicateVar: BOOL;
 
     unit DuplicateUnit {
-
+        var duplicateUnitVar: BOOL;
+        var duplicateUnitVar: BOOL;
     }
     unit DuplicateUnit {
 

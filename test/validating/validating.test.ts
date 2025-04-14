@@ -137,4 +137,45 @@ describe("BCS Control Validation Tests", () => {
       expect(diagString).toContain(msg);
     });
   });
+
+  test("Detect duplicates", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    const [mainDoc, allDocs] = await extractDocuments(
+      path.join(
+        __dirname,
+        "files",
+        "invalid_duplicate",
+        "control_duplicate.bcsctrl"
+      ),
+      services.bcsControl,
+      false
+    );
+
+    const allDiagnostics = allDocs.flatMap((doc) => doc.diagnostics ?? []);
+    const diagString = allDiagnostics.map((d) => d.message).join("\n");
+
+    expect(allDiagnostics.length).toBe(15);
+    const expectedMessages = [
+      "Duplicate enum 'DuplicateMode'.",
+      "Only one 'inputs' block allowed in function block 'DuplicateFB', found 2.",
+      "Only one 'outputs' block allowed in function block 'DuplicateFB', found 2.",
+      "Only one 'locals' block allowed in function block 'DuplicateFB', found 2.",
+      "Only one 'logic' block allowed in function block 'DuplicateFB', found 2.",
+      "Duplicate variable name 'iDuplicate' in function block 'DuplicateFB'.",
+      "Duplicate variable name 'lDuplicate' in function block 'DuplicateFB'.",
+      "Duplicate variable name 'oDuplicate' in function block 'DuplicateFB'.",
+      "Duplicate variable name 'duplicateFBVar' in function block 'DuplicateFB'.",
+      "Duplicate function block 'DuplicateFB'.",
+      "Duplicate global variable 'duplicateVar'.",
+      "Duplicate local var name 'duplicateUnitVar' in unit 'DuplicateUnit'.",
+      "Duplicate control unit 'DuplicateUnit'.",
+      "Duplicate component name 'motor' in this controller.",
+      "Duplicate component name 'windowContact' in this controller."
+    ];
+
+    expectedMessages.forEach((msg) => {
+      expect(diagString).toContain(msg);
+    });
+  });
 });

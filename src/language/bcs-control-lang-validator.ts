@@ -3,9 +3,11 @@ import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
   AssignmentStmt,
   BCSEngineeringDSLAstType,
+  ControlModel,
   ControlUnit,
   FunctionBlockDecl,
   isActuator,
+  isControlUnit,
   isEnumDecl,
   isFunctionBlockDecl,
   isFunctionBlockInputs,
@@ -35,6 +37,7 @@ export function registerBCSControlValidationChecks(
       validator.checkSingleBlockSectionsInFunctionBlock,
     ],
     ControlUnit: [validator.checkUniqueVarNamesInUnit],
+    ControlModel: [validator.checkUniqueEnumsAndTypesAndUnits],
     AssignmentStmt: [validator.checkAssignmentTypes],
     VarDecl: [validator.checkVarDeclTypes],
     UseStmt: [validator.checkUseStmtTypes],
@@ -43,6 +46,59 @@ export function registerBCSControlValidationChecks(
 }
 
 export class BCSControlLangValidator {
+  checkUniqueEnumsAndTypesAndUnits(
+    model: ControlModel,
+    accept: ValidationAcceptor
+  ) {
+    const enumNames = new Set<string>();
+    const fbNames = new Set<string>();
+    const unitNames = new Set<string>();
+    const globalVarNames = new Set<string>();
+
+    for (const item of model.items) {
+      if (isEnumDecl(item)) {
+        if (enumNames.has(item.name)) {
+          accept("error", `Duplicate enum '${item.name}'.`, {
+            node: item,
+            property: "name",
+          });
+        } else {
+          enumNames.add(item.name);
+        }
+      }
+      if (isFunctionBlockDecl(item)) {
+        if (fbNames.has(item.name)) {
+          accept("error", `Duplicate function block '${item.name}'.`, {
+            node: item,
+            property: "name",
+          });
+        } else {
+          fbNames.add(item.name);
+        }
+      }
+      if (isControlUnit(item)) {
+        if (unitNames.has(item.name)) {
+          accept("error", `Duplicate control unit '${item.name}'.`, {
+            node: item,
+            property: "name",
+          });
+        } else {
+          unitNames.add(item.name);
+        }
+      }
+      if (isVarDecl(item)) {
+        if (globalVarNames.has(item.name)) {
+          accept("error", `Duplicate global variable '${item.name}'.`, {
+            node: item,
+            property: "name",
+          });
+        } else {
+          globalVarNames.add(item.name);
+        }
+      }
+    }
+  }
+
   checkSingleBlockSectionsInFunctionBlock(
     fb: FunctionBlockDecl,
     accept: ValidationAcceptor
