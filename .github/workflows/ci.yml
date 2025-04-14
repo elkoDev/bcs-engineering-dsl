@@ -21,9 +21,7 @@ jobs:
           node-version-file: ".nvmrc"
 
       - name: Clean install with npm ci
-        run: |
-          rm -rf node_modules package-lock.json
-          npm ci
+        run: npm ci
 
       - name: Build
         run: npm run build
