@@ -23,6 +23,9 @@ jobs:
       - name: Clean install with npm ci
         run: npm ci
 
+      - name: Generate langium files
+        run: npm run langium:generate
+
       - name: Build
         run: npm run build
 
