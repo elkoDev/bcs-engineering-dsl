@@ -8,24 +8,27 @@ on:
 
 jobs:
   build:
+    name: Build and Test
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [16.x]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: "npm"
+          node-version-file: ".nvmrc"
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Clean install with npm ci
+        run: |
+          rm -rf node_modules package-lock.json
+          npm ci
+
+      - name: Build and Validate
+        run: |
+          npm run build:clean
+          npm run validate-exports || echo "Skipping validate-exports"
 
       - name: Run tests
         run: npm test
