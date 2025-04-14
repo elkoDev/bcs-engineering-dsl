@@ -1,29 +1,29 @@
 control MainController {
 
+    // 1) Enum declaration
     enum Mode { OFF, ECO, COMFORT }
-    enum Status { ON, OFF }
 
-    var currentTemp: REAL;
-    var windowOpen: BOOL;
-    var isPresent: BOOL;
+    // 2) Global variables
     var mode: Mode = Mode.OFF;
-    var heat: BOOL;
     var lightLevel: INT = 0;
-    var runCounter: INT = 0;
+    var retryCount: INT;
+    var temp: REAL;
+    var heating: BOOL;
+    var presenceDetected: BOOL;
+    var blindsClosed: BOOL;
+    var lightBtnPressed: BOOL;
 
-    functionblock HeatingLogicFB {
+    // 3) Function block with inputs, outputs, logic
+    functionblock HeatingLogic {
         inputs {
             var iTemp: REAL;
-            var iWindow: BOOL;
             var iMode: Mode;
         }
         outputs {
             var oHeating: BOOL;
         }
         logic {
-            if (iWindow) {
-                oHeating = false || (iTemp < 18.0);
-            } else if (iMode == Mode.COMFORT && iTemp < 21.0) {
+            if (iMode == Mode.COMFORT && iTemp < 21.0) {
                 oHeating = true;
             } else if (iMode == Mode.ECO && iTemp < 18.0) {
                 oHeating = true;
@@ -33,108 +33,90 @@ control MainController {
         }
     }
 
-    // ------------------------------
-    // 1. Scheduled morning lighting
-    // ------------------------------
-    unit MorningLights at TOD#06:30:00 {
+    // 4) Edge detection
+    unit ToggleLightsOnPress {
+        on_rising(lightButton) {
+            lights = !lights;
+        }
+    }
+
+    // 5) Scheduled unit (TOD#)
+    unit TurnOnLightsAt6_30 at TOD#06:30:00 {
         lights = true;
     }
 
-    // ------------------------------
-    // 2. Adaptive heating control
-    // ------------------------------
-    unit ClimateControl {
-        var ouputHeating: BOOL;
-        
-        windowOpen = windowContact;
-        isPresent = presence;
-
-        use HeatingLogicFB(iTemp: tempSensor, iWindow: windowOpen, iMode: mode) -> ouputHeating;
-        heater = ouputHeating;
+    // 6) Conditional unit (when + while loop + local var)
+    unit RetryHeaterStartup when (mode != Mode.OFF) {
+        var retries: INT = 0;
+        while (retries < 3) {
+            retries = retries + 1;
+            heater = true;
+            wait T#1s;
+        }
     }
 
-    // ------------------------------
-    // 3. Presence-triggered light dimming
-    // ------------------------------
-    unit PresenceLighting when (isPresent) {
+    // 7) For loop
+    unit DimUpLoop {
+        for (var i: INT = 0 to 5 by 1) {
+            lightLevel = i * 20;
+            wait T#1s;
+        }
+    }
+
+    // 8) UseStmt (FB call)
+    unit UseHeatingFB {
+        use HeatingLogic(iTemp: temp, iMode: mode) -> heating;
+        heater = heating;
+    }
+
+    // 9) Switch statement
+    unit LightByMode {
         switch (mode) {
             case Mode.COMFORT: {
                 lightLevel = 100;
             }
             case Mode.ECO: {
-                if (currentTemp < 19.0 ) {
-                    lightLevel = 60;
-                } else {
-                    lightLevel = 30;
-                }
+                lightLevel = 50;
             }
-            case Mode.OFF: {
+            default: {
                 lightLevel = 0;
             }
         }
     }
 
-    // ------------------------------
-    // 4. Close blinds at 8:00 AM
-    // ------------------------------
-    unit CloseBlinds at TOD#08:00:01 {
-        blinds = true;
+    // 10) Ramp
+    unit FadeOutLights at TOD#22:00:00 {
+        ramp(lightLevel, 100, 0, T#10s);
     }
 
-    // ------------------------------
-    // 5. Ramp demo: Gradually dim lights
-    // ------------------------------
-    unit NightLightRamp at TOD#22:00:00 {
-        ramp(lightLevel, 0, 100, T#10s);
-    }
-
-    // ------------------------------
-    // 6. Rising edge detection
-    // ------------------------------
-    unit DetectPresenceOnEntry {
-        on_rising(presence) {
+    // 11) now keyword in expression statement
+    unit NowCheck {
+        if (now >= TOD#07:00:00) {
             lights = true;
         }
     }
 
-    // ------------------------------
-    // 7. While loop
-    // ------------------------------
-    unit ErrorMonitor when (mode != Mode.OFF) {
-        var retry: INT = 0;
-        while (retry < 3) {
-            retry = retry + 1;
+    // 12) Delay start logic
+    unit DelayedStartup once when (now >= TOD#07:05:00) {
+        wait T#5s;
+        heater = true;
+    }
+
+    // 13) Local var declaration in unit block
+    unit LocalDemo {
+        var localVal: INT = 42;
+        lightLevel = localVal;
+    }
+
+    // 14) Expression-only statement
+    unit LogCurrentTime {
+        now; // Just a parse test for "now" used as standalone
+    }
+
+    // 15) Edge statement: on_falling
+    unit DetectButtonRelease {
+        on_falling(lightButton) {
+            lights = false;
         }
-    }
-
-    // ------------------------------
-    // 8. For loop
-    // ------------------------------
-    unit DemoLoop {
-        for (var i: INT = 0 to 5 by 1) {
-            lightLevel = i * 20;
-            if (i == 5) {
-                lights = false;
-            } else {
-                lights = true;
-            }
-        }
-    }
-
-    // ------------------------------
-    // 9. Expression statement
-    // ------------------------------
-    unit TimeCheck {
-        now; // just to test 'now' parsing
-    }
-
-    // ------------------------------
-    // 10. Wait statement
-    // ------------------------------
-    unit DelayStart once when (now >= TOD#07:05:00) { // same as "at TOD#07:05:00"
-        var mode_same_name_as_in_global_should_fail: Mode = Mode.OFF;
-        wait T#10s;
-        lights = (5 + 7) * 2 == ((4)) * 3 + 2;
-        presence = false;
     }
 }

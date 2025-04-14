@@ -36,7 +36,10 @@ export function registerBCSControlValidationChecks(
       validator.checkUniqueVarNamesInFunctionBlock,
       validator.checkSingleBlockSectionsInFunctionBlock,
     ],
-    ControlUnit: [validator.checkUniqueVarNamesInUnit],
+    ControlUnit: [
+      validator.checkUniqueVarNamesInUnit,
+      validator.checkScanCycleUnits,
+    ],
     ControlModel: [validator.checkUniqueEnumsAndTypesAndUnits],
     AssignmentStmt: [validator.checkAssignmentTypes],
     VarDecl: [validator.checkVarDeclTypes],
@@ -46,6 +49,19 @@ export function registerBCSControlValidationChecks(
 }
 
 export class BCSControlLangValidator {
+  checkScanCycleUnits(unit: ControlUnit, accept: ValidationAcceptor) {
+    if (!unit.condition && !unit.time && unit.stmts.length > 0) {
+      accept(
+        "hint",
+        `Unit '${unit.name}' runs every scan cycle (no 'at' or 'when' clause).`,
+        {
+          node: unit,
+          property: "name",
+        }
+      );
+    }
+  }
+
   checkUniqueEnumsAndTypesAndUnits(
     model: ControlModel,
     accept: ValidationAcceptor

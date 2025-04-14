@@ -17,6 +17,12 @@ controller MainController {
         dataType: BOOL
     }
 
+    sensor lightButton {
+        type: CONTACT
+        ioType: DIGITAL
+        dataType: BOOL
+    }
+
     actuator heater {
         type: HEATER
         ioType: DIGITAL
