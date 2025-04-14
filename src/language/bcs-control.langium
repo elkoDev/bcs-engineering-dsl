@@ -46,11 +46,31 @@ VarDecl:
 
 FunctionBlockDecl:
     'functionblock' name=ID '{'
-        ('inputs' '{' (inputs+=VarDecl)* '}' )?
-        ('outputs' '{' (outputs+=VarDecl)* '}' )?
-        ('locals' '{' (locals+=VarDecl)* '}' )?
-        ('logic' Block)?
+        members+=FunctionBlockMember*
     '}'
+;
+
+FunctionBlockMember:
+      FunctionBlockInputs
+    | FunctionBlockOutputs
+    | FunctionBlockLocals
+    | FunctionBlockLogic
+;
+
+FunctionBlockInputs:
+    'inputs' '{' (inputs+=VarDecl)* '}'
+;
+
+FunctionBlockOutputs:
+    'outputs' '{' (outputs+=VarDecl)* '}'
+;
+
+FunctionBlockLocals:
+    'locals' '{' (locals+=VarDecl)* '}'
+;
+
+FunctionBlockLogic:
+    'logic' Block
 ;
 
 TypeDecl:

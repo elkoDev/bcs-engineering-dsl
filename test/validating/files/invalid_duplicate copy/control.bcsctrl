@@ -1,0 +1,14 @@
+control InvalidTestController {
+    var windowOpen: BOOL;
+    var temp: REAL;
+    var heater: BOOL;
+
+    unit TestUnit {
+        // Intentional type mismatch
+        heater = temp;
+        heater = 5.5;
+
+        // Intentional type mismatch of sensor assign to local variable 
+        temp = windowContact;
+    }
+}

@@ -8,11 +8,21 @@ import {
   isActuator,
   isEnumDecl,
   isFunctionBlockDecl,
+  isFunctionBlockInputs,
+  isFunctionBlockLocals,
+  isFunctionBlockLogic,
+  isFunctionBlockOutputs,
   isSensor,
   isVarDecl,
   UseStmt,
   VarDecl,
 } from "./generated/ast.js";
+import {
+  getInputs,
+  getOutputs,
+  getLocals,
+  getLogic,
+} from "./utils/function-block-utils.js";
 
 export function registerBCSControlValidationChecks(
   services: BCSControlLangServices
@@ -20,7 +30,10 @@ export function registerBCSControlValidationChecks(
   const registry = services.validation.ValidationRegistry;
   const validator = services.validation.BCSControlLangValidator;
   const checks: ValidationChecks<BCSEngineeringDSLAstType> = {
-    FunctionBlockDecl: [validator.checkUniqueVarNamesInFunctionBlock],
+    FunctionBlockDecl: [
+      validator.checkUniqueVarNamesInFunctionBlock,
+      validator.checkSingleBlockSectionsInFunctionBlock,
+    ],
     ControlUnit: [validator.checkUniqueVarNamesInUnit],
     AssignmentStmt: [validator.checkAssignmentTypes],
     VarDecl: [validator.checkVarDeclTypes],
@@ -30,6 +43,60 @@ export function registerBCSControlValidationChecks(
 }
 
 export class BCSControlLangValidator {
+  checkSingleBlockSectionsInFunctionBlock(
+    fb: FunctionBlockDecl,
+    accept: ValidationAcceptor
+  ) {
+    let countInputs = 0;
+    let countOutputs = 0;
+    let countLocals = 0;
+    let countLogic = 0;
+
+    for (const member of fb.members) {
+      if (isFunctionBlockInputs(member)) countInputs++;
+      else if (isFunctionBlockOutputs(member)) countOutputs++;
+      else if (isFunctionBlockLocals(member)) countLocals++;
+      else if (isFunctionBlockLogic(member)) countLogic++;
+    }
+
+    if (countInputs > 1) {
+      accept(
+        "error",
+        `Only one 'inputs' block allowed in function block '${fb.name}', found ${countInputs}.`,
+        {
+          node: fb,
+        }
+      );
+    }
+    if (countOutputs > 1) {
+      accept(
+        "error",
+        `Only one 'outputs' block allowed in function block '${fb.name}', found ${countOutputs}.`,
+        {
+          node: fb,
+        }
+      );
+    }
+    if (countLocals > 1) {
+      accept(
+        "error",
+        `Only one 'locals' block allowed in function block '${fb.name}', found ${countLocals}.`,
+        {
+          node: fb,
+        }
+      );
+    }
+    if (countLogic > 1) {
+      accept(
+        "error",
+        `Only one 'logic' block allowed in function block '${fb.name}', found ${countLogic}.`,
+        {
+          node: fb,
+        }
+      );
+    }
+  }
+
   /**
    * Validates that all variable names within a given function block are unique.
    * This includes inputs, outputs, local variables, and variables declared within logic statements.
@@ -51,11 +118,11 @@ export class BCSControlLangValidator {
     accept: ValidationAcceptor
   ) {
     const allVars: VarDecl[] = [
-      ...(fb.inputs ?? []),
-      ...(fb.outputs ?? []),
-      ...(fb.locals ?? []),
+      ...getInputs(fb),
+      ...getOutputs(fb),
+      ...getLocals(fb),
     ];
-    for (const stmt of fb.stmts) {
+    for (const stmt of getLogic(fb)?.stmts ?? []) {
       if (isVarDecl(stmt)) {
         allVars.push(stmt);
       }
@@ -116,10 +183,12 @@ export class BCSControlLangValidator {
     if (!fb) return;
 
     // 1) Check: Number of input arguments vs number of inputs
-    if (useStmt.inputArgs.length !== fb.inputs.length) {
+    if (useStmt.inputArgs.length !== getInputs(fb).length) {
       accept(
         "error",
-        `Function block '${fb.name}' expects ${fb.inputs.length} input arguments, but got ${useStmt.inputArgs.length}.`,
+        `Function block '${fb.name}' expects ${
+          getInputs(fb).length
+        } input arguments, but got ${useStmt.inputArgs.length}.`,
         { node: useStmt, property: "inputArgs" }
       );
     }
@@ -127,7 +196,7 @@ export class BCSControlLangValidator {
     // 2) Check: Input types
     for (const arg of useStmt.inputArgs) {
       const paramName = arg.inputVar.ref?.name;
-      const paramDecl = fb.inputs.find((i) => i.name === paramName);
+      const paramDecl = getInputs(fb).find((i) => i.name === paramName);
       const expectedType = this.inferVarDeclType(paramDecl);
       const actualType = this.inferType(arg.value, accept);
 
@@ -178,16 +247,18 @@ export class BCSControlLangValidator {
 
     // 4) Single output result (direct reference)
     if (isSingle) {
-      if (fb.outputs.length !== 1) {
+      if (getOutputs(fb).length !== 1) {
         accept(
           "error",
-          `Function block '${fb.name}' has ${fb.outputs.length} outputs, cannot use direct assignment. Use mapping instead.`,
+          `Function block '${fb.name}' has ${
+            getOutputs(fb).length
+          } outputs, cannot use direct assignment. Use mapping instead.`,
           { node: useStmt, property: "useOutput" }
         );
         return;
       }
 
-      const expected = fb.outputs[0];
+      const expected = getOutputs(fb)[0];
       const actual = output.singleOutput!.outputVar?.ref;
 
       if (actual) {
@@ -210,10 +281,12 @@ export class BCSControlLangValidator {
 
     // 5) Output mapping list (explicit mappings)
     else if (isMapping) {
-      if (output.mappingOutputs.length !== fb.outputs.length) {
+      if (output.mappingOutputs.length !== getOutputs(fb).length) {
         accept(
           "error",
-          `Function block '${fb.name}' expects ${fb.outputs.length} outputs, but got ${output.mappingOutputs.length}.`,
+          `Function block '${fb.name}' expects ${
+            getOutputs(fb).length
+          } outputs, but got ${output.mappingOutputs.length}.`,
           { node: useStmt, property: "useOutput" }
         );
       }
@@ -234,7 +307,7 @@ export class BCSControlLangValidator {
         }
         seen.add(targetVar.name);
 
-        const expected = fb.outputs.find((o) => o.name === targetVar.name);
+        const expected = getOutputs(fb).find((o) => o.name === targetVar.name);
         const expectedType = expected
           ? this.inferVarDeclType(expected)
           : undefined;
@@ -256,10 +329,12 @@ export class BCSControlLangValidator {
 
     // 6) No outputs provided
     else {
-      if (fb.outputs.length > 0) {
+      if (getOutputs(fb).length > 0) {
         accept(
           "error",
-          `Function block '${fb.name}' expects ${fb.outputs.length} outputs, but got 0.`,
+          `Function block '${fb.name}' expects ${
+            getOutputs(fb).length
+          } outputs, but got 0.`,
           { node: useStmt, property: "useOutput" }
         );
       }
