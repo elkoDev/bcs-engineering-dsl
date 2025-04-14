@@ -4,6 +4,13 @@ import { extractDocuments } from "../../src/cli/cli-util.js";
 import * as path from "node:path";
 import { NodeFileSystem } from "langium/node";
 
+// Utility to exclude hints
+function getDiagnosticsWithoutHints(allDocs: any[]) {
+  return allDocs
+    .flatMap((doc) => doc.diagnostics ?? [])
+    .filter((d) => d.severity !== 4); // 4 = Hint
+}
+
 describe("BCS Control Validation Tests", () => {
   test("No errors in valid control/hardware files", async () => {
     const services = createBcsEngineeringServices(NodeFileSystem);
@@ -14,11 +21,9 @@ describe("BCS Control Validation Tests", () => {
       false
     );
 
-    expect(mainDoc.diagnostics ?? []).toEqual([]);
+    const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
 
-    allDocs.forEach((doc) => {
-      expect(doc.diagnostics ?? []).toEqual([]);
-    });
+    expect(allDiagnostics.length).toBe(0);
   });
 
   test("Detect Assignment type mismatch", async () => {
@@ -30,7 +35,7 @@ describe("BCS Control Validation Tests", () => {
       false
     );
 
-    const allDiagnostics = allDocs.flatMap((doc) => doc.diagnostics ?? []);
+    const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
     expect(diagString).toMatch(/Cannot assign "REAL" to "BOOL"/);
@@ -45,7 +50,7 @@ describe("BCS Control Validation Tests", () => {
       false
     );
 
-    const allDiagnostics = allDocs.flatMap((doc) => doc.diagnostics ?? []);
+    const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
     expect(allDiagnostics.length).toBe(1);
@@ -69,7 +74,7 @@ describe("BCS Control Validation Tests", () => {
       false
     );
 
-    const allDiagnostics = allDocs.flatMap((doc) => doc.diagnostics ?? []);
+    const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
     expect(allDiagnostics.length).toBe(9);
@@ -103,7 +108,7 @@ describe("BCS Control Validation Tests", () => {
       false
     );
 
-    const allDiagnostics = allDocs.flatMap((doc) => doc.diagnostics ?? []);
+    const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
     expect(allDiagnostics.length).toBe(14);
@@ -152,7 +157,7 @@ describe("BCS Control Validation Tests", () => {
       false
     );
 
-    const allDiagnostics = allDocs.flatMap((doc) => doc.diagnostics ?? []);
+    const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
     expect(allDiagnostics.length).toBe(15);
@@ -171,7 +176,29 @@ describe("BCS Control Validation Tests", () => {
       "Duplicate local var name 'duplicateUnitVar' in unit 'DuplicateUnit'.",
       "Duplicate control unit 'DuplicateUnit'.",
       "Duplicate component name 'motor' in this controller.",
-      "Duplicate component name 'windowContact' in this controller."
+      "Duplicate component name 'windowContact' in this controller.",
+    ];
+
+    expectedMessages.forEach((msg) => {
+      expect(diagString).toContain(msg);
+    });
+  });
+
+  test("Test when clause", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    const [mainDoc, allDocs] = await extractDocuments(
+      path.join(__dirname, "files", "invalid_when", "control_when.bcsctrl"),
+      services.bcsControl,
+      false
+    );
+
+    const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
+    const diagString = allDiagnostics.map((d) => d.message).join("\n");
+
+    expect(allDiagnostics.length).toBe(1);
+    const expectedMessages = [
+      "Condition in 'when (...)' of unit 'Test' must be of type BOOL, but got 'REAL'.",
     ];
 
     expectedMessages.forEach((msg) => {

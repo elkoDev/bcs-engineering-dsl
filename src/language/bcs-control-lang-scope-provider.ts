@@ -100,7 +100,7 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
       if (!useStmt?.functionBlockRef?.ref) return EMPTY_SCOPE;
 
       const fb = useStmt.functionBlockRef.ref;
-      const fbParams = getInputs(fb);
+      const fbParams = getOutputs(fb);
 
       return this.createScopeForNodes(fbParams);
     }

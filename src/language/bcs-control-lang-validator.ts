@@ -7,6 +7,7 @@ import {
   ControlUnit,
   FunctionBlockDecl,
   isActuator,
+  isBinExpr,
   isControlUnit,
   isEnumDecl,
   isFunctionBlockDecl,
@@ -14,6 +15,7 @@ import {
   isFunctionBlockLocals,
   isFunctionBlockLogic,
   isFunctionBlockOutputs,
+  isPrimary,
   isSensor,
   isVarDecl,
   UseStmt,
@@ -39,6 +41,7 @@ export function registerBCSControlValidationChecks(
     ControlUnit: [
       validator.checkUniqueVarNamesInUnit,
       validator.checkScanCycleUnits,
+      validator.checkWhenConditionType,
     ],
     ControlModel: [validator.checkUniqueEnumsAndTypesAndUnits],
     AssignmentStmt: [validator.checkAssignmentTypes],
@@ -49,6 +52,19 @@ export function registerBCSControlValidationChecks(
 }
 
 export class BCSControlLangValidator {
+  checkWhenConditionType(unit: ControlUnit, accept: ValidationAcceptor) {
+    if (unit.condition) {
+      const type = this.inferType(unit.condition, accept);
+      if (type && type !== "BOOL") {
+        accept(
+          "error",
+          `Condition in 'when (...)' of unit '${unit.name}' must be of type BOOL, but got '${type}'.`,
+          { node: unit, property: "condition" }
+        );
+      }
+    }
+  }
+
   checkScanCycleUnits(unit: ControlUnit, accept: ValidationAcceptor) {
     if (!unit.condition && !unit.time && unit.stmts.length > 0) {
       accept(
@@ -520,7 +536,7 @@ export class BCSControlLangValidator {
     if (!expr) return undefined;
 
     // 1) If BinaryExpr => check left and right side
-    if (expr.$type === "BinExpr") {
+    if (isBinExpr(expr)) {
       const left = this.inferType(expr.e1, accept);
       const right = this.inferType(expr.e2, accept);
       const op = expr.op;
@@ -612,7 +628,7 @@ export class BCSControlLangValidator {
         return "INT";
       }
     }
-    if (typeof expr.val === "boolean") {
+    if (typeof expr.val === "boolean" && expr.$cstNode?.text !== "now") {
       return "BOOL";
     }
     if (typeof expr.val === "string") {
@@ -627,6 +643,10 @@ export class BCSControlLangValidator {
         return "STRING";
       }
     }
+    if (isPrimary(expr) && expr.$cstNode?.text === "now") {
+      return "TOD";
+    }
+
     return undefined;
   }
 
@@ -675,12 +695,21 @@ export class BCSControlLangValidator {
       ["INT", "REAL"],
       ["STRING"],
       ["BOOL"],
+      ["TOD"]
     ];
 
     for (const group of comparableGroups) {
       if (group.includes(type1) && group.includes(type2)) {
         return true;
       }
+    }
+
+    if (
+      type1.startsWith("Enum:") &&
+      type2.startsWith("Enum:") &&
+      type1 === type2
+    ) {
+      return true;
     }
 
     return false;
