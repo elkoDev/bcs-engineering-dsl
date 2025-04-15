@@ -1,0 +1,41 @@
+controller MainBuildingController type: CX5130 {
+    portgroup AnalogInputs {
+        type: KL3064
+        direction: INPUT
+        channelCount: 4
+        addressType: WORD     // Each channel is a WORD
+        baseAddress: %IW0
+    }
+    
+    portgroup DigitalOutputs {
+        type: KL2408
+        direction: OUTPUT
+        channelCount: 8
+        addressType: BIT      // Each channel is a BIT
+        baseAddress: %QX0.0
+    }
+    
+    // Analog input using 2 WORDs for REAL
+    datapoint RoomTemp1 {
+        role: SENSOR
+        dataType: REAL  // This would map to 2 WORDs internally
+        portgroup: AnalogInputs
+        firstChannel: 0
+        channelCount: 2 // Explicitly specifies this takes 2 channels
+    }
+    
+    // Digital output - single bit
+    datapoint HeatingValve101 {
+        role: ACTUATOR
+        dataType: BOOL
+        portgroup: DigitalOutputs
+        firstChannel: 0       // First bit output
+    }
+    
+    // Direct binding
+    datapoint EmergencyStop1 {
+        role: SENSOR
+        dataType: BOOL
+        ioBinding: %IX100.0  // Direct binding to a specific input
+    }
+}
