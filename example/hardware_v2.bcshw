@@ -1,13 +1,21 @@
 controller MainBuildingController type: CX5130 {
-    portgroup AnalogInputs {
+    portgroup AnalogInputModule {
         type: KL3064
-        direction: INPUT
+        direction: INPUT      // NOTE: could be implicitly inferred from the base address
         channelCount: 4
-        addressType: WORD     // Each channel is a WORD
+        addressType: WORD     // Each channel is a WORD (NOTE: could be implicitly infered from the base address)
         baseAddress: %IW0
     }
+
+    portgroup DigitalInputModule {
+        type: EL1008
+        direction: INPUT
+        channelCount: 8
+        addressType: BIT      // Each channel is a BIT
+        baseAddress: %IX8.0
+    }
     
-    portgroup DigitalOutputs {
+    portgroup DigitalOutputModule {
         type: KL2408
         direction: OUTPUT
         channelCount: 8
@@ -16,26 +24,30 @@ controller MainBuildingController type: CX5130 {
     }
     
     // Analog input using 2 WORDs for REAL
+    // NOTE: Or should we assume that a datapoint always maps to exactly one channel?
     datapoint RoomTemp1 {
         role: SENSOR
         dataType: REAL  // This would map to 2 WORDs internally
-        portgroup: AnalogInputs
+        portgroup: AnalogInputModule
         firstChannel: 0
         channelCount: 2 // Explicitly specifies this takes 2 channels
     }
     
     // Digital output - single bit
-    datapoint HeatingValve101 {
+    datapoint HeatingValve1 {
         role: ACTUATOR
         dataType: BOOL
-        portgroup: DigitalOutputs
+        portgroup: DigitalOutputModule
         firstChannel: 0       // First bit output
     }
     
     // Direct binding
     datapoint EmergencyStop1 {
         role: SENSOR
+        portgroup: DigitalInputModule
         dataType: BOOL
         ioBinding: %IX100.0  // Direct binding to a specific input
     }
+
+    // NOTE: Which addressing scheme is more suitable for the datapoints or how could the addressing scheme be improved?
 }
