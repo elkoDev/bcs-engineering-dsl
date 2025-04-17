@@ -38,6 +38,8 @@ describe("BCS Control Validation Tests", () => {
     const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
+    expect(allDiagnostics.length).toBe(3);
+
     expect(diagString).toMatch(/Cannot assign "REAL" to "BOOL"/);
   });
 
@@ -160,7 +162,7 @@ describe("BCS Control Validation Tests", () => {
     const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
-    expect(allDiagnostics.length).toBe(15);
+    expect(allDiagnostics.length).toBe(34);
     const expectedMessages = [
       "Duplicate enum 'DuplicateMode'.",
       "Only one 'inputs' block allowed in function block 'DuplicateFB', found 2.",
@@ -199,6 +201,30 @@ describe("BCS Control Validation Tests", () => {
     expect(allDiagnostics.length).toBe(1);
     const expectedMessages = [
       "Condition in 'when (...)' of unit 'Test' must be of type BOOL, but got 'REAL'.",
+    ];
+
+    expectedMessages.forEach((msg) => {
+      expect(diagString).toContain(msg);
+    });
+  });
+
+  test("Test switch-case stmt", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    const [mainDoc, allDocs] = await extractDocuments(
+      path.join(__dirname, "files", "invalid_switch", "control_switch.bcsctrl"),
+      services.bcsControl,
+      false
+    );
+
+    const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
+    const diagString = allDiagnostics.map((d) => d.message).join("\n");
+
+    expect(allDiagnostics.length).toBe(3);
+    const expectedMessages = [
+      "Case literal 'Status.OFF' is of type 'Enum:Status', but switch expression is 'Enum:Mode'.",
+      "Duplicate case literal 'Mode.ECO'.",
+      "Case literal 'true' is of type 'BOOL', but switch expression is 'Enum:Mode'."
     ];
 
     expectedMessages.forEach((msg) => {

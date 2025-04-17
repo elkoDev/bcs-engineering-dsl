@@ -1,0 +1,27 @@
+control InvalidSwitchTestController {
+    enum Mode { OFF, ECO, COMFORT }
+    enum Status { ON, OFF }
+
+    var mode_should_fail : Mode;
+
+    unit TestUnit {
+        switch (mode_should_fail) {
+            case Status.OFF: {
+                var status_should_fail : Status;
+            }
+            case Mode.ECO: {
+                var status_should_fail : Status;
+            }
+            case Mode.ECO: {
+                var status_should_fail : Status;
+            }
+            case true: {
+                var status_should_fail : Status;
+            }
+            default: {
+                var status_should_fail : Status;
+            }
+        }
+    }
+}
+ 

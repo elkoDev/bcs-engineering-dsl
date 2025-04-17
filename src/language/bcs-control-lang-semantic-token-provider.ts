@@ -7,6 +7,7 @@ import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
   isActuator,
   isBinExpr,
+  isCaseLiteral,
   isControlModel,
   isControlUnit,
   isEnumDecl,
@@ -175,6 +176,13 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         node,
         property: "member",
         type: SemanticTokenTypes.enumMember,
+      });
+    }
+    if (isCaseLiteral(node) && !isEnumMemberLiteral(node.val)) {
+      acceptor({
+        node,
+        property: "val",
+        type: SemanticTokenTypes.type,
       });
     }
     if (isPrimary(node)) {

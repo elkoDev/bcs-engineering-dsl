@@ -1,4 +1,15 @@
 control MainController {
+ functionblock asdf {
+    locals {
+        var dsaf: BOOL;
+    }
+    
+    logic {
+
+        dsaf = 4 == 4;
+
+    }
+ }
 
     // 1) Enum declaration
     enum Mode { OFF, ECO, COMFORT }

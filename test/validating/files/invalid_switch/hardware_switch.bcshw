@@ -1,4 +1,4 @@
-controller InvalidTestController {
+controller InvalidSwitchTestController {
     sensor windowContact {
         type: CONTACT
         ioType: DIGITAL
