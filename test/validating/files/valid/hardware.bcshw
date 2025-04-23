@@ -1,7 +1,15 @@
-controller ValidTestController {
-    sensor windowContact {
-        type: CONTACT
-        ioType: DIGITAL
-        dataType: BOOL
+controller ValidTestController for Beckhoff {
+    portgroup DI {
+        moduleType: EL1008
+        ioType: DIGITAL_INPUT
+        startAddress: %IX0.0
+        channels: 8
+    }
+
+    datapoint windowContact {
+        portgroup: DI
+        channels: {
+            channel value: BOOL at 0
+        }
     }
 }

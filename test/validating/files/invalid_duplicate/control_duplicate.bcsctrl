@@ -72,7 +72,7 @@ control InvalidDuplicateController {
             var duplicateNestedUnitVar: BOOL;
         }
 
-        on_rising(windowContact) {
+        on_rising(windowContact.value) {
             var localOnRisingVar: BOOL;
             // Cannot declare a variable with the same name as in the on_rising scope
             var localOnRisingVar: BOOL;
@@ -82,7 +82,7 @@ control InvalidDuplicateController {
             var duplicateNestedUnitVar: BOOL;
         }
 
-        on_rising(windowContact) {
+        on_rising(windowContact.value) {
             var localOnRisingVar: BOOL;
             // Cannot declare a variable with the same name as in the on_rising scope
             var localOnRisingVar: BOOL;
@@ -102,7 +102,7 @@ control InvalidDuplicateController {
             var duplicateNestedUnitVar: BOOL;
         }
 
-        switch (windowContact) {
+        switch (windowContact.value) {
             case true: {
                 var localSwitchVar: BOOL;
                 // Cannot declare a variable with the same name as in the switch scope

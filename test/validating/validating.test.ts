@@ -178,7 +178,7 @@ describe("BCS Control Validation Tests", () => {
       "Duplicate local var name 'duplicateUnitVar' in unit 'DuplicateUnit'.",
       "Duplicate control unit 'DuplicateUnit'.",
       "Duplicate component name 'motor' in this controller.",
-      "Duplicate component name 'windowContact' in this controller.",
+      "Duplicate component name 'windowContact_duplicate' in this controller.",
     ];
 
     expectedMessages.forEach((msg) => {
