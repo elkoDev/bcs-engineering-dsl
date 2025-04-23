@@ -1,9 +1,10 @@
 import { ValidationAcceptor, ValidationChecks } from "langium";
 import {
-  Actuator,
   BCSEngineeringDSLAstType,
+  Channel,
   Controller,
-  Sensor,
+  Datapoint,
+  PortGroup,
 } from "./generated/ast.js";
 import { BCSHardwareLangServices } from "./bcs-hardware-lang-module.js";
 
@@ -17,8 +18,8 @@ export function registerBCSHardwareValidationChecks(
       validator.checkControllerHasName,
       validator.checkUniqueComponentNames,
     ],
-    Sensor: [validator.checkSensorIOCompatibility],
-    Actuator: [validator.checkActuatorIsValid],
+    PortGroup: [validator.checkPortgroupChannelCount],
+    Datapoint: [validator.checkDatapointChannelIndicesAndDuplicates],
   };
   registry.register(checks, validator);
 }
@@ -71,48 +72,67 @@ export class BCSHardwareLangValidator {
   }
 
   /**
-   * Validates the compatibility between a sensor's IO type and its data type.
+   * Validates the indices of datapoint channels within a controller.
+   * It checks if the indices are within the valid range and if there are any duplicate indices.
+   * If any issues are found, they are reported using the provided `ValidationAcceptor`.
    *
-   * @param sensor - The sensor object to validate. The `ioType` property specifies
-   *                 the input/output type (e.g., "AI", "AO"), and the `dataType`
-   *                 property specifies the data type (e.g., "REAL", "INT").
-   * @param accept - A callback function used to report validation issues. It accepts
-   *                 a severity level (e.g., "warning"), a message, and additional
-   *                 context such as the node and property causing the issue.
-   *
-   * @remarks
-   * This method enforces the following rule:
-   * - If the sensor's `ioType` is "AI" (Analog Input) or "AO" (Analog Output),
-   *   its `dataType` should be either "REAL" or "INT". If this rule is violated,
-   *   a warning is reported.
+   * @param controller - The controller object containing the components to validate.
+   * @param accept - A function used to report validation issues. It accepts the severity,
+   *                 a message, and additional context about the validation issue.
    */
-  checkSensorIOCompatibility(sensor: Sensor, accept: ValidationAcceptor) {
-    // If sensor.ioType is ANALOG => sensor.dataType should be REAL or INT
-    if (
-      sensor.ioType === "ANALOG" &&
-      !(sensor.dataType === "REAL" || sensor.dataType === "INT")
-    ) {
+  checkDatapointChannelIndicesAndDuplicates(
+    datapoint: Datapoint,
+    accept: ValidationAcceptor
+  ): void {
+    const portgroup = datapoint.portgroup?.ref;
+    if (!portgroup) {
       accept(
-        "warning",
-        `Sensor with ioType '${sensor.ioType}' usually has dataType REAL or INT.`,
-        { node: sensor, property: "dataType" }
+        "error",
+        `Datapoint '${datapoint.name}' must be assigned to a portgroup.`,
+        { node: datapoint, property: "portgroup" }
       );
-    } else if (sensor.ioType === "DIGITAL" && sensor.dataType !== "BOOL") {
-      accept(
-        "warning",
-        `Sensor with ioType '${sensor.ioType}' usually has dataType BOOL.`,
-        { node: sensor, property: "dataType" }
-      );
+      return;
+    }
+
+    const maxIndex = portgroup.channels - 1;
+    const usedIndices = new Map<number, Channel>();
+
+    for (const channel of datapoint.channels) {
+      const index = channel.index;
+
+      // Check index range
+      if (index < 0 || index > maxIndex) {
+        accept(
+          "error",
+          `Channel '${channel.name}' index ${index} is out of range (0 to ${maxIndex}) for portgroup '${portgroup.name}'.`,
+          { node: channel, property: "index" }
+        );
+      }
+
+      // Check for duplicate index
+      const existing = usedIndices.get(index);
+      if (existing) {
+        accept(
+          "error",
+          `Duplicate channel index '${index}' used in '${datapoint.name}' (also used by '${existing.name}').`,
+          { node: channel, property: "index" }
+        );
+      } else {
+        usedIndices.set(index, channel);
+      }
     }
   }
 
-  checkActuatorIsValid(act: Actuator, accept: ValidationAcceptor) {
-    // e.g. if you want to forbid DAMPER with dataType=STRING
-    if (act.type === "DAMPER" && act.dataType === "STRING") {
-      accept("error", `DAMPER cannot use dataType=STRING.`, {
-        node: act,
-        property: "dataType",
-      });
+  checkPortgroupChannelCount(
+    portGroup: PortGroup,
+    accept: ValidationAcceptor
+  ): void {
+    if (portGroup.channels <= 0) {
+      accept(
+        "error",
+        `Portgroup '${portGroup.name}' must define at least one channel.`,
+        { node: portGroup, property: "channels" }
+      );
     }
   }
 }

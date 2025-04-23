@@ -1,7 +1,15 @@
-controller InvalidVarDeclTestController {
-    sensor windowContact {
-        type: CONTACT
-        ioType: DIGITAL
-        dataType: BOOL
+controller InvalidVarDeclTestController for Beckhoff {
+    portgroup DigitalInputs {
+        moduleType: EL1008
+        ioType: DIGITAL_INPUT
+        startAddress: %IX0.0
+        channels: 8
+    }
+
+    datapoint windowContact {
+        portgroup: DigitalInputs
+        channels: {
+            channel value: BOOL at 0
+        }
     }
 }

@@ -8,9 +8,10 @@ import {
 } from "langium";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
-  Actuator,
+  Datapoint,
   isControlModel,
   isControlUnit,
+  isDatapoint,
   isEnumDecl,
   isEnumMemberLiteral,
   isForStmt,
@@ -20,7 +21,6 @@ import {
   isRef,
   isUseStmt,
   isVarDecl,
-  Sensor,
   VarDecl,
 } from "./generated/ast.js";
 import {
@@ -44,19 +44,12 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
         isControlModel
       );
       const controller = controlModel?.controller.ref;
-      const actuators =
-        controller?.components.filter((c) => c.$type === Actuator) ?? [];
-      const sensors =
-        controller?.components.filter((c) => c.$type === Sensor) ?? [];
+      const datapoints =
+        controller?.components.filter((c) => c.$type === Datapoint) ?? [];
 
       const enumDecls = controlModel?.items.filter(isEnumDecl) ?? [];
 
-      const scopeNodes: AstNode[] = [
-        ...localVars,
-        ...actuators,
-        ...sensors,
-        ...enumDecls,
-      ];
+      const scopeNodes: AstNode[] = [...localVars, ...datapoints, ...enumDecls];
 
       const isInsideFunctionBlock =
         AstUtils.getContainerOfType(container, isFunctionBlockDecl) !==
@@ -69,11 +62,16 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
       return this.createScopeForNodes(scopeNodes);
     }
 
-    // property = enum member reference
+    // property = enum member reference or datapoint channel reference
     if (isRef(container) && context.property === "property") {
-      const enumDecl = container.ref?.ref;
-      if (enumDecl && isEnumDecl(enumDecl)) {
+      const namedElement = container.ref.ref;
+      if (isEnumDecl(namedElement)) {
+        const enumDecl = namedElement;
         return this.createScopeForNodes(enumDecl.members);
+      }
+      if (isDatapoint(namedElement)) {
+        const datapoint = namedElement;
+        return this.createScopeForNodes(datapoint.channels);
       }
     }
 

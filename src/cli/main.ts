@@ -1,13 +1,13 @@
-/*import chalk from "chalk";
+import chalk from "chalk";
 import { Command } from "commander";
 import { createBcsEngineeringServices } from "../language/bcs-engineering-module.js";
-import { generateJavaScript } from "./generator.js";
+import { generateCodeAndConfig } from "./generator.js";
 import { NodeFileSystem } from "langium/node";
 import * as url from "node:url";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { BCSControlLanguageMetaData } from "../language/generated/module.js";
-import { ControlModel } from "../language/generated/ast.js";
+import { extractControlModelWithHardwareModels } from "./cli-util.js";
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
 const packagePath = path.resolve(__dirname, "..", "..", "package.json");
@@ -18,15 +18,27 @@ export const generateAction = async (
   opts: GenerateOptions
 ): Promise<void> => {
   const services = createBcsEngineeringServices(NodeFileSystem).bcsControl;
-  const model = await extractAstNode<ControlModel>(fileName, services);
-  const generatedFilePath = generateJavaScript(model);
+  const [controlModel, hardwareModels] =
+    await extractControlModelWithHardwareModels(fileName, services);
+  const generatedFilePaths = generateCodeAndConfig(
+    controlModel,
+    hardwareModels[0],
+    fileName,
+    opts.destination
+  );
   console.log(
-    chalk.green(`JavaScript code generated successfully: ${generatedFilePath}`)
+    chalk.green(`Control code & config generated successfully `),
+    chalk.blue("✓\n"),
+    chalk.magenta(
+      generatedFilePaths.map((filePath) => "\t• " + filePath).join("\n")
+    )
   );
 };
 
 export type GenerateOptions = {
   destination?: string;
+  root?: string;
+  quiet: boolean;
 };
 
 export default function (): void {
@@ -42,11 +54,12 @@ export default function (): void {
       `source file (possible file extensions: ${fileExtensions})`
     )
     .option("-d, --destination <dir>", "destination directory of generating")
+    .option("-r, --root <dir>", "source root folder")
+    .option("-q, --quiet", "whether the program should print something", false)
     .description(
-      'generates JavaScript code that prints "Hello, {name}!" for each greeting in a source file'
+      "Generates control code & configuration from a BCS Control file in the workspace."
     )
     .action(generateAction);
 
   program.parse(process.argv);
 }
-*/

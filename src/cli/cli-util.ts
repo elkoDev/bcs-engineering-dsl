@@ -82,14 +82,8 @@ export async function extractDocuments(
   return [mainDocument, documents];
 }
 
-/**
- * Read a requirement model with the test models from workspace located in the same folder.
- * @param fileName the main requirement model file
- * @param services the language services
- * @returns a tuple with the model indicated by the fileName and a list of
- *          test models from the workspace.
-chr */
-export async function extractRequirementModelWithTestModels(
+
+export async function extractControlModelWithHardwareModels(
   fileName: string,
   services: LangiumCoreServices
 ): Promise<[ControlModel, HardwareModel[]]> {
