@@ -19,16 +19,8 @@ vsce package
 
 ## Generate Code
 
-### Commands
-
-TODO: Setup code generation e.g.
+The code generation is done by the `bcs-engineering-dsl` CLI. The command is as follows:
 
 ```bash
-node .\bin\cli.js generateCmds .\examples\test.logo
-```
-
-### JSON
-
-```bash
-node .\bin\cli.js generateJSON .\examples\test.logo
+node .\bin\cli.js generate .\example\control.bcsctrl
 ```
