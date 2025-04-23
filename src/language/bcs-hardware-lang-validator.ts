@@ -1,5 +1,11 @@
 import { ValidationAcceptor, ValidationChecks } from "langium";
-import { BCSEngineeringDSLAstType, Controller } from "./generated/ast.js";
+import {
+  BCSEngineeringDSLAstType,
+  Channel,
+  Controller,
+  Datapoint,
+  PortGroup,
+} from "./generated/ast.js";
 import { BCSHardwareLangServices } from "./bcs-hardware-lang-module.js";
 
 export function registerBCSHardwareValidationChecks(
@@ -12,6 +18,8 @@ export function registerBCSHardwareValidationChecks(
       validator.checkControllerHasName,
       validator.checkUniqueComponentNames,
     ],
+    PortGroup: [validator.checkPortgroupChannelCount],
+    Datapoint: [validator.checkDatapointChannelIndicesAndDuplicates],
   };
   registry.register(checks, validator);
 }
@@ -60,6 +68,71 @@ export class BCSHardwareLangValidator {
       } else {
         seen.add(comp.name);
       }
+    }
+  }
+
+  /**
+   * Validates the indices of datapoint channels within a controller.
+   * It checks if the indices are within the valid range and if there are any duplicate indices.
+   * If any issues are found, they are reported using the provided `ValidationAcceptor`.
+   *
+   * @param controller - The controller object containing the components to validate.
+   * @param accept - A function used to report validation issues. It accepts the severity,
+   *                 a message, and additional context about the validation issue.
+   */
+  checkDatapointChannelIndicesAndDuplicates(
+    datapoint: Datapoint,
+    accept: ValidationAcceptor
+  ): void {
+    const portgroup = datapoint.portgroup?.ref;
+    if (!portgroup) {
+      accept(
+        "error",
+        `Datapoint '${datapoint.name}' must be assigned to a portgroup.`,
+        { node: datapoint, property: "portgroup" }
+      );
+      return;
+    }
+
+    const maxIndex = portgroup.channels - 1;
+    const usedIndices = new Map<number, Channel>();
+
+    for (const channel of datapoint.channels) {
+      const index = channel.index;
+
+      // Check index range
+      if (index < 0 || index > maxIndex) {
+        accept(
+          "error",
+          `Channel '${channel.name}' index ${index} is out of range (0 to ${maxIndex}) for portgroup '${portgroup.name}'.`,
+          { node: channel, property: "index" }
+        );
+      }
+
+      // Check for duplicate index
+      const existing = usedIndices.get(index);
+      if (existing) {
+        accept(
+          "error",
+          `Duplicate channel index '${index}' used in '${datapoint.name}' (also used by '${existing.name}').`,
+          { node: channel, property: "index" }
+        );
+      } else {
+        usedIndices.set(index, channel);
+      }
+    }
+  }
+
+  checkPortgroupChannelCount(
+    portGroup: PortGroup,
+    accept: ValidationAcceptor
+  ): void {
+    if (portGroup.channels <= 0) {
+      accept(
+        "error",
+        `Portgroup '${portGroup.name}' must define at least one channel.`,
+        { node: portGroup, property: "channels" }
+      );
     }
   }
 }
