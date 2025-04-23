@@ -89,6 +89,7 @@ control MainController {
     unit DelayedStartup once when (now >= TOD#07:05:00) {
         wait T#5s;
         heater = true;
+        Lights.LightRoom1 = false;
     }
 
     unit LocalDemo {
