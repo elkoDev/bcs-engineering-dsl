@@ -27,10 +27,10 @@ export const generateAction = async (
     opts.destination
   );
   console.log(
-    chalk.green(
-      `Control code & config generated successfully:\n${generatedFilePaths.join(
-        "\n"
-      )}`
+    chalk.green(`Control code & config generated successfully `),
+    chalk.blue("✓\n"),
+    chalk.magenta(
+      generatedFilePaths.map((filePath) => "\t• " + filePath).join("\n")
     )
   );
 };
