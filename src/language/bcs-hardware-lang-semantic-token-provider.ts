@@ -4,7 +4,12 @@ import {
   SemanticTokenAcceptor,
 } from "langium/lsp";
 import { BCSHardwareLangServices } from "./bcs-hardware-lang-module.js";
-import { isActuator, isController, isSensor } from "./generated/ast.js";
+import {
+  isChannel,
+  isController,
+  isDatapoint,
+  isPortGroup,
+} from "./generated/ast.js";
 import { SemanticTokenTypes } from "vscode-languageserver";
 
 export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenProvider {
@@ -22,8 +27,13 @@ export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenP
         property: "name",
         type: SemanticTokenTypes.macro,
       });
+      acceptor({
+        node,
+        property: "platform",
+        type: SemanticTokenTypes.macro,
+      });
     }
-    if (isSensor(node) || isActuator(node)) {
+    if (isDatapoint(node)) {
       acceptor({
         node,
         property: "name",
@@ -31,18 +41,52 @@ export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenP
       });
       acceptor({
         node,
-        property: "type",
+        property: "portgroup",
         type: SemanticTokenTypes.type,
       });
+    }
+    if (isChannel(node)) {
       acceptor({
         node,
-        property: "ioType",
-        type: SemanticTokenTypes.type,
+        property: "name",
+        type: SemanticTokenTypes.variable,
       });
       acceptor({
         node,
         property: "dataType",
         type: SemanticTokenTypes.type,
+      });
+      acceptor({
+        node,
+        property: "index",
+        type: SemanticTokenTypes.number,
+      });
+    }
+    if (isPortGroup(node)) {
+      acceptor({
+        node,
+        property: "name",
+        type: SemanticTokenTypes.class,
+      });
+      acceptor({
+        node,
+        property: "moduleType",
+        type: SemanticTokenTypes.string,
+      });
+      acceptor({
+        node,
+        property: "ioType",
+        type: SemanticTokenTypes.enumMember,
+      });
+      acceptor({
+        node,
+        property: "startAddress",
+        type: SemanticTokenTypes.string,
+      });
+      acceptor({
+        node,
+        property: "channels",
+        type: SemanticTokenTypes.number,
       });
     }
   }

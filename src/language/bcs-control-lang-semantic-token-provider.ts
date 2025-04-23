@@ -5,11 +5,11 @@ import {
 } from "langium/lsp";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
-  isActuator,
   isBinExpr,
   isCaseLiteral,
   isControlModel,
   isControlUnit,
+  isDatapoint,
   isEnumDecl,
   isEnumMemberLiteral,
   isFunctionBlockDecl,
@@ -18,7 +18,6 @@ import {
   isPrimary,
   isRampStmt,
   isRef,
-  isSensor,
   isSimpleUseResult,
   isTypeRef,
   isUseStmt,
@@ -106,11 +105,16 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
           property: "property",
           type: SemanticTokenTypes.enumMember,
         });
-      } else if (isActuator(namedElement) || isSensor(namedElement)) {
+      } else if (isDatapoint(namedElement)) {
         acceptor({
           node,
           property: "ref",
           type: SemanticTokenTypes.struct,
+        });
+        acceptor({
+          node,
+          property: "property",
+          type: SemanticTokenTypes.variable,
         });
       }
     }

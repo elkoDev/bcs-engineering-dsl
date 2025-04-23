@@ -1,10 +1,5 @@
 import { ValidationAcceptor, ValidationChecks } from "langium";
-import {
-  Actuator,
-  BCSEngineeringDSLAstType,
-  Controller,
-  Sensor,
-} from "./generated/ast.js";
+import { BCSEngineeringDSLAstType, Controller } from "./generated/ast.js";
 import { BCSHardwareLangServices } from "./bcs-hardware-lang-module.js";
 
 export function registerBCSHardwareValidationChecks(
@@ -17,8 +12,6 @@ export function registerBCSHardwareValidationChecks(
       validator.checkControllerHasName,
       validator.checkUniqueComponentNames,
     ],
-    Sensor: [validator.checkSensorIOCompatibility],
-    Actuator: [validator.checkActuatorIsValid],
   };
   registry.register(checks, validator);
 }
@@ -67,52 +60,6 @@ export class BCSHardwareLangValidator {
       } else {
         seen.add(comp.name);
       }
-    }
-  }
-
-  /**
-   * Validates the compatibility between a sensor's IO type and its data type.
-   *
-   * @param sensor - The sensor object to validate. The `ioType` property specifies
-   *                 the input/output type (e.g., "AI", "AO"), and the `dataType`
-   *                 property specifies the data type (e.g., "REAL", "INT").
-   * @param accept - A callback function used to report validation issues. It accepts
-   *                 a severity level (e.g., "warning"), a message, and additional
-   *                 context such as the node and property causing the issue.
-   *
-   * @remarks
-   * This method enforces the following rule:
-   * - If the sensor's `ioType` is "AI" (Analog Input) or "AO" (Analog Output),
-   *   its `dataType` should be either "REAL" or "INT". If this rule is violated,
-   *   a warning is reported.
-   */
-  checkSensorIOCompatibility(sensor: Sensor, accept: ValidationAcceptor) {
-    // If sensor.ioType is ANALOG => sensor.dataType should be REAL or INT
-    if (
-      sensor.ioType === "ANALOG" &&
-      !(sensor.dataType === "REAL" || sensor.dataType === "INT")
-    ) {
-      accept(
-        "warning",
-        `Sensor with ioType '${sensor.ioType}' usually has dataType REAL or INT.`,
-        { node: sensor, property: "dataType" }
-      );
-    } else if (sensor.ioType === "DIGITAL" && sensor.dataType !== "BOOL") {
-      accept(
-        "warning",
-        `Sensor with ioType '${sensor.ioType}' usually has dataType BOOL.`,
-        { node: sensor, property: "dataType" }
-      );
-    }
-  }
-
-  checkActuatorIsValid(act: Actuator, accept: ValidationAcceptor) {
-    // e.g. if you want to forbid DAMPER with dataType=STRING
-    if (act.type === "DAMPER" && act.dataType === "STRING") {
-      accept("error", `DAMPER cannot use dataType=STRING.`, {
-        node: act,
-        property: "dataType",
-      });
     }
   }
 }

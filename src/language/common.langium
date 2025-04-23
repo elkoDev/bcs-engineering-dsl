@@ -11,6 +11,7 @@ DataType returns string:
 terminal TimeLiteral returns string: /T#[0-9]+(ms|s|m|h|d)/;
 terminal TodLiteral returns string: /TOD#((0\d|1\d|2[0-3]):[0-5]\d(:[0-5]\d)?)/;
 terminal NumberLiteral returns number: /-?[0-9]+(\.[0-9]+)?/;
+terminal IntLiteral returns number: /-?[0-9]+/;
 terminal BooleanLiteral returns boolean: /true|false/;
 terminal StringLiteral: /"([^"\\]|\\.)*"/;
 

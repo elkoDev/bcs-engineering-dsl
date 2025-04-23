@@ -1,20 +1,6 @@
 control MainController {
- functionblock asdf {
-    locals {
-        var dsaf: BOOL;
-    }
-    
-    logic {
-
-        dsaf = 4 == 4;
-
-    }
- }
-
-    // 1) Enum declaration
     enum Mode { OFF, ECO, COMFORT }
 
-    // 2) Global variables
     var mode: Mode = Mode.OFF;
     var lightLevel: INT = 0;
     var retryCount: INT;
@@ -23,8 +9,9 @@ control MainController {
     var presenceDetected: BOOL;
     var blindsClosed: BOOL;
     var lightBtnPressed: BOOL;
+    var heater: BOOL;
+    var lights: BOOL;
 
-    // 3) Function block with inputs, outputs, logic
     functionblock HeatingLogic {
         inputs {
             var iTemp: REAL;
@@ -44,19 +31,16 @@ control MainController {
         }
     }
 
-    // 4) Edge detection
     unit ToggleLightsOnPress {
-        on_rising(lightButton) {
-            lights = !lights;
+        on_rising(PresenceButtons.BtnRoom1) {
+            Lights.LightRoom1 = !Lights.LightRoom1;
         }
     }
 
-    // 5) Scheduled unit (TOD#)
     unit TurnOnLightsAt6_30 at TOD#06:30:00 {
-        lights = true;
+        Lights.LightRoom1 = true;
     }
 
-    // 6) Conditional unit (when + while loop + local var)
     unit RetryHeaterStartup when (mode != Mode.OFF) {
         var retries: INT = 0;
         while (retries < 3) {
@@ -66,7 +50,6 @@ control MainController {
         }
     }
 
-    // 7) For loop
     unit DimUpLoop {
         for (var i: INT = 0 to 5 by 1) {
             lightLevel = i * 20;
@@ -74,13 +57,11 @@ control MainController {
         }
     }
 
-    // 8) UseStmt (FB call)
     unit UseHeatingFB {
-        use HeatingLogic(iTemp: temp, iMode: mode) -> heating;
+        use HeatingLogic(iTemp: Temperatures.RoomTemp1, iMode: mode) -> heating;
         heater = heating;
     }
 
-    // 9) Switch statement
     unit LightByMode {
         switch (mode) {
             case Mode.COMFORT: {
@@ -95,39 +76,33 @@ control MainController {
         }
     }
 
-    // 10) Ramp
     unit FadeOutLights at TOD#22:00:00 {
         ramp(lightLevel, 100, 0, T#10s);
     }
 
-    // 11) now keyword in expression statement
     unit NowCheck {
         if (now >= TOD#07:00:00) {
-            lights = true;
+            Lights.LightRoom2 = true;
         }
     }
 
-    // 12) Delay start logic
     unit DelayedStartup once when (now >= TOD#07:05:00) {
         wait T#5s;
         heater = true;
     }
 
-    // 13) Local var declaration in unit block
     unit LocalDemo {
         var localVal: INT = 42;
         lightLevel = localVal;
     }
 
-    // 14) Expression-only statement
     unit LogCurrentTime {
-        now; // Just a parse test for "now" used as standalone
+        now; // Parsed for correctness
     }
 
-    // 15) Edge statement: on_falling
     unit DetectButtonRelease {
-        on_falling(lightButton) {
-            lights = false;
+        on_falling(PresenceButtons.BtnRoom2) {
+            Lights.LightRoom2 = false;
         }
     }
 }

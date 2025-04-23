@@ -1,16 +1,18 @@
-import { ValidationAcceptor, ValidationChecks } from "langium";
+import { Reference, ValidationAcceptor, ValidationChecks } from "langium";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
   AssignmentStmt,
   BCSEngineeringDSLAstType,
   CaseLiteral,
+  Channel,
   ControlModel,
   ControlUnit,
   FunctionBlockDecl,
-  isActuator,
   isBinExpr,
   isCaseLiteral,
+  isChannel,
   isControlUnit,
+  isDatapoint,
   isEnumDecl,
   isEnumMemberLiteral,
   isForStmt,
@@ -23,10 +25,10 @@ import {
   isOnFallingEdgeStmt,
   isOnRisingEdgeStmt,
   isPrimary,
-  isSensor,
   isSwitchStmt,
   isVarDecl,
   isWhileStmt,
+  NamedElement,
   SwitchStmt,
   UseStmt,
   VarDecl,
@@ -55,7 +57,10 @@ export function registerBCSControlValidationChecks(
       validator.checkNestedVarDuplicates,
     ],
     ControlModel: [validator.checkUniqueEnumsAndTypesAndUnits],
-    AssignmentStmt: [validator.checkAssignmentTypes],
+    AssignmentStmt: [
+      validator.checkAssignmentTypes,
+      validator.checkNoWriteToInputDatapoints,
+    ],
     VarDecl: [validator.checkVarDeclTypes],
     UseStmt: [validator.checkUseStmtTypes],
     SwitchStmt: [validator.checkSwitchCaseTypes],
@@ -64,6 +69,32 @@ export function registerBCSControlValidationChecks(
 }
 
 export class BCSControlLangValidator {
+  checkNoWriteToInputDatapoints(
+    stmt: AssignmentStmt,
+    accept: ValidationAcceptor
+  ) {
+    const refExpr = stmt.target;
+    const targetDatapoint = refExpr.ref?.ref;
+    const channel = refExpr.property?.ref;
+
+    if (!isDatapoint(targetDatapoint) || !isChannel(channel)) return;
+    const portGroup = targetDatapoint.portgroup?.ref;
+    if (!portGroup) return;
+
+    const ioType = portGroup.ioType;
+    const forbidden = ["ANALOG_INPUT", "DIGITAL_INPUT"];
+
+    if (forbidden.includes(ioType)) {
+      accept(
+        "error",
+        `Cannot assign to input datapoint '${targetDatapoint.name}.${
+          (channel as Channel).name
+        }' (portgroup type '${ioType}').`,
+        { node: stmt.target }
+      );
+    }
+  }
+
   checkSwitchCaseTypes(sw: SwitchStmt, accept: ValidationAcceptor) {
     const switchType = this.inferType(sw.expr, accept);
     if (!switchType) return;
@@ -715,8 +746,13 @@ export class BCSControlLangValidator {
       if (isVarDecl(ref)) {
         return this.inferVarDeclType(ref);
       }
-      if (isSensor(ref) || isActuator(ref)) {
-        return ref.dataType;
+      if (isDatapoint(ref)) {
+        return (
+          ref.channels.find(
+            (c) =>
+              c.name === (expr.property as Reference<NamedElement>).$refText // TODO: check if this is correct
+          )?.dataType ?? "UNKNOWN"
+        );
       }
       if (isEnumDecl(ref)) {
         return `Enum:${ref.name}`;
@@ -731,7 +767,6 @@ export class BCSControlLangValidator {
         return `Enum:${expr.val.value.$refText}`;
       }
     }
-
 
     // 5) If literal => check type
     if (typeof expr.val === "number") {

@@ -281,9 +281,9 @@ ParenExpr:
 ;
 
 Ref:
-    ref=[NamedElement] ('.' property=[EnumMemberDecl])?;
+    ref=[NamedElement] ('.' property=[NamedElement])?;
 
-NamedElement: VarDecl | EnumDecl | Sensor | Actuator;
+NamedElement: VarDecl | EnumDecl | Datapoint;
 
 ComparisonOperator returns string:
     '<' | '<=' | '==' | '!=' | '>=' | '>'

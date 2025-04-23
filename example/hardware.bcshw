@@ -1,43 +1,55 @@
-controller MainController {
-    sensor tempSensor {
-        type: TEMPERATURE
-        ioType: ANALOG
-        dataType: REAL  
+controller MainController for Beckhoff {
+    portgroup AnalogInputModule {
+        moduleType: KL3064
+        ioType: ANALOG_INPUT
+        startAddress: %IW0
+        channels: 4
     }
 
-    sensor windowContact {
-        type: CONTACT
-        ioType: DIGITAL
-        dataType: BOOL
+    portgroup DigitalInputModule {
+        moduleType: EL1008
+        ioType: DIGITAL_INPUT
+        startAddress: %IX8.0
+        channels: 8
     }
 
-    sensor presence {
-        type: OCCUPANCY
-        ioType: DIGITAL
-        dataType: BOOL
+    portgroup DigitalOutputModule {
+        moduleType: KL2408
+        ioType: DIGITAL_OUTPUT
+        startAddress: %QX0.0
+        channels: 8
     }
 
-    sensor lightButton {
-        type: CONTACT
-        ioType: DIGITAL
-        dataType: BOOL
+    portgroup AnalogOutputModule {
+        moduleType: KL3064
+        ioType: ANALOG_OUTPUT
+        startAddress: %QW0
+        channels: 4
     }
 
-    actuator heater {
-        type: HEATER
-        ioType: DIGITAL
-        dataType: BOOL
+    datapoint Temperatures {
+        portgroup: AnalogInputModule
+        channels: {
+            channel RoomTemp1: REAL at 0,
+            channel RoomTemp2: REAL at 1,
+            channel RoomTemp3: REAL at 2,
+            channel RoomTemp4: REAL at 3
+        }
     }
 
-    actuator lights {
-        type: LIGHT
-        ioType: DIGITAL
-        dataType: BOOL
+    datapoint PresenceButtons {
+        portgroup: DigitalInputModule
+        channels: {
+            channel BtnRoom1: BOOL at 0,
+            channel BtnRoom2: BOOL at 1
+        }
     }
 
-    actuator blinds {
-        type: BLINDS
-        ioType: DIGITAL
-        dataType: BOOL
+    datapoint Lights {
+        portgroup: DigitalOutputModule
+        channels: {
+            channel LightRoom1: BOOL at 0,
+            channel LightRoom2: BOOL at 1
+        }
     }
 }
