@@ -1,3 +1,5 @@
+[![CI](https://github.com/elkoDev/bcs-engineering-dsl/actions/workflows/ci.yml/badge.svg)](https://github.com/elkoDev/bcs-engineering-dsl/actions/workflows/ci.yml)
+
 # Important Commands
 
 ## Build
