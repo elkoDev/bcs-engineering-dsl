@@ -29,7 +29,7 @@ export class BCSControlLangCompletionProvider extends DefaultCompletionProvider 
           acceptor(context, {
             label: channel.name,
             kind: CompletionItemKind.Field,
-            documentation: `${channel.$container.portgroup.ref?.ioType} Channel of type ${channel.dataType}`,
+            documentation: `${channel.$container.portgroup.ref?.ioType} channel of type ${channel.dataType}`,
           });
         }
         return;
@@ -40,7 +40,7 @@ export class BCSControlLangCompletionProvider extends DefaultCompletionProvider 
           acceptor(context, {
             label: member.name,
             kind: CompletionItemKind.EnumMember,
-            documentation: "Enum member",
+            documentation: "Enum member of type " + namedElement.name,
           });
         }
         return;
