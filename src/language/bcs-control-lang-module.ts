@@ -4,6 +4,7 @@ import { BCSControlLangValidator } from "./bcs-control-lang-validator.js";
 import { BCSControlLangSemanticTokenProvider } from "./bcs-control-lang-semantic-token-provider.js";
 import { BCSControlLangScopeProvider } from "./bcs-control-lang-scope-provider.js";
 import { BCSControlLangFormatter } from "./bcs-control-lang-formatter.js";
+import { BCSControlLangCompletionProvider } from "./bcs-control-lang-completion-provider.js";
 
 export type BCSControlAddedServices = {
   validation: {
@@ -28,5 +29,7 @@ export const BCSControlLangModule: Module<
     SemanticTokenProvider: (services: BCSControlLangServices) =>
       new BCSControlLangSemanticTokenProvider(services),
     Formatter: () => new BCSControlLangFormatter(),
+    CompletionProvider: (services: BCSControlLangServices) =>
+      new BCSControlLangCompletionProvider(services),
   },
 };

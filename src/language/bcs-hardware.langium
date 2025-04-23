@@ -6,42 +6,41 @@ entry HardwareModel:
 ;
 
 Controller:
-    'controller' name=ID '{'
+    'controller' name=ID 'for' platform=Platform '{'
         (components+=Component)*
     '}';
 
+type Platform = 'Beckhoff' | 'KNX' | 'Siemens';
+Platform returns string:
+    'Beckhoff' | 'KNX' | 'Siemens';  
+
 Component:
-    Sensor | Actuator
+    PortGroup | Datapoint
 ;
 
-Sensor:
-    'sensor' name=ID '{'
-        'type:' type=SensorType
-        'ioType:' ioType=IOType
-        'dataType:' dataType=DataType
+PortGroup:
+    'portgroup' name=ID '{'
+         'moduleType:' moduleType=ID
+         'ioType:' ioType=IOType
+         'startAddress:' startAddress=IOBinding
+         'channels:' channels=IntLiteral
     '}'
 ;
 
-Actuator:
-    'actuator' name=ID '{'
-        'type:' type=ActuatorType
-        'ioType:' ioType=IOType
-        'dataType:' dataType=DataType
+Datapoint:
+    'datapoint' name=ID '{'
+         'portgroup:' portgroup=[PortGroup]
+         'channels:' '{' channels+=Channel (',' channels+=Channel)* '}'
     '}'
 ;
 
+Channel:
+    'channel' name=ID ':' dataType=DataType 'at' index=IntLiteral
+;
 
-type SensorType = 
-    'TEMPERATURE' | 'HUMIDITY' | 'MOTION' | 'CO2' | 'PRESSURE' | 'LIGHT' | 'CONTACT' | 'OCCUPANCY';
-SensorType returns string:
-    'TEMPERATURE' | 'HUMIDITY' | 'MOTION' | 'CO2' | 'PRESSURE' | 'LIGHT' | 'CONTACT' | 'OCCUPANCY';
-
-type ActuatorType = 
-    'VALVE' | 'FAN' | 'HEATER' | 'COOLING_UNIT' | 'DAMPER' | 'LIGHT' | 'BLINDS' | 'SWITCH';
-ActuatorType returns string:
-    'VALVE' | 'FAN' | 'HEATER' | 'COOLING_UNIT' | 'DAMPER' | 'LIGHT' | 'BLINDS' | 'SWITCH';
-
-
-type IOType = 'ANALOG' | 'DIGITAL';
+type IOType = 'ANALOG_INPUT' | 'ANALOG_OUTPUT' |'DIGITAL_INPUT' | 'DIGITAL_OUTPUT';
 IOType returns string:
-    'ANALOG' | 'DIGITAL';
+    'ANALOG_INPUT' | 'ANALOG_OUTPUT' | 'DIGITAL_INPUT' | 'DIGITAL_OUTPUT';
+
+
+terminal IOBinding: /%[IQ][XBWDL]?([0-9]+(\.[0-9]+)?)?/;

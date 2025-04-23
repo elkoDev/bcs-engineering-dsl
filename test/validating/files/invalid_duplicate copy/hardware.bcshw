@@ -1,7 +1,0 @@
-controller InvalidTestController {
-    sensor windowContact {
-        type: CONTACT
-        ioType: DIGITAL
-        dataType: BOOL
-    }
-}

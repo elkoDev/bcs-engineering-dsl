@@ -1,5 +1,5 @@
-controller ValidTestController for Beckhoff {
-    portgroup DI {
+controller InvalidSwitchTestController for Beckhoff {
+    portgroup DigitalInputs {
         moduleType: EL1008
         ioType: DIGITAL_INPUT
         startAddress: %IX0.0
@@ -7,7 +7,7 @@ controller ValidTestController for Beckhoff {
     }
 
     datapoint windowContact {
-        portgroup: DI
+        portgroup: DigitalInputs
         channels: {
             channel value: BOOL at 0
         }

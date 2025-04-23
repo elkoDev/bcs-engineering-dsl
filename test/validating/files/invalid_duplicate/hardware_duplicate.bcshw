@@ -1,25 +1,50 @@
-controller InvalidDuplicateController {
-    sensor windowContact {
-        type: CONTACT
-        ioType: DIGITAL
-        dataType: BOOL
+controller InvalidDuplicateController for Beckhoff {
+    portgroup DigitalInputs {
+        moduleType: EL1008
+        ioType: DIGITAL_INPUT
+        startAddress: %IX0.0
+        channels: 8
     }
 
-    sensor windowContact {
-        type: CONTACT
-        ioType: DIGITAL
-        dataType: BOOL
+    datapoint windowContact {
+        portgroup: DigitalInputs
+        channels: {
+            channel value: BOOL at 0
+        }
     }
 
-    actuator motor {
-        type: BLINDS
-        ioType: DIGITAL
-        dataType: BOOL
+    datapoint windowContact_duplicate {
+        portgroup: DigitalInputs
+        channels: {
+            channel value: BOOL at 0
+        }
     }
 
-    actuator motor {
-        type: BLINDS
-        ioType: DIGITAL
-        dataType: BOOL
+    datapoint windowContact_duplicate {
+        portgroup: DigitalInputs
+        channels: {
+            channel value: BOOL at 1
+        }
+    }
+
+    portgroup DigitalOutputs {
+        moduleType: KL2408
+        ioType: DIGITAL_OUTPUT
+        startAddress: %QX0.0
+        channels: 8
+    }
+
+    datapoint motor {
+        portgroup: DigitalOutputs
+        channels: {
+            channel value: BOOL at 0
+        }
+    }
+
+    datapoint motor {
+        portgroup: DigitalOutputs
+        channels: {
+            channel value: BOOL at 1
+        }
     }
 }

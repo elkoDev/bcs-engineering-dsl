@@ -1,23 +1,35 @@
-import { ValidationAcceptor, ValidationChecks } from "langium";
+import { Reference, ValidationAcceptor, ValidationChecks } from "langium";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
   AssignmentStmt,
   BCSEngineeringDSLAstType,
+  CaseLiteral,
+  Channel,
   ControlModel,
   ControlUnit,
   FunctionBlockDecl,
-  isActuator,
   isBinExpr,
+  isCaseLiteral,
+  isChannel,
   isControlUnit,
+  isDatapoint,
   isEnumDecl,
+  isEnumMemberLiteral,
+  isForStmt,
   isFunctionBlockDecl,
   isFunctionBlockInputs,
   isFunctionBlockLocals,
   isFunctionBlockLogic,
   isFunctionBlockOutputs,
+  isIfStmt,
+  isOnFallingEdgeStmt,
+  isOnRisingEdgeStmt,
   isPrimary,
-  isSensor,
+  isSwitchStmt,
   isVarDecl,
+  isWhileStmt,
+  NamedElement,
+  SwitchStmt,
   UseStmt,
   VarDecl,
 } from "./generated/ast.js";
@@ -42,16 +54,141 @@ export function registerBCSControlValidationChecks(
       validator.checkUniqueVarNamesInUnit,
       validator.checkScanCycleUnits,
       validator.checkWhenConditionType,
+      validator.checkNestedVarDuplicates,
     ],
     ControlModel: [validator.checkUniqueEnumsAndTypesAndUnits],
-    AssignmentStmt: [validator.checkAssignmentTypes],
+    AssignmentStmt: [
+      validator.checkAssignmentTypes,
+      validator.checkNoWriteToInputDatapoints,
+    ],
     VarDecl: [validator.checkVarDeclTypes],
     UseStmt: [validator.checkUseStmtTypes],
+    SwitchStmt: [validator.checkSwitchCaseTypes],
   };
   registry.register(checks, validator);
 }
 
 export class BCSControlLangValidator {
+  checkNoWriteToInputDatapoints(
+    stmt: AssignmentStmt,
+    accept: ValidationAcceptor
+  ) {
+    const refExpr = stmt.target;
+    const targetDatapoint = refExpr.ref?.ref;
+    const channel = refExpr.property?.ref;
+
+    if (!isDatapoint(targetDatapoint) || !isChannel(channel)) return;
+    const portGroup = targetDatapoint.portgroup?.ref;
+    if (!portGroup) return;
+
+    const ioType = portGroup.ioType;
+    const forbidden = ["ANALOG_INPUT", "DIGITAL_INPUT"];
+
+    if (forbidden.includes(ioType)) {
+      accept(
+        "error",
+        `Cannot assign to input datapoint '${targetDatapoint.name}.${
+          (channel as Channel).name
+        }' (portgroup type '${ioType}').`,
+        { node: stmt.target }
+      );
+    }
+  }
+
+  checkSwitchCaseTypes(sw: SwitchStmt, accept: ValidationAcceptor) {
+    const switchType = this.inferType(sw.expr, accept);
+    if (!switchType) return;
+
+    const seen = new Set<string>();
+
+    const keyOf = (lit: CaseLiteral): string =>
+      typeof lit.val === "object" ? lit.$cstNode?.text ?? "" : String(lit.val);
+
+    for (const c of sw.cases) {
+      for (const lit of c.literals) {
+        const litType = this.inferType(lit, accept);
+        const litKey = keyOf(lit);
+
+        if (seen.has(litKey)) {
+          accept("error", `Duplicate case literal '${litKey}'.`, { node: lit });
+        } else {
+          seen.add(litKey);
+        }
+
+        if (!litType) continue;
+
+        const ok =
+          // exact match
+          litType === switchType ||
+          // INT can stand in for REAL, etc.
+          this.isTypeAssignable(litType, switchType);
+
+        if (!ok) {
+          accept(
+            "error",
+            `Case literal '${litKey}' is of type '${litType}', but switch expression is '${switchType}'.`,
+            { node: lit }
+          );
+        }
+      }
+    }
+  }
+
+  checkNestedVarDuplicates(unit: ControlUnit, accept: ValidationAcceptor) {
+    const model = unit.$container;
+    const globalNames = new Set(
+      model.items.filter(isVarDecl).map((v) => v.name)
+    );
+
+    this.validateBlock(unit.stmts, globalNames, accept);
+  }
+
+  private validateBlock(
+    stmts: Array<any>,
+    outerNames: Set<string>,
+    accept: ValidationAcceptor
+  ) {
+    const local = new Set<string>();
+    const withOuter = () => new Set([...outerNames, ...local]);
+
+    const add = (v: VarDecl) => {
+      const name = v.name;
+      if (local.has(name) || outerNames.has(name)) {
+        accept("error", `Duplicate variable '${name}' in this scope.`, {
+          node: v,
+          property: "name",
+        });
+      } else {
+        local.add(name);
+      }
+    };
+
+    for (const s of stmts) {
+      if (isVarDecl(s)) {
+        add(s);
+      } else if (isIfStmt(s)) {
+        this.validateBlock(s.stmts, withOuter(), accept);
+        for (const e of s.elseIfStmts)
+          this.validateBlock(e.stmts, withOuter(), accept);
+        if (s.elseStmt)
+          this.validateBlock(s.elseStmt.stmts, withOuter(), accept);
+      } else if (
+        isWhileStmt(s) ||
+        isOnRisingEdgeStmt(s) ||
+        isOnFallingEdgeStmt(s)
+      ) {
+        this.validateBlock(s.stmts, withOuter(), accept);
+      } else if (isForStmt(s)) {
+        if (s.loopVar) add(s.loopVar);
+        this.validateBlock(s.stmts, withOuter(), accept);
+      } else if (isSwitchStmt(s)) {
+        for (const c of s.cases)
+          this.validateBlock(c.stmts, withOuter(), accept);
+        if (s.default) this.validateBlock(s.default.stmts, withOuter(), accept);
+      }
+    }
+  }
+
   checkWhenConditionType(unit: ControlUnit, accept: ValidationAcceptor) {
     if (unit.condition) {
       const type = this.inferType(unit.condition, accept);
@@ -609,16 +746,29 @@ export class BCSControlLangValidator {
       if (isVarDecl(ref)) {
         return this.inferVarDeclType(ref);
       }
-      if (isSensor(ref) || isActuator(ref)) {
-        return ref.dataType;
+      if (isDatapoint(ref)) {
+        return (
+          ref.channels.find(
+            (c) =>
+              c.name === (expr.property as Reference<NamedElement>).$refText // TODO: check if this is correct
+          )?.dataType ?? "UNKNOWN"
+        );
       }
       if (isEnumDecl(ref)) {
         return `Enum:${ref.name}`;
       }
+
       return this.inferVarDeclType(expr.ref?.ref);
     }
 
-    // 4) If literal => check type
+    // 4) If EnumMemberLiteral => check what it points to
+    if (isCaseLiteral(expr)) {
+      if (isEnumMemberLiteral(expr.val)) {
+        return `Enum:${expr.val.value.$refText}`;
+      }
+    }
+
+    // 5) If literal => check type
     if (typeof expr.val === "number") {
       const raw = expr.$cstNode?.text;
 

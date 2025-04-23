@@ -1,4 +1,6 @@
 control InvalidDuplicateController {
+    var globalVar: BOOL;
+
     enum DuplicateMode {
         COMFORT,
         ECO,
@@ -54,7 +56,69 @@ control InvalidDuplicateController {
         var duplicateUnitVar: BOOL;
         var duplicateUnitVar: BOOL;
     }
-    unit DuplicateUnit {
 
+    unit DuplicateUnit {        
+        // Cannot declare a variable with the same name as in the global scope 
+        var globalVar: INT;
+
+        var duplicateNestedUnitVar: BOOL;
+        while (true) {
+            var localWhileVar: BOOL;
+            // Cannot declare a variable with the same name as in the while scope
+            var localWhileVar: BOOL;
+            // Cannot declare a variable with the same name as in the global scope
+            var globalVar: INT;
+            // Cannot declare a variable with the same name as in the unit scope
+            var duplicateNestedUnitVar: BOOL;
+        }
+
+        on_rising(windowContact.value) {
+            var localOnRisingVar: BOOL;
+            // Cannot declare a variable with the same name as in the on_rising scope
+            var localOnRisingVar: BOOL;
+            // Cannot declare a variable with the same name as in the global scope
+            var globalVar: INT;
+            // Cannot declare a variable with the same name as in the unit scope
+            var duplicateNestedUnitVar: BOOL;
+        }
+
+        on_rising(windowContact.value) {
+            var localOnRisingVar: BOOL;
+            // Cannot declare a variable with the same name as in the on_rising scope
+            var localOnRisingVar: BOOL;
+            // Cannot declare a variable with the same name as in the global scope
+            var globalVar: INT;
+            // Cannot declare a variable with the same name as in the unit scope
+            var duplicateNestedUnitVar: BOOL;
+        }
+
+        for (var i: INT = 0 to 10) {
+            var localForVar: BOOL;
+            // Cannot declare a variable with the same name as in the for scope
+            var localForVar: BOOL;
+            // Cannot declare a variable with the same name as in the global scope
+            var globalVar: INT;
+            // Cannot declare a variable with the same name as in the unit scope
+            var duplicateNestedUnitVar: BOOL;
+        }
+
+        switch (windowContact.value) {
+            case true: {
+                var localSwitchVar: BOOL;
+                // Cannot declare a variable with the same name as in the switch scope
+                var localSwitchVar: BOOL;
+                // Cannot declare a variable with the same name as in the global scope
+                var globalVar: INT;
+                // Cannot declare a variable with the same name as in the unit scope
+                var duplicateNestedUnitVar: BOOL;
+            }
+
+            case false: {
+                // Cannot declare a variable with the same name as in the global scope
+                var globalVar: INT;
+                // Cannot declare a variable with the same name as in the unit scope
+                var duplicateNestedUnitVar: BOOL;
+            }
+        }
     }
 }
