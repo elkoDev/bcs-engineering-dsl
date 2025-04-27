@@ -19,6 +19,7 @@ import {
   isInputMapping,
   isMappingUseResult,
   isRef,
+  isStructDecl,
   isUseStmt,
   isVarDecl,
   VarDecl,
@@ -47,15 +48,27 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
       const datapoints =
         controller?.components.filter((c) => c.$type === Datapoint) ?? [];
 
-      const enumDecls = controlModel?.controlBlock?.items.filter(isEnumDecl) ?? [];
+      const enumDecls =
+        controlModel?.controlBlock?.items.filter(isEnumDecl) ?? [];
+      const structDecls =
+        controlModel?.controlBlock?.items.filter(isStructDecl) ?? [];
 
-      const scopeNodes: AstNode[] = [...localVars, ...datapoints, ...enumDecls];
+      const externalTypeDecls = controlModel?.externTypeDecls ?? [];
+
+      const scopeNodes: AstNode[] = [
+        ...localVars,
+        ...datapoints,
+        ...enumDecls,
+        ...structDecls,
+        ...externalTypeDecls,
+      ];
 
       const isInsideFunctionBlock =
         AstUtils.getContainerOfType(container, isFunctionBlockDecl) !==
         undefined;
       if (!isInsideFunctionBlock) {
-        const globalVars = controlModel?.controlBlock?.items.filter(isVarDecl) ?? [];
+        const globalVars =
+          controlModel?.controlBlock?.items.filter(isVarDecl) ?? [];
         scopeNodes.push(...globalVars);
       }
 

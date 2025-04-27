@@ -1,20 +1,25 @@
 import library Tc3_DALI;
 
-extern type I_TcMessage;
-extern type E_DALIAddressType;
-extern type E_DALICommandPriority;
+extern enum E_DALIAddressType {Short, Group, Broadcast, BroadcastUnaddr}
+extern enum E_DALICommandPriority {High, MiddleHigh, Middle, MiddleLow, Low, Unknown}
+extern struct ST_DALIChangeAddressList { 
+    nOldAddress       : INT,
+    nNewAddress       : INT,
+    nRandomAddress    : INT,
+    nErrors           : INT
+}
+
+extern functionblock FB_Tc3_DALI { 
+    inputs {
+        var iDALIAddress: E_DALIAddressType;
+        var iDALICommandPriority: E_DALICommandPriority;
+    }
+    outputs {
+        var oDALIStatus: BOOL;
+    }
+}
 
 control MainController {
-
-    extern functionblock FB_Tc3_DALI { 
-        inputs {
-            var iDALIAddress: E_DALIAddressType;
-            var iDALICommandPriority: E_DALICommandPriority;
-        }
-        outputs {
-            var oDALIStatus: BOOL;
-        }
-    }
 
     enum Mode { OFF, ECO, COMFORT }
 
@@ -126,7 +131,7 @@ control MainController {
 
     unit ExternLibraryCall {
         var DALIAddress: E_DALIAddressType;
-        var DALICommandPriority: E_DALICommandPriority = E_DALICommandPriority.NORMAL;
+        var DALICommandPriority: E_DALICommandPriority = E_DALICommandPriority.High;
         var oDALIStatus: BOOL;
         use FB_Tc3_DALI(iDALIAddress : DALIAddress, iDALICommandPriority: DALICommandPriority) -> oDALIStatus;
     }

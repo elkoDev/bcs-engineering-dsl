@@ -1,6 +1,7 @@
 import { Reference, ValidationAcceptor, ValidationChecks } from "langium";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
+  ArrayLiteral,
   AssignmentStmt,
   BCSEngineeringDSLAstType,
   CaseLiteral,
@@ -8,6 +9,7 @@ import {
   ControlModel,
   ControlUnit,
   FunctionBlockDecl,
+  isArrayLiteral,
   isBinExpr,
   isCaseLiteral,
   isChannel,
@@ -15,7 +17,6 @@ import {
   isDatapoint,
   isEnumDecl,
   isEnumMemberLiteral,
-  isExternTypeDecl,
   isForStmt,
   isFunctionBlockDecl,
   isFunctionBlockInputs,
@@ -26,6 +27,7 @@ import {
   isOnFallingEdgeStmt,
   isOnRisingEdgeStmt,
   isPrimary,
+  isStructLiteral,
   isSwitchStmt,
   isVarDecl,
   isWhileStmt,
@@ -593,7 +595,7 @@ export class BCSControlLangValidator {
           "error",
           `Cannot infer type for variable initialization: ${
             varDecl.name
-          } = ${JSON.stringify(varDecl.init)}`,
+          } = ${this.stringifyExpression(varDecl.init)}`,
           { node: varDecl, property: "init" }
         );
         return;
@@ -603,6 +605,34 @@ export class BCSControlLangValidator {
           "error",
           `Type mismatch: Cannot assign "${initType}" to "${type}".`,
           { node: varDecl, property: "init" }
+        );
+      }
+    }
+    // ➔ Array Size Checking
+    if (
+      varDecl.typeRef &&
+      varDecl.typeRef.sizes.length > 0 &&
+      isPrimary(varDecl.init) &&
+      isArrayLiteral(varDecl.init.val)
+    ) {
+      const sizeExpr = varDecl.typeRef.sizes[0];
+
+      // Only validate size if simple IntLiteral
+      if (sizeExpr.$type === "Primary" && typeof sizeExpr.val === "number") {
+        const expectedSize = sizeExpr.val;
+        const actualSize = varDecl.init.val.elements.length;
+
+        if (expectedSize !== actualSize) {
+          accept(
+            "error",
+            `Array size mismatch: expected ${expectedSize} elements, but got ${actualSize}.`,
+            { node: varDecl, property: "init" }
+          );
+        }
+      } else {
+        // More complex Expr —> we skip static validation
+        console.log(
+          `Skipping size validation because size is complex expression.`
         );
       }
     }
@@ -662,10 +692,28 @@ export class BCSControlLangValidator {
         return expr.ref?.ref?.name ?? "[unresolved ref]";
       case "EnumMemberLiteral":
         return `${expr.value.ref?.name}.${expr.member.ref?.name}`;
-      default:
-        if (typeof expr.val !== "undefined") {
+
+      case "Primary":
+        if (expr.val) {
+          if (Array.isArray(expr.val?.elements)) {
+            // It's an ArrayLiteral
+            return `[${expr.val.elements
+              .map((e: any) => this.stringifyExpression(e))
+              .join(", ")}]`;
+          }
+          if (Array.isArray(expr.val?.fields)) {
+            // It's a StructLiteral
+            return `{${expr.val.fields
+              .map(
+                (f: any) => `${f.name}: ${this.stringifyExpression(f.value)}`
+              )
+              .join(", ")}}`;
+          }
           return `${expr.val}`;
         }
+        return "[Primary]";
+
+      default:
         return `[${expr.$type}]`;
     }
   }
@@ -770,6 +818,28 @@ export class BCSControlLangValidator {
     }
 
     // 5) If literal => check type
+    if (isArrayLiteral(expr.val)) {
+      const arrayLiteral = expr.val as ArrayLiteral;
+      const elements = arrayLiteral.elements;
+      if (elements.length === 0) return "ARRAY<unknown>";
+
+      // Infer element types
+      const elementTypes = new Set(
+        elements.map((e) => this.inferType(e, accept))
+      );
+
+      if (elementTypes.size === 1) {
+        const singleType = [...elementTypes][0];
+        return `ARRAY<${singleType}>[${elements.length}]`; // <-- add [size]!
+      } else {
+        return `ARRAY<mixed>[${elements.length}]`; // still include size
+      }
+    }
+
+    if (isStructLiteral(expr.val)) {
+      return "STRUCT";
+    }
+
     if (typeof expr.val === "number") {
       const raw = expr.$cstNode?.text;
 
@@ -805,37 +875,61 @@ export class BCSControlLangValidator {
     if (!varDecl) return undefined;
     if (!varDecl.typeRef) return undefined;
 
-    // Either builtin DataType => "BOOL"/"INT"/"REAL"/"STRING" etc.
+    let baseType: string | undefined;
+
+    // Built-in primitive types
     if (varDecl.typeRef.type) {
-      return varDecl.typeRef.type;
+      baseType = varDecl.typeRef.type;
     }
 
-    // Or referencing (EnumDecl | FunctionBlockDecl | ExternTypeDecl)
+    // Referencing user-defined types
     if (varDecl.typeRef.ref) {
       const typeDecl = varDecl.typeRef.ref.ref;
       if (!typeDecl) return undefined;
       if (isEnumDecl(typeDecl)) {
-        return `Enum:${typeDecl.name}`;
+        baseType = `Enum:${typeDecl.name}`;
       }
       if (isFunctionBlockDecl(typeDecl)) {
-        return `FB:${typeDecl.name}`;
-      }
-      if (isExternTypeDecl(typeDecl)) {
-        return `Extern:typeDecl.name`;
+        baseType = `FB:${typeDecl.name}`;
       }
     }
 
-    return undefined;
+    if (!baseType) return undefined;
+
+    if (varDecl.typeRef.sizes.length > 0) {
+      const sizes = varDecl.typeRef.sizes
+        .map((s) =>
+          s.$type === "Primary" && typeof s.val === "number" ? s.val : "?"
+        )
+        .join("][");
+      return `ARRAY<${baseType}>[${sizes}]`;
+    }
+
+    return baseType;
   }
 
   private isTypeAssignable(sourceType: string, targetType: string): boolean {
     if (sourceType === targetType) return true;
 
+    if (sourceType.startsWith("ARRAY<") && targetType.startsWith("ARRAY<")) {
+      // Extract base type and size
+      const sourceMatch = RegExp(/^ARRAY<(.+?)>\[(.+)\]$/).exec(sourceType);
+      const targetMatch = RegExp(/^ARRAY<(.+?)>\[(.+)\]$/).exec(targetType);
+      if (!sourceMatch || !targetMatch) return false;
+
+      const sourceElement = sourceMatch[1];
+      const sourceSize = sourceMatch[2];
+      const targetElement = targetMatch[1];
+      const targetSize = targetMatch[2];
+
+      // Compare both element types and sizes
+      return sourceElement === targetElement && sourceSize === targetSize;
+    }
+
     if (sourceType === "INT" && targetType === "REAL") {
       return true;
     }
 
-    // e.g. source="Enum:Color" target="Enum:Color"
     if (sourceType.startsWith("Enum:") && targetType === sourceType) {
       return true;
     }
