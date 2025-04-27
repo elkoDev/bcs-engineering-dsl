@@ -76,7 +76,7 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
     }
 
     // property = enum member reference or datapoint channel reference
-    if (isRef(container) && context.property === "property") {
+    if (isRef(container) && context.property === "properties") {
       const namedElement = container.ref.ref;
       if (isEnumDecl(namedElement)) {
         const enumDecl = namedElement;

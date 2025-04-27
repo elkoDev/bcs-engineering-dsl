@@ -102,7 +102,7 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         });
         acceptor({
           node,
-          property: "property",
+          property: "properties",
           type: SemanticTokenTypes.enumMember,
         });
       } else if (isDatapoint(namedElement)) {
@@ -113,7 +113,7 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         });
         acceptor({
           node,
-          property: "property",
+          property: "properties",
           type: SemanticTokenTypes.variable,
         });
       }

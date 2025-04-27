@@ -79,11 +79,11 @@ export class BCSControlLangValidator {
     const targetDatapoint = refExpr.ref?.ref;
 
     // Check if there is exactly one property (access to a channel)
-    if (!isDatapoint(targetDatapoint) || refExpr.property.length !== 1) {
+    if (!isDatapoint(targetDatapoint) || refExpr.properties.length !== 1) {
       return;
     }
 
-    const channel = refExpr.property[0]?.ref;
+    const channel = refExpr.properties[0]?.ref;
     if (!isChannel(channel)) return;
 
     const portGroup = targetDatapoint.portgroup?.ref;
@@ -803,8 +803,8 @@ export class BCSControlLangValidator {
       if (isVarDecl(ref)) {
         type = this.inferVarDeclType(ref);
       } else if (isDatapoint(ref)) {
-        if (expr.property.length === 1) {
-          const channelRef = expr.property[0]?.ref;
+        if (expr.properties.length === 1) {
+          const channelRef = expr.properties[0]?.ref;
           if (isChannel(channelRef)) {
             type = channelRef.dataType;
           }
@@ -813,12 +813,12 @@ export class BCSControlLangValidator {
         type = `Enum:${ref.name}`;
       }
 
-      if (ref && expr.index.length > 0) {
+      if (ref && expr.indices.length > 0) {
         if (isVarDecl(ref)) {
           const sizes = ref.typeRef?.sizes ?? [];
 
-          for (let i = 0; i < expr.index.length && i < sizes.length; i++) {
-            const indexExpr = expr.index[i];
+          for (let i = 0; i < expr.indices.length && i < sizes.length; i++) {
+            const indexExpr = expr.indices[i];
 
             const idxType = this.inferType(indexExpr, accept);
             if (idxType !== "INT") {
@@ -856,8 +856,8 @@ export class BCSControlLangValidator {
       }
 
       // Handle array indexing
-      if (expr.index && expr.index.length > 0 && type) {
-        for (const _ of expr.index) {
+      if (expr.indices && expr.indices.length > 0 && type) {
+        for (const _ of expr.indices) {
           const match = /^ARRAY<(.+)>(\[.+\])?$/.exec(type);
           if (match) {
             const base = match[1];
@@ -1031,8 +1031,8 @@ export class BCSControlLangValidator {
   }
 
   checkArrayIndexTypes(expr: any, accept: ValidationAcceptor) {
-    if (expr.$type === "Ref" && expr.index.length > 0) {
-      for (const idxExpr of expr.index) {
+    if (expr.$type === "Ref" && expr.indices.length > 0) {
+      for (const idxExpr of expr.indices) {
         const idxType = this.inferType(idxExpr, accept);
         if (idxType !== "INT") {
           accept(
