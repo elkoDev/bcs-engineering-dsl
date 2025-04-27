@@ -19,6 +19,8 @@ import {
   isRampStmt,
   isRef,
   isSimpleUseResult,
+  isStructDecl,
+  isStructFieldDecl,
   isTypeRef,
   isUseStmt,
   isVarDecl,
@@ -137,6 +139,26 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         type: SemanticTokenTypes.function,
       });
     }
+    if (isStructDecl(node)) {
+      acceptor({
+        node,
+        property: "name",
+        type: SemanticTokenTypes.struct,
+      });
+    }
+    if (isStructFieldDecl(node)) {
+      acceptor({
+        node,
+        property: "name",
+        type: SemanticTokenTypes.variable,
+      });
+      acceptor({
+        node,
+        property: "typeRef",
+        type: SemanticTokenTypes.type,
+      });
+    }
+
     if (isUseStmt(node)) {
       acceptor({
         node,

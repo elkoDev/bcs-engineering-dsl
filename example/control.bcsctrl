@@ -13,6 +13,7 @@ extern functionblock FB_Tc3_DALI {
     inputs {
         var iDALIAddress: E_DALIAddressType;
         var iDALICommandPriority: E_DALICommandPriority;
+        var iAddressList : ST_DALIChangeAddressList;
     }
     outputs {
         var oDALIStatus: BOOL;
@@ -132,7 +133,8 @@ control MainController {
     unit ExternLibraryCall {
         var DALIAddress: E_DALIAddressType;
         var DALICommandPriority: E_DALICommandPriority = E_DALICommandPriority.High;
+        var addressList : ST_DALIChangeAddressList;
         var oDALIStatus: BOOL;
-        use FB_Tc3_DALI(iDALIAddress : DALIAddress, iDALICommandPriority: DALICommandPriority) -> oDALIStatus;
+        use FB_Tc3_DALI(iDALIAddress : DALIAddress, iDALICommandPriority: DALICommandPriority, iAddressList: addressList) -> oDALIStatus;
     }
 }
