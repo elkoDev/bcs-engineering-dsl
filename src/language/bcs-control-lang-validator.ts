@@ -15,6 +15,7 @@ import {
   isDatapoint,
   isEnumDecl,
   isEnumMemberLiteral,
+  isExternTypeDecl,
   isForStmt,
   isFunctionBlockDecl,
   isFunctionBlockInputs,
@@ -224,7 +225,7 @@ export class BCSControlLangValidator {
     const unitNames = new Set<string>();
     const globalVarNames = new Set<string>();
 
-    for (const item of model.items) {
+    for (const item of model.controlBlock?.items ?? []) {
       if (isEnumDecl(item)) {
         if (enumNames.has(item.name)) {
           accept("error", `Duplicate enum '${item.name}'.`, {
@@ -809,16 +810,18 @@ export class BCSControlLangValidator {
       return varDecl.typeRef.type;
     }
 
-    // Or referencing (EnumDecl | FunctionBlockDecl)
+    // Or referencing (EnumDecl | FunctionBlockDecl | ExternTypeDecl)
     if (varDecl.typeRef.ref) {
       const typeDecl = varDecl.typeRef.ref.ref;
       if (!typeDecl) return undefined;
       if (isEnumDecl(typeDecl)) {
         return `Enum:${typeDecl.name}`;
       }
-      // Ist es ein FunctionBlockDecl?
       if (isFunctionBlockDecl(typeDecl)) {
         return `FB:${typeDecl.name}`;
+      }
+      if (isExternTypeDecl(typeDecl)) {
+        return `Extern:typeDecl.name`;
       }
     }
 

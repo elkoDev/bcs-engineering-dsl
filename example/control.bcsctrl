@@ -1,4 +1,21 @@
+import library Tc3_DALI;
+
+extern type I_TcMessage;
+extern type E_DALIAddressType;
+extern type E_DALICommandPriority;
+
 control MainController {
+
+    extern functionblock FB_Tc3_DALI { 
+        inputs {
+            var iDALIAddress: E_DALIAddressType;
+            var iDALICommandPriority: E_DALICommandPriority;
+        }
+        outputs {
+            var oDALIStatus: BOOL;
+        }
+    }
+
     enum Mode { OFF, ECO, COMFORT }
 
     var mode: Mode = Mode.OFF;
@@ -105,5 +122,12 @@ control MainController {
         on_falling(PresenceButtons.BtnRoom2) {
             Lights.LightRoom2 = false;
         }
+    }
+
+    unit ExternLibraryCall {
+        var DALIAddress: E_DALIAddressType;
+        var DALICommandPriority: E_DALICommandPriority = E_DALICommandPriority.NORMAL;
+        var oDALIStatus: BOOL;
+        use FB_Tc3_DALI(iDALIAddress : DALIAddress, iDALICommandPriority: DALICommandPriority) -> oDALIStatus;
     }
 }

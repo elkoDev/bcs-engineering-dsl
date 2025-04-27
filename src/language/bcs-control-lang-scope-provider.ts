@@ -43,11 +43,11 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
         container,
         isControlModel
       );
-      const controller = controlModel?.controller.ref;
+      const controller = controlModel?.controlBlock?.controller.ref;
       const datapoints =
         controller?.components.filter((c) => c.$type === Datapoint) ?? [];
 
-      const enumDecls = controlModel?.items.filter(isEnumDecl) ?? [];
+      const enumDecls = controlModel?.controlBlock?.items.filter(isEnumDecl) ?? [];
 
       const scopeNodes: AstNode[] = [...localVars, ...datapoints, ...enumDecls];
 
@@ -55,7 +55,7 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
         AstUtils.getContainerOfType(container, isFunctionBlockDecl) !==
         undefined;
       if (!isInsideFunctionBlock) {
-        const globalVars = controlModel?.items.filter(isVarDecl) ?? [];
+        const globalVars = controlModel?.controlBlock?.items.filter(isVarDecl) ?? [];
         scopeNodes.push(...globalVars);
       }
 

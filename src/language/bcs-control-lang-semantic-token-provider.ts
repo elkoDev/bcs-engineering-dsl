@@ -7,7 +7,7 @@ import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
   isBinExpr,
   isCaseLiteral,
-  isControlModel,
+  isControlBlock,
   isControlUnit,
   isDatapoint,
   isEnumDecl,
@@ -36,7 +36,7 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
     node: AstNode,
     acceptor: SemanticTokenAcceptor
   ): void {
-    if (isControlModel(node)) {
+    if (isControlBlock(node)) {
       acceptor({
         node,
         property: "controller",

@@ -7,11 +7,22 @@ import "./bcs-hardware"
 //    and ControlUnits. ControlUnits are the primary construct for all control logic, whether
 //    time‐based (using TOD expressions) or event‐driven.
 // ==========================================================================
-entry ControlModel:
+entry ControlModel: 
+    (importDecls+=ImportDecl)*
+    (externTypeDecls+=ExternTypeDecl)*
+    controlBlock=ControlBlock 
+;
+
+ImportDecl:
+    'import' 'library' libName=ID ';'
+;
+
+
+ControlBlock:
     'control' controller=[Controller] '{'
         (items+=ControlItem)*
     '}'
-;
+;   
 
 ControlItem:
       Declaration
@@ -45,7 +56,7 @@ VarDecl:
 ;
 
 FunctionBlockDecl:
-    'functionblock' name=ID '{'
+    isExtern?='extern'? 'functionblock' name=ID '{'
         members+=FunctionBlockMember*
     '}'
 ;
@@ -73,13 +84,19 @@ FunctionBlockLogic:
     'logic' Block
 ;
 
+ExternTypeDecl:
+    'extern' 'type' name=ID ';'
+;
+
+
 TypeDecl:
     EnumDecl
     | FunctionBlockDecl
+    | ExternTypeDecl
 ;
 
 TypeRef:
-      type=DataType
+      type=PrimitiveType
     | ref=[TypeDecl]
 ;
 
