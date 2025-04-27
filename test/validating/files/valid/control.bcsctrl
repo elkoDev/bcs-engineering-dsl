@@ -76,4 +76,31 @@ control ValidTestController {
         use HeatingLogicFB(iTemp: 25.0, iWindow: false, iMode: Mode.ECO) -> heater;
         use HeatingLogicFB(iTemp: 25.0, iWindow: false, iMode: Mode.ECO) -> { oHeating: heater };
     }
+
+    unit TestArrays {
+        var arr1: BOOL[5] = [true, false, true, false, true];
+        var arr2: INT[5] = [1, 2, 3, 4, 5];
+        var arr3: REAL[5] = [1.0, 2.0, 3.0, 4.0, 5.0];
+        var arr4: BOOL[5][5] = [[true, false, true, false, true], [false, true, false, false, true], [true, false, true, false, true], [false, true, false, true, false], [true, false, true, false, true]];
+        var arr5: Mode[5] = [Mode.OFF, Mode.ECO, Mode.COMFORT, Mode.OFF, Mode.ECO];
+        
+        var extractedBool: BOOL = arr1[2];
+        var extractedInt: INT = arr2[3];
+        var extractedReal: REAL = arr3[4];
+        var extractedBoolArray: BOOL[5] = arr4[2];
+        var extractedBoolArrayElement: BOOL = arr4[2][3];
+        var extractedMode: Mode = arr5[1];
+
+        arr1[0] = true;
+        arr2[1] = 2;
+        arr3[2] = 3.0;
+        arr4[3][4] = false;
+        arr5[4] = Mode.OFF;
+        arr1[0] = arr1[1] && arr1[2] || arr1[3] && arr1[4];
+        arr2[0] = arr2[1] + arr2[2] - arr2[3] * arr2[4] / 2;
+        arr3[0] = arr3[1] + arr3[2] - arr3[3] * arr3[4] / 2.0;
+        arr4[0][0] = arr4[1][1] && arr4[2][2] || arr4[3][3] && arr4[4][4];
+        arr4[1] = [true, false, true, false, true];
+        arr4[1] = arr1;
+    }
 }

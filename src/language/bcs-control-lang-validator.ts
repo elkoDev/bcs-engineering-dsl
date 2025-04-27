@@ -1,4 +1,4 @@
-import { Reference, ValidationAcceptor, ValidationChecks } from "langium";
+import { ValidationAcceptor, ValidationChecks } from "langium";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
   ArrayLiteral,
@@ -31,7 +31,6 @@ import {
   isSwitchStmt,
   isVarDecl,
   isWhileStmt,
-  NamedElement,
   SwitchStmt,
   UseStmt,
   VarDecl,
@@ -78,9 +77,15 @@ export class BCSControlLangValidator {
   ) {
     const refExpr = stmt.target;
     const targetDatapoint = refExpr.ref?.ref;
-    const channel = refExpr.property?.ref;
 
-    if (!isDatapoint(targetDatapoint) || !isChannel(channel)) return;
+    // Check if there is exactly one property (access to a channel)
+    if (!isDatapoint(targetDatapoint) || refExpr.property.length !== 1) {
+      return;
+    }
+
+    const channel = refExpr.property[0]?.ref;
+    if (!isChannel(channel)) return;
+
     const portGroup = targetDatapoint.portgroup?.ref;
     if (!portGroup) return;
 
@@ -608,33 +613,30 @@ export class BCSControlLangValidator {
         );
       }
     }
-    // ➔ Array Size Checking
+    // Array Size Checking
     if (
       varDecl.typeRef &&
       varDecl.typeRef.sizes.length > 0 &&
       isPrimary(varDecl.init) &&
       isArrayLiteral(varDecl.init.val)
     ) {
-      const sizeExpr = varDecl.typeRef.sizes[0];
+      const expectedDimensions: number[] = [];
 
-      // Only validate size if simple IntLiteral
-      if (sizeExpr.$type === "Primary" && typeof sizeExpr.val === "number") {
-        const expectedSize = sizeExpr.val;
-        const actualSize = varDecl.init.val.elements.length;
-
-        if (expectedSize !== actualSize) {
-          accept(
-            "error",
-            `Array size mismatch: expected ${expectedSize} elements, but got ${actualSize}.`,
-            { node: varDecl, property: "init" }
-          );
+      for (const sizeExpr of varDecl.typeRef.sizes) {
+        if (sizeExpr.$type === "Primary" && typeof sizeExpr.val === "number") {
+          expectedDimensions.push(sizeExpr.val);
+        } else {
+          console.log("Skipping size validation: complex size expression.");
+          return;
         }
-      } else {
-        // More complex Expr —> we skip static validation
-        console.log(
-          `Skipping size validation because size is complex expression.`
-        );
       }
+
+      this.validateArrayLiteralSize(
+        varDecl.init.val,
+        expectedDimensions,
+        accept,
+        varDecl
+      );
     }
   }
 
@@ -652,6 +654,9 @@ export class BCSControlLangValidator {
   checkAssignmentTypes(stmt: AssignmentStmt, accept: ValidationAcceptor) {
     const leftType = this.inferType(stmt.target, accept);
     const rightType = this.inferType(stmt.value, accept);
+
+    this.checkArrayIndexTypes(stmt.target, accept);
+    this.checkArrayIndexTypes(stmt.value, accept);
 
     if (!leftType || !rightType) {
       accept(
@@ -792,22 +797,88 @@ export class BCSControlLangValidator {
     if (expr.$type === "Ref") {
       const ref = expr.ref?.ref;
       if (!ref) return undefined;
+
+      let type = undefined;
+
       if (isVarDecl(ref)) {
-        return this.inferVarDeclType(ref);
-      }
-      if (isDatapoint(ref)) {
-        return (
-          ref.channels.find(
-            (c) =>
-              c.name === (expr.property as Reference<NamedElement>).$refText // TODO: check if this is correct
-          )?.dataType ?? "UNKNOWN"
-        );
-      }
-      if (isEnumDecl(ref)) {
-        return `Enum:${ref.name}`;
+        type = this.inferVarDeclType(ref);
+      } else if (isDatapoint(ref)) {
+        if (expr.property.length === 1) {
+          const channelRef = expr.property[0]?.ref;
+          if (isChannel(channelRef)) {
+            type = channelRef.dataType;
+          }
+        }
+      } else if (isEnumDecl(ref)) {
+        type = `Enum:${ref.name}`;
       }
 
-      return this.inferVarDeclType(expr.ref?.ref);
+      if (ref && expr.index.length > 0) {
+        if (isVarDecl(ref)) {
+          const sizes = ref.typeRef?.sizes ?? [];
+
+          for (let i = 0; i < expr.index.length && i < sizes.length; i++) {
+            const indexExpr = expr.index[i];
+
+            const idxType = this.inferType(indexExpr, accept);
+            if (idxType !== "INT") {
+              accept(
+                "error",
+                `Array index must be of type INT, but got "${idxType}".`,
+                { node: indexExpr }
+              );
+            }
+
+            const sizeExpr = sizes[i];
+
+            // Only check if both index and size are simple numbers
+            if (
+              isPrimary(indexExpr) &&
+              typeof indexExpr.val === "number" &&
+              isPrimary(sizeExpr) &&
+              typeof sizeExpr.val === "number"
+            ) {
+              const indexVal = indexExpr.val;
+              const maxVal = sizeExpr.val;
+
+              if (indexVal < 0 || indexVal >= maxVal) {
+                accept(
+                  "error",
+                  `Array index [${indexVal}] out of bounds: allowed range is 0 to ${
+                    maxVal - 1
+                  }.`,
+                  { node: expr }
+                );
+              }
+            }
+          }
+        }
+      }
+
+      // Handle array indexing
+      if (expr.index && expr.index.length > 0 && type) {
+        for (const _ of expr.index) {
+          const match = /^ARRAY<(.+)>(\[.+\])?$/.exec(type);
+          if (match) {
+            const base = match[1];
+            const dims = match[2]
+              .split("][")
+              .map((s) => s.replace(/[[\]]/g, ""));
+
+            dims.shift(); // remove one dimension
+
+            if (dims.length > 0) {
+              type = `ARRAY<${base}>[${dims.join("][")}]`;
+            } else {
+              type = base;
+            }
+          } else {
+            return undefined; // indexing into non-array -> invalid
+          }
+        }
+      }
+
+      return type;
     }
 
     // 4) If EnumMemberLiteral => check what it points to
@@ -821,18 +892,32 @@ export class BCSControlLangValidator {
     if (isArrayLiteral(expr.val)) {
       const arrayLiteral = expr.val as ArrayLiteral;
       const elements = arrayLiteral.elements;
-      if (elements.length === 0) return "ARRAY<unknown>";
+      if (elements.length === 0) return "ARRAY<unknown>[0]";
 
       // Infer element types
+      const firstElementType = this.inferType(elements[0], accept);
+
+      if (!firstElementType) return `ARRAY<unknown>[${elements.length}]`;
+
+      if (firstElementType.startsWith("ARRAY<")) {
+        // Nested array inside
+        const innerMatch = /^ARRAY<(.+)>(\[(.+?)\])+$/.exec(firstElementType);
+        if (innerMatch) {
+          const baseType = innerMatch[1];
+          const innerDims = innerMatch[2]; // [5] or [5][5], etc
+          return `ARRAY<${baseType}>[${elements.length}]${innerDims}`;
+        }
+      }
+
+      // Simple flat array
       const elementTypes = new Set(
         elements.map((e) => this.inferType(e, accept))
       );
-
-      if (elementTypes.size === 1) {
-        const singleType = [...elementTypes][0];
-        return `ARRAY<${singleType}>[${elements.length}]`; // <-- add [size]!
+      if (elementTypes.size > 1) {
+        return `ARRAY<mixed>[${elements.length}]`;
       } else {
-        return `ARRAY<mixed>[${elements.length}]`; // still include size
+        const singleType = [...elementTypes][0];
+        return `ARRAY<${singleType}>[${elements.length}]`;
       }
     }
 
@@ -906,6 +991,58 @@ export class BCSControlLangValidator {
     }
 
     return baseType;
+  }
+
+  private validateArrayLiteralSize(
+    arrayLiteral: ArrayLiteral,
+    expectedDimensions: number[],
+    accept: ValidationAcceptor,
+    node: any
+  ): void {
+    const expectedSize = expectedDimensions[0];
+
+    if (arrayLiteral.elements.length !== expectedSize) {
+      accept(
+        "error",
+        `Array size mismatch: expected ${expectedSize} elements, but got ${arrayLiteral.elements.length}.`,
+        { node }
+      );
+    }
+
+    if (expectedDimensions.length > 1) {
+      // We expect nested arrays
+      for (const element of arrayLiteral.elements) {
+        if (isPrimary(element) && isArrayLiteral(element.val)) {
+          this.validateArrayLiteralSize(
+            element.val,
+            expectedDimensions.slice(1),
+            accept,
+            node
+          );
+        } else {
+          accept(
+            "error",
+            `Expected nested array with ${expectedDimensions.length} dimensions.`,
+            { node }
+          );
+        }
+      }
+    }
+  }
+
+  checkArrayIndexTypes(expr: any, accept: ValidationAcceptor) {
+    if (expr.$type === "Ref" && expr.index.length > 0) {
+      for (const idxExpr of expr.index) {
+        const idxType = this.inferType(idxExpr, accept);
+        if (idxType !== "INT") {
+          accept(
+            "error",
+            `Array index must be of type INT, but got "${idxType}".`,
+            { node: idxExpr }
+          );
+        }
+      }
+    }
   }
 
   private isTypeAssignable(sourceType: string, targetType: string): boolean {

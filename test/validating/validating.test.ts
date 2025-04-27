@@ -224,11 +224,54 @@ describe("BCS Control Validation Tests", () => {
     const expectedMessages = [
       "Case literal 'Status.OFF' is of type 'Enum:Status', but switch expression is 'Enum:Mode'.",
       "Duplicate case literal 'Mode.ECO'.",
-      "Case literal 'true' is of type 'BOOL', but switch expression is 'Enum:Mode'."
+      "Case literal 'true' is of type 'BOOL', but switch expression is 'Enum:Mode'.",
     ];
 
     expectedMessages.forEach((msg) => {
       expect(diagString).toContain(msg);
     });
+  });
+
+  test("Detect Invalid Arrays", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    const [mainDoc, allDocs] = await extractDocuments(
+      path.join(__dirname, "files", "invalid_array", "control_array.bcsctrl"),
+      services.bcsControl,
+      false
+    );
+
+    const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
+    const diagString = allDiagnostics.map((d) => d.message).join("\n");
+
+    expect(allDiagnostics.length).toBe(43);
+
+    const expectedErrors = [
+      'Type mismatch: Cannot assign "INT" to "BOOL".',
+      "Array size mismatch: expected 3 elements, but got 2.",
+      'Type mismatch: Cannot assign "ARRAY<BOOL>[2]" to "ARRAY<BOOL>[3]".',
+      'Type mismatch: Cannot assign "ARRAY<INT>[5][5][5]" to "ARRAY<BOOL>[5][5][5]".',
+      "Array index [-1] out of bounds: allowed range is 0 to 2.",
+      "Array index [2] out of bounds: allowed range is 0 to 0.",
+      "Array index [3] out of bounds: allowed range is 0 to 1.",
+      "Array index [4] out of bounds: allowed range is 0 to 2.",
+      'Type mismatch: Cannot assign "ARRAY<BOOL>[5]" to "ARRAY<BOOL>[5][5][5]".',
+      "Expected nested array with 3 dimensions.",
+      'Type mismatch: Cannot assign "ARRAY<INT>[5]" to "ARRAY<INT>[5][5][5]".',
+      'Type mismatch: Cannot assign "ARRAY<REAL>[5]" to "ARRAY<REAL>[5][5][5]".',
+      "Expected nested array with 2 dimensions.",
+      'Type mismatch: Cannot assign "ARRAY<mixed>[5]" to "ARRAY<BOOL>[5][5]".',
+      'Type mismatch: Cannot assign "ARRAY<Enum:Mode>[5]" to "ARRAY<Enum:Mode>[5][5][5]".',
+      'Type mismatch: Cannot assign "ARRAY<INT>[2]" to "ARRAY<BOOL>[2]".',
+      "Array size mismatch: expected 3 elements, but got 1.",
+      'Type mismatch: Cannot assign "ARRAY<BOOL>[1][3]" to "ARRAY<BOOL>[3][3]".',
+      "Cannot infer type for variable initialization: invalidIndex = x",
+      "Cannot infer type for variable initialization: invalidAccess = invalidScalarIndex",
+      'Array index must be of type INT, but got "STRING".',
+    ];
+
+    for (const expected of expectedErrors) {
+      expect(diagString).toMatch(expected);
+    }
   });
 });

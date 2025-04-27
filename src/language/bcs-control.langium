@@ -320,7 +320,7 @@ ParenExpr:
 ;
 
 Ref:
-    ref=[NamedElement] ('.' property=[NamedElement])?;
+    ref=[NamedElement] ('.' property+=[NamedElement] | '[' index+=Expr ']')*;
 
 type NamedElement = VarDecl | EnumDecl | StructDecl | Datapoint;
 
