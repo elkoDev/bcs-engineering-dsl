@@ -32,7 +32,7 @@ control InvalidArrayTestController {
         var invalidScalarIndex: BOOL = true;
         var invalidAccess : BOOL = invalidScalarIndex[0]; // invalid: scalar indexed
 
-        var arrStrings: BOOL[2] = [true, false];
+        var arrStrings: BOOL[2] = [true, 0];
         var z : BOOL = arrStrings["notANumber"]; // invalid: string index
 
     }
