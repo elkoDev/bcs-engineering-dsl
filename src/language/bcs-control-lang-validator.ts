@@ -629,26 +629,36 @@ export class BCSControlLangValidator {
         this.validateStructLiteralAssignment(varDecl, accept);
         return;
       }
-    }
 
-    // Special case: Struct array assignment
-    if (
-      initType?.startsWith("ARRAY<STRUCT>") &&
-      type.startsWith("ARRAY<STRUCT:")
-    ) {
-      const expectedStructName = /^ARRAY<STRUCT:(.+?)>\[/.exec(type)?.[1];
-      if (expectedStructName) {
-        if (isPrimary(varDecl.init) && isArrayLiteral(varDecl.init.val)) {
-          for (const element of varDecl.init.val.elements) {
-            if (isPrimary(element) && isStructLiteral(element.val)) {
-              this.validateStructLiteralAssignment(
-                element,
-                accept,
-                expectedStructName
-              );
+      // Special case: Struct array assignment
+      if (
+        initType.startsWith("ARRAY<STRUCT>") &&
+        type.startsWith("ARRAY<STRUCT:")
+      ) {
+        const expectedStructName = /^ARRAY<STRUCT:(.+?)>\[/.exec(type)?.[1];
+        if (expectedStructName) {
+          if (isPrimary(varDecl.init) && isArrayLiteral(varDecl.init.val)) {
+            for (const element of varDecl.init.val.elements) {
+              if (isPrimary(element) && isStructLiteral(element.val)) {
+                this.validateStructLiteralAssignment(
+                  element,
+                  accept,
+                  expectedStructName
+                );
+              }
             }
           }
         }
+        return; // Struct array case handled already, no normal type check needed
+      }
+
+      // Regular type mismatch check
+      if (!this.isTypeAssignable(initType, type)) {
+        accept(
+          "error",
+          `Type mismatch: Cannot assign "${initType}" to "${type}".`,
+          { node: varDecl, property: "init" }
+        );
       }
     }
 
@@ -867,7 +877,12 @@ export class BCSControlLangValidator {
       const op = expr.op;
 
       if (!left || !right) {
-        return left ?? right;
+        accept(
+          "error",
+          `Cannot infer operand types for '${this.stringifyExpression(expr)}'.`,
+          { node: expr }
+        );
+        return undefined;
       }
 
       if (["==", "!=", "<", "<=", ">", ">="].includes(op)) {
@@ -939,16 +954,37 @@ export class BCSControlLangValidator {
 
         // FIRST: Apply array indexing if needed
         if (expr.indices.length > 0 && type) {
-          for (const _ of expr.indices) {
-            const match = /^ARRAY<(.+)>(\[.+\])?$/.exec(type);
-            if (match) {
-              type = match[1]; // extract inner element type
-            } else {
-              accept("error", `Cannot index into non-array type '${type}'.`, {
-                node: expr,
-              });
-              return undefined;
+          let arrayMatch = /^ARRAY<(.+)>(\[(?:\d+|\?)+\])+$/u.exec(type);
+
+          if (arrayMatch) {
+            let baseType = arrayMatch[1];
+            let dims = (type.match(/\[\d+|\?\]/g) || []).map((d) =>
+              d.replace(/\[|\]/g, "")
+            );
+
+            for (const _ of expr.indices) {
+              if (dims.length > 0) {
+                dims.shift(); // remove one dimension
+              } else {
+                accept("error", `Too many indices for type '${type}'.`, {
+                  node: expr,
+                });
+                return undefined;
+              }
             }
+
+            if (dims.length > 0) {
+              // Still an array
+              type = `ARRAY<${baseType}>` + dims.map((d) => `[${d}]`).join("");
+            } else {
+              // Base element
+              type = baseType;
+            }
+          } else if (expr.indices.length > 0) {
+            accept("error", `Cannot index into non-array type '${type}'.`, {
+              node: expr,
+            });
+            return undefined;
           }
         }
 
@@ -1047,29 +1083,6 @@ export class BCSControlLangValidator {
                 );
               }
             }
-          }
-        }
-      }
-
-      // Handle array indexing
-      if (expr.indices && expr.indices.length > 0 && type) {
-        for (const _ of expr.indices) {
-          const match = /^ARRAY<(.+)>(\[.+\])?$/.exec(type);
-          if (match) {
-            const base = match[1];
-            const dims = match[2]
-              .split("][")
-              .map((s) => s.replace(/[[\]]/g, ""));
-
-            dims.shift(); // remove one dimension
-
-            if (dims.length > 0) {
-              type = `ARRAY<${base}>[${dims.join("][")}]`;
-            } else {
-              type = base;
-            }
-          } else {
-            return undefined; // indexing into non-array -> invalid
           }
         }
       }

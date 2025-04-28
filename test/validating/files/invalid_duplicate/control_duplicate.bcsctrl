@@ -19,7 +19,7 @@ control InvalidDuplicateController {
 
     struct DuplicateStruct {
         x: REAL,
-        y: REAL    }
+        y: REAL    
     }
     
     functionblock DuplicateFB {

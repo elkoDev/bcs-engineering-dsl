@@ -58,7 +58,7 @@ describe("BCS Control Validation Tests", () => {
     expect(allDiagnostics.length).toBe(1);
 
     expect(diagString).toMatch(
-      'Type mismatch: Cannot assign "Enum:Status" to "Enum:Mode".'
+      'Type mismatch: Cannot assign "ENUM:Status" to "ENUM:Mode".'
     );
   });
 
@@ -86,9 +86,9 @@ describe("BCS Control Validation Tests", () => {
       'Type mismatch: Cannot assign "INT" to "STRING".',
       'Type mismatch: Cannot assign "TOD" to "TIME".',
       'Type mismatch: Cannot assign "TIME" to "TOD".',
-      'Type mismatch: Cannot assign "Enum:Status" to "Enum:Mode".',
-      'Type mismatch: Cannot assign "Enum:Mode" to "Enum:Status".',
-      'Type mismatch: Cannot assign "Enum:Status" to "INT".',
+      'Type mismatch: Cannot assign "ENUM:Status" to "ENUM:Mode".',
+      'Type mismatch: Cannot assign "ENUM:Mode" to "ENUM:Status".',
+      'Type mismatch: Cannot assign "ENUM:Status" to "INT".',
     ];
 
     expectedMessages.forEach((msg) => {
@@ -121,7 +121,7 @@ describe("BCS Control Validation Tests", () => {
       "Function block 'HeatingLogicFB' expects 3 input arguments, but got 2.",
       // 3. Wrong input types
       "Type mismatch for input 'iWindow': expected 'BOOL', got 'REAL'.",
-      "Type mismatch for input 'iMode': expected 'Enum:Mode', got 'Enum:Status'.",
+      "Type mismatch for input 'iMode': expected 'ENUM:Mode', got 'ENUM:Status'.",
       "Logical operator '||' can only be applied to BOOL operands, but got 'INT' and 'INT'.",
       "Type mismatch for input 'iTemp': expected 'REAL', got 'BOOL'.",
       // 4. Output count mismatch for single assignment
@@ -223,9 +223,9 @@ describe("BCS Control Validation Tests", () => {
 
     expect(allDiagnostics.length).toBe(3);
     const expectedMessages = [
-      "Case literal 'Status.OFF' is of type 'Enum:Status', but switch expression is 'Enum:Mode'.",
+      "Case literal 'Status.OFF' is of type 'ENUM:Status', but switch expression is 'ENUM:Mode'.",
       "Duplicate case literal 'Mode.ECO'.",
-      "Case literal 'true' is of type 'BOOL', but switch expression is 'Enum:Mode'.",
+      "Case literal 'true' is of type 'BOOL', but switch expression is 'ENUM:Mode'.",
     ];
 
     expectedMessages.forEach((msg) => {
@@ -245,7 +245,7 @@ describe("BCS Control Validation Tests", () => {
     const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
-    expect(allDiagnostics.length).toBe(44);
+    expect(allDiagnostics.length).toBe(46);
 
     const expectedErrors = [
       'Type mismatch: Cannot assign "INT" to "BOOL".',
@@ -262,7 +262,7 @@ describe("BCS Control Validation Tests", () => {
       'Type mismatch: Cannot assign "ARRAY<REAL>[5]" to "ARRAY<REAL>[5][5][5]".',
       "Expected nested array with 2 dimensions.",
       'Type mismatch: Cannot assign "ARRAY<mixed>[5]" to "ARRAY<BOOL>[5][5]".',
-      'Type mismatch: Cannot assign "ARRAY<Enum:Mode>[5]" to "ARRAY<Enum:Mode>[5][5][5]".',
+      'Type mismatch: Cannot assign "ARRAY<ENUM:Mode>[5]" to "ARRAY<ENUM:Mode>[5][5][5]".',
       'Type mismatch: Cannot assign "ARRAY<INT>[2]" to "ARRAY<BOOL>[2]".',
       "Array size mismatch: expected 3 elements, but got 1.",
       'Type mismatch: Cannot assign "ARRAY<BOOL>[1][3]" to "ARRAY<BOOL>[3][3]".',
