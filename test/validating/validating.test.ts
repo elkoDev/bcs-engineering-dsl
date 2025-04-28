@@ -16,7 +16,7 @@ describe("BCS Control Validation Tests", () => {
     const services = createBcsEngineeringServices(NodeFileSystem);
 
     const [mainDoc, allDocs] = await extractDocuments(
-      path.join(__dirname, "files", "valid", "control.bcsctrl"),
+      path.join(__dirname, "files", "valid", "valid_control.bcsctrl"),
       services.bcsControl,
       false
     );
@@ -30,7 +30,7 @@ describe("BCS Control Validation Tests", () => {
     const services = createBcsEngineeringServices(NodeFileSystem);
 
     const [mainDoc, allDocs] = await extractDocuments(
-      path.join(__dirname, "files", "invalid", "control.bcsctrl"),
+      path.join(__dirname, "files", "invalid", "invalid_control.bcsctrl"),
       services.bcsControl,
       false
     );
