@@ -1,0 +1,38 @@
+import library Tc3_DALI;
+
+extern enum E_DALIAddressType {Short, Group, Broadcast, BroadcastUnaddr}
+extern enum E_DALICommandPriority {High, MiddleHigh, Middle, MiddleLow, Low, Unknown}
+extern struct ST_DALIChangeAddressList { 
+    nOldAddress       : INT,
+    nNewAddress       : INT,
+    nRandomAddress    : INT,
+    nErrors           : INT
+}
+
+extern functionblock FB_Tc3_DALI { 
+    inputs {
+        var iDALIAddress: E_DALIAddressType;
+        var iDALICommandPriority: E_DALICommandPriority;
+        var iAddressList : ST_DALIChangeAddressList;
+    }
+    outputs {
+        var oDALIStatus: BOOL;
+    }
+}
+
+control ValidLibraryCallTestController {
+
+    unit ExternLibraryCall {
+        var DALIAddress: E_DALIAddressType;
+        var DALICommandPriority: E_DALICommandPriority = E_DALICommandPriority.High;
+        var addressList : ST_DALIChangeAddressList = {
+            nOldAddress: 1,
+            nNewAddress: 2,
+            nRandomAddress: 3,
+            nErrors: 0
+        };
+        var oDALIStatus: BOOL;
+        use FB_Tc3_DALI(iDALIAddress : DALIAddress, iDALICommandPriority: DALICommandPriority, iAddressList: addressList) -> oDALIStatus;
+    }
+
+}

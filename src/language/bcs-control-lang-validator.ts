@@ -818,9 +818,13 @@ export class BCSControlLangValidator {
     const controlModel = AstUtils.getContainerOfType(node, isControlModel);
     if (!controlModel) return;
 
-    const structDecl = controlModel.controlBlock.items.find(
-      (d) => isStructDecl(d) && d.name === structName
-    ) as StructDecl | undefined;
+    const structDecl =
+      controlModel.controlBlock.items.find(
+        (d) => isStructDecl(d) && d.name === structName
+      ) as StructDecl | undefined ??
+      (controlModel.externTypeDecls.find(
+        (d) => isStructDecl(d) && d.name === structName
+      ) as StructDecl | undefined);
 
     if (!structDecl) {
       return;
