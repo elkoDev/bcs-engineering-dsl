@@ -162,9 +162,10 @@ describe("BCS Control Validation Tests", () => {
     const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
-    expect(allDiagnostics.length).toBe(34);
+    expect(allDiagnostics.length).toBe(35);
     const expectedMessages = [
       "Duplicate enum 'DuplicateMode'.",
+      "Duplicate struct 'DuplicateStruct'.",
       "Only one 'inputs' block allowed in function block 'DuplicateFB', found 2.",
       "Only one 'outputs' block allowed in function block 'DuplicateFB', found 2.",
       "Only one 'locals' block allowed in function block 'DuplicateFB', found 2.",
@@ -269,6 +270,29 @@ describe("BCS Control Validation Tests", () => {
       "Cannot infer type for variable initialization: invalidAccess = invalidScalarIndex",
       'Array index must be of type INT, but got "STRING".',
       'Type mismatch: Cannot assign "ARRAY<mixed>[2]" to "ARRAY<BOOL>[2]".',
+    ];
+
+    for (const expected of expectedErrors) {
+      expect(diagString).toMatch(expected);
+    }
+  });
+
+  test("Detect Invalid Structs", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    const [mainDoc, allDocs] = await extractDocuments(
+      path.join(__dirname, "files", "invalid_struct", "control_struct.bcsctrl"),
+      services.bcsControl,
+      false
+    );
+
+    const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
+    const diagString = allDiagnostics.map((d) => d.message).join("\n");
+
+    expect(allDiagnostics.length).toBe(1);
+
+    const expectedErrors = [
+      'Type mismatch: Cannot assign "INT" to "BOOL".',
     ];
 
     for (const expected of expectedErrors) {

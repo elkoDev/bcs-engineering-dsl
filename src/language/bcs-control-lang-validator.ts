@@ -1,4 +1,4 @@
-import { ValidationAcceptor, ValidationChecks } from "langium";
+import { AstUtils, ValidationAcceptor, ValidationChecks } from "langium";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
   ArrayLiteral,
@@ -10,9 +10,11 @@ import {
   ControlUnit,
   FunctionBlockDecl,
   isArrayLiteral,
+  isAssignmentStmt,
   isBinExpr,
   isCaseLiteral,
   isChannel,
+  isControlModel,
   isControlUnit,
   isDatapoint,
   isEnumDecl,
@@ -27,10 +29,13 @@ import {
   isOnFallingEdgeStmt,
   isOnRisingEdgeStmt,
   isPrimary,
+  isStructDecl,
   isStructLiteral,
   isSwitchStmt,
   isVarDecl,
   isWhileStmt,
+  Primary,
+  StructDecl,
   SwitchStmt,
   UseStmt,
   VarDecl,
@@ -228,11 +233,22 @@ export class BCSControlLangValidator {
     accept: ValidationAcceptor
   ) {
     const enumNames = new Set<string>();
+    const structNames = new Set<string>();
     const fbNames = new Set<string>();
     const unitNames = new Set<string>();
     const globalVarNames = new Set<string>();
 
     for (const item of model.controlBlock?.items ?? []) {
+      if (isStructDecl(item)) {
+        if (structNames.has(item.name)) {
+          accept("error", `Duplicate struct '${item.name}'.`, {
+            node: item,
+            property: "name",
+          });
+        } else {
+          structNames.add(item.name);
+        }
+      }
       if (isEnumDecl(item)) {
         if (enumNames.has(item.name)) {
           accept("error", `Duplicate enum '${item.name}'.`, {
@@ -593,8 +609,11 @@ export class BCSControlLangValidator {
       );
       return;
     }
+
+    let initType: string | undefined;
+
     if (varDecl.init) {
-      const initType = this.inferType(varDecl.init, accept);
+      initType = this.inferType(varDecl.init, accept);
       if (!initType) {
         accept(
           "error",
@@ -605,18 +624,37 @@ export class BCSControlLangValidator {
         );
         return;
       }
-      if (!this.isTypeAssignable(initType, type)) {
-        accept(
-          "error",
-          `Type mismatch: Cannot assign "${initType}" to "${type}".`,
-          { node: varDecl, property: "init" }
-        );
+
+      if (type.startsWith("STRUCT:") && initType === "STRUCT") {
+        this.validateStructLiteralAssignment(varDecl, accept);
+        return;
       }
     }
+
+    // Special case: Struct array assignment
+    if (
+      initType?.startsWith("ARRAY<STRUCT>") &&
+      type.startsWith("ARRAY<STRUCT:")
+    ) {
+      const expectedStructName = /^ARRAY<STRUCT:(.+?)>\[/.exec(type)?.[1];
+      if (expectedStructName) {
+        if (isPrimary(varDecl.init) && isArrayLiteral(varDecl.init.val)) {
+          for (const element of varDecl.init.val.elements) {
+            if (isPrimary(element) && isStructLiteral(element.val)) {
+              this.validateStructLiteralAssignment(
+                element,
+                accept,
+                expectedStructName
+              );
+            }
+          }
+        }
+      }
+    }
+
     // Array Size Checking
     if (
-      varDecl.typeRef &&
-      varDecl.typeRef.sizes.length > 0 &&
+      varDecl.typeRef?.sizes.length > 0 &&
       isPrimary(varDecl.init) &&
       isArrayLiteral(varDecl.init.val)
     ) {
@@ -666,6 +704,11 @@ export class BCSControlLangValidator {
         } = ${this.stringifyExpression(stmt.value)}`,
         { node: stmt }
       );
+      return;
+    }
+
+    if (leftType.startsWith("STRUCT:") && rightType === "STRUCT") {
+      this.validateStructLiteralAssignment(stmt, accept);
       return;
     }
 
@@ -720,6 +763,97 @@ export class BCSControlLangValidator {
 
       default:
         return `[${expr.$type}]`;
+    }
+  }
+
+  private validateStructLiteralAssignment(
+    node: VarDecl | AssignmentStmt | Primary,
+    accept: ValidationAcceptor,
+    forceStructName?: string
+  ) {
+    let structName: string | undefined;
+    let valueExpr: any;
+
+    if (isVarDecl(node)) {
+      const typeDecl = node.typeRef?.ref?.ref;
+      if (!isStructDecl(typeDecl)) return;
+      structName = typeDecl.name;
+      valueExpr = node.init;
+    } else if (isAssignmentStmt(node)) {
+      structName = node.target.ref?.ref?.name;
+      valueExpr = node.value;
+    } else if (isPrimary(node)) {
+      // case for array elements
+      structName = forceStructName;
+      valueExpr = node;
+    } else {
+      return;
+    }
+
+    if (!structName || !valueExpr) {
+      return;
+    }
+
+    if (!isPrimary(valueExpr)) {
+      return;
+    }
+
+    const structLiteral = valueExpr.val;
+
+    if (!isStructLiteral(structLiteral)) {
+      return;
+    }
+
+    // lookup struct
+    const controlModel = AstUtils.getContainerOfType(node, isControlModel);
+    if (!controlModel) return;
+
+    const structDecl = controlModel.controlBlock.items.find(
+      (d) => isStructDecl(d) && d.name === structName
+    ) as StructDecl | undefined;
+
+    if (!structDecl) {
+      return;
+    }
+
+    const expectedFields = new Set(structDecl.fields.map((f) => f.name));
+    const givenFields = new Set(structLiteral.fields.map((f) => f.name));
+
+    const seenFields = new Set<string>();
+    for (const field of structLiteral.fields) {
+      if (seenFields.has(field.name)) {
+        accept(
+          "error",
+          `Duplicate field '${field.name}' in struct literal for '${structName}'.`,
+          { node: field }
+        );
+      } else {
+        seenFields.add(field.name);
+      }
+    }
+
+    let hasUnexpectedField = false;
+    for (const given of givenFields) {
+      if (!expectedFields.has(given)) {
+        accept(
+          "error",
+          `Unexpected field '${given}' in struct literal for '${structName}'.`,
+          { node: valueExpr }
+        );
+        hasUnexpectedField = true;
+      }
+    }
+
+    if (!hasUnexpectedField) {
+      for (const expected of expectedFields) {
+        if (!givenFields.has(expected)) {
+          accept(
+            "error",
+            `Missing field '${expected}' in struct literal for '${structName}'.`,
+            { node: valueExpr }
+          );
+        }
+      }
     }
   }
 
@@ -802,6 +936,68 @@ export class BCSControlLangValidator {
 
       if (isVarDecl(ref)) {
         type = this.inferVarDeclType(ref);
+
+        // FIRST: Apply array indexing if needed
+        if (expr.indices.length > 0 && type) {
+          for (const _ of expr.indices) {
+            const match = /^ARRAY<(.+)>(\[.+\])?$/.exec(type);
+            if (match) {
+              type = match[1]; // extract inner element type
+            } else {
+              accept("error", `Cannot index into non-array type '${type}'.`, {
+                node: expr,
+              });
+              return undefined;
+            }
+          }
+        }
+
+        // THEN: Walk over struct properties
+        for (const prop of expr.properties) {
+          if (!type?.startsWith("STRUCT:")) {
+            accept(
+              "error",
+              `Cannot access property '${prop.ref?.name}' on non-struct type '${type}'.`,
+              { node: expr }
+            );
+            return undefined;
+          }
+
+          const controlModel = AstUtils.getContainerOfType(
+            expr,
+            isControlModel
+          );
+          const structName = type.substring("STRUCT:".length);
+          const structDecl = controlModel?.controlBlock?.items.find(
+            (d) => isStructDecl(d) && d.name === structName
+          ) as StructDecl | undefined;
+
+          if (!structDecl) return undefined;
+
+          const field = structDecl.fields.find(
+            (f) => f.name === prop.ref?.name
+          );
+          if (!field) {
+            accept(
+              "error",
+              `Unknown field '${prop.ref?.name}' in struct '${structName}'.`,
+              { node: expr }
+            );
+            return undefined;
+          }
+
+          // Update type
+          if (field.typeRef?.type) {
+            type = field.typeRef.type;
+          } else if (field.typeRef?.ref?.ref) {
+            const refTypeDecl = field.typeRef.ref.ref;
+            if (isStructDecl(refTypeDecl)) {
+              type = `STRUCT:${refTypeDecl.name}`;
+            } else if (isEnumDecl(refTypeDecl)) {
+              type = `ENUM:${refTypeDecl.name}`;
+            }
+          }
+        }
       } else if (isDatapoint(ref)) {
         if (expr.properties.length === 1) {
           const channelRef = expr.properties[0]?.ref;
@@ -810,7 +1006,7 @@ export class BCSControlLangValidator {
           }
         }
       } else if (isEnumDecl(ref)) {
-        type = `Enum:${ref.name}`;
+        type = `ENUM:${ref.name}`;
       }
 
       if (ref && expr.indices.length > 0) {
@@ -884,7 +1080,7 @@ export class BCSControlLangValidator {
     // 4) If EnumMemberLiteral => check what it points to
     if (isCaseLiteral(expr)) {
       if (isEnumMemberLiteral(expr.val)) {
-        return `Enum:${expr.val.value.$refText}`;
+        return `ENUM:${expr.val.value.$refText}`;
       }
     }
 
@@ -895,7 +1091,16 @@ export class BCSControlLangValidator {
       if (elements.length === 0) return "ARRAY<unknown>[0]";
 
       // Infer element types
-      const firstElementType = this.inferType(elements[0], accept);
+      let firstElementType = this.inferType(elements[0], accept);
+
+      // If first element is STRUCT but surrounded by a known typeRef, use that
+      if (firstElementType === "STRUCT") {
+        const parentVarDecl = AstUtils.getContainerOfType(expr, isVarDecl);
+        const structDecl = parentVarDecl?.typeRef?.ref?.ref;
+        if (isStructDecl(structDecl)) {
+          firstElementType = `STRUCT:${structDecl.name}`;
+        }
+      }
 
       if (!firstElementType) return `ARRAY<unknown>[${elements.length}]`;
 
@@ -972,10 +1177,13 @@ export class BCSControlLangValidator {
       const typeDecl = varDecl.typeRef.ref.ref;
       if (!typeDecl) return undefined;
       if (isEnumDecl(typeDecl)) {
-        baseType = `Enum:${typeDecl.name}`;
+        baseType = `ENUM:${typeDecl.name}`;
       }
       if (isFunctionBlockDecl(typeDecl)) {
         baseType = `FB:${typeDecl.name}`;
+      }
+      if (isStructDecl(typeDecl)) {
+        baseType = `STRUCT:${typeDecl.name}`;
       }
     }
 
@@ -1067,7 +1275,7 @@ export class BCSControlLangValidator {
       return true;
     }
 
-    if (sourceType.startsWith("Enum:") && targetType === sourceType) {
+    if (sourceType.startsWith("ENUM:") && targetType === sourceType) {
       return true;
     }
 
@@ -1089,8 +1297,8 @@ export class BCSControlLangValidator {
     }
 
     if (
-      type1.startsWith("Enum:") &&
-      type2.startsWith("Enum:") &&
+      type1.startsWith("ENUM:") &&
+      type2.startsWith("ENUM:") &&
       type1 === type2
     ) {
       return true;
