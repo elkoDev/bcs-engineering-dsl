@@ -14,6 +14,7 @@ control InvalidStructTestController {
         x: BOOL
     }
 
+
     unit TestStructUnit {
         // 1. Unexpected field
         var rect: Rectangle = { x: 5.0, f: 10.0 };
@@ -55,4 +56,6 @@ control InvalidStructTestController {
             { x: 3.0, y: 4.0, z: 5.0 } // Unexpected z
         ];
     }
+
+    // TODO: test invalid struct of structs
 }

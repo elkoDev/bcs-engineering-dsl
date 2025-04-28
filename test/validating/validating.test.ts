@@ -289,10 +289,15 @@ describe("BCS Control Validation Tests", () => {
     const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
-    expect(allDiagnostics.length).toBe(1);
+    expect(allDiagnostics.length).toBe(12);
 
     const expectedErrors = [
-      'Type mismatch: Cannot assign "INT" to "BOOL".',
+      "Unexpected field 'f' in struct literal for 'Rectangle'.",
+      "Missing field 'x' in struct literal for 'Rectangle'.",
+      "Duplicate field 'y' in struct literal for 'Rectangle'.",
+      "Missing field 'y' in struct literal for 'Rectangle'.",
+      'Type mismatch: Cannot assign "STRUCT:Point" to "STRUCT:Rectangle".',
+      "Unexpected field 'z' in struct literal for 'Rectangle'.",
     ];
 
     for (const expected of expectedErrors) {

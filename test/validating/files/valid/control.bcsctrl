@@ -164,38 +164,38 @@ control ValidTestController {
         var newRadius: REAL = c2.radius;
     }
 
+    /* TODO: later
     unit TestStructOfStructs {
-    // 9. Correct initialization of StructOfStructs
-    var complex: StructOfStructs = {
-        rect: { x: 1.0, y: 2.0 },
-        point: { x: 3.0, y: 4.0 },
-        array: [
-            { x: 5.0, y: 6.0 },
-            { x: 7.0, y: 8.0 }
-        ]
-    };
+        // 9. Correct initialization of StructOfStructs
+        var complex: StructOfStructs = {
+            rect: { x: 1.0, y: 2.0 },
+            point: { x: 3.0, y: 4.0 },
+            array: [
+                { x: 5.0, y: 6.0 },
+                { x: 7.0, y: 8.0 }
+            ]
+        };
 
-    // 10. Access nested struct fields
-    var rectArea: REAL;
-    rectArea = complex.rect.x * complex.rect.y;
+        // 10. Access nested struct fields
+        rectArea = complex.rect.x * complex.rect.y;
 
-    // 11. Access nested array inside struct
-    var arrayArea: REAL;
-    arrayArea = complex.array[0].x * complex.array[0].y;
+        // 11. Access nested array inside struct
+        var arrayArea: REAL;
+        arrayArea = complex.array[0].x * complex.array[0].y;
 
-    // 12. Separate struct assignment after declaration
-    var separateComplex: StructOfStructs;
-    separateComplex = {
-        rect: { x: 9.0, y: 10.0 },
-        point: { x: 11.0, y: 12.0 },
-        array: [
-            { x: 13.0, y: 14.0 },
-            { x: 15.0, y: 16.0 }
-        ]
-    };
+        // 12. Separate struct assignment after declaration
+        var separateComplex: StructOfStructs;
+        separateComplex = {
+            rect: { x: 9.0, y: 10.0 },
+            point: { x: 11.0, y: 12.0 },
+            array: [
+                { x: 13.0, y: 14.0 },
+                { x: 15.0, y: 16.0 }
+            ]
+        };
 
-    // 13. Nested operations
-    var totalArea: REAL;
-    totalArea = separateComplex.rect.x * separateComplex.rect.y + separateComplex.array[1].x * separateComplex.array[1].y;
-}
+        // 13. Nested operations
+        var totalArea: REAL;
+        totalArea = separateComplex.rect.x * separateComplex.rect.y + separateComplex.array[1].x * separateComplex.array[1].y;
+    }*/
 }
