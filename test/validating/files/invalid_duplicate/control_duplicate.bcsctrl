@@ -12,6 +12,16 @@ control InvalidDuplicateController {
         OFF2
     }
 
+    struct DuplicateStruct {
+        x: REAL,
+        y: REAL
+    }
+
+    struct DuplicateStruct {
+        x: REAL,
+        y: REAL    
+    }
+    
     functionblock DuplicateFB {
         inputs {
             var iDuplicate: REAL;

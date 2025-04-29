@@ -26,7 +26,7 @@ export function generateCodeAndConfig(
 
 function generateCode(controlModel: ControlModel, destination: string): string {
   const fileNode = expandToNode`
-    Control code for ${controlModel.controller.ref?.name}
+    Control code for ${controlModel.controlBlock?.controller?.ref?.name}
   `.appendNewLineIfNotEmpty();
 
   if (!fs.existsSync(destination)) {

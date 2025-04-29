@@ -1,6 +1,7 @@
-import { Reference, ValidationAcceptor, ValidationChecks } from "langium";
+import { AstUtils, ValidationAcceptor, ValidationChecks } from "langium";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
+  ArrayLiteral,
   AssignmentStmt,
   BCSEngineeringDSLAstType,
   CaseLiteral,
@@ -8,9 +9,12 @@ import {
   ControlModel,
   ControlUnit,
   FunctionBlockDecl,
+  isArrayLiteral,
+  isAssignmentStmt,
   isBinExpr,
   isCaseLiteral,
   isChannel,
+  isControlModel,
   isControlUnit,
   isDatapoint,
   isEnumDecl,
@@ -25,10 +29,13 @@ import {
   isOnFallingEdgeStmt,
   isOnRisingEdgeStmt,
   isPrimary,
+  isStructDecl,
+  isStructLiteral,
   isSwitchStmt,
   isVarDecl,
   isWhileStmt,
-  NamedElement,
+  Primary,
+  StructDecl,
   SwitchStmt,
   UseStmt,
   VarDecl,
@@ -75,9 +82,15 @@ export class BCSControlLangValidator {
   ) {
     const refExpr = stmt.target;
     const targetDatapoint = refExpr.ref?.ref;
-    const channel = refExpr.property?.ref;
 
-    if (!isDatapoint(targetDatapoint) || !isChannel(channel)) return;
+    // Check if there is exactly one property (access to a channel)
+    if (!isDatapoint(targetDatapoint) || refExpr.properties.length !== 1) {
+      return;
+    }
+
+    const channel = refExpr.properties[0]?.ref;
+    if (!isChannel(channel)) return;
+
     const portGroup = targetDatapoint.portgroup?.ref;
     if (!portGroup) return;
 
@@ -220,11 +233,22 @@ export class BCSControlLangValidator {
     accept: ValidationAcceptor
   ) {
     const enumNames = new Set<string>();
+    const structNames = new Set<string>();
     const fbNames = new Set<string>();
     const unitNames = new Set<string>();
     const globalVarNames = new Set<string>();
 
-    for (const item of model.items) {
+    for (const item of model.controlBlock?.items ?? []) {
+      if (isStructDecl(item)) {
+        if (structNames.has(item.name)) {
+          accept("error", `Duplicate struct '${item.name}'.`, {
+            node: item,
+            property: "name",
+          });
+        } else {
+          structNames.add(item.name);
+        }
+      }
       if (isEnumDecl(item)) {
         if (enumNames.has(item.name)) {
           accept("error", `Duplicate enum '${item.name}'.`, {
@@ -585,18 +609,50 @@ export class BCSControlLangValidator {
       );
       return;
     }
+
+    let initType: string | undefined;
+
     if (varDecl.init) {
-      const initType = this.inferType(varDecl.init, accept);
+      initType = this.inferType(varDecl.init, accept);
       if (!initType) {
         accept(
           "error",
           `Cannot infer type for variable initialization: ${
             varDecl.name
-          } = ${JSON.stringify(varDecl.init)}`,
+          } = ${this.stringifyExpression(varDecl.init)}`,
           { node: varDecl, property: "init" }
         );
         return;
       }
+
+      if (type.startsWith("STRUCT:") && initType === "STRUCT") {
+        this.validateStructLiteralAssignment(varDecl, accept);
+        return;
+      }
+
+      // Special case: Struct array assignment
+      if (
+        initType.startsWith("ARRAY<STRUCT>") &&
+        type.startsWith("ARRAY<STRUCT:")
+      ) {
+        const expectedStructName = /^ARRAY<STRUCT:(.+?)>\[/.exec(type)?.[1];
+        if (expectedStructName) {
+          if (isPrimary(varDecl.init) && isArrayLiteral(varDecl.init.val)) {
+            for (const element of varDecl.init.val.elements) {
+              if (isPrimary(element) && isStructLiteral(element.val)) {
+                this.validateStructLiteralAssignment(
+                  element,
+                  accept,
+                  expectedStructName
+                );
+              }
+            }
+          }
+        }
+        return; // Struct array case handled already, no normal type check needed
+      }
+
+      // Regular type mismatch check
       if (!this.isTypeAssignable(initType, type)) {
         accept(
           "error",
@@ -604,6 +660,31 @@ export class BCSControlLangValidator {
           { node: varDecl, property: "init" }
         );
       }
+    }
+
+    // Array Size Checking
+    if (
+      varDecl.typeRef?.sizes.length > 0 &&
+      isPrimary(varDecl.init) &&
+      isArrayLiteral(varDecl.init.val)
+    ) {
+      const expectedDimensions: number[] = [];
+
+      for (const sizeExpr of varDecl.typeRef.sizes) {
+        if (sizeExpr.$type === "Primary" && typeof sizeExpr.val === "number") {
+          expectedDimensions.push(sizeExpr.val);
+        } else {
+          console.log("Skipping size validation: complex size expression.");
+          return;
+        }
+      }
+
+      this.validateArrayLiteralSize(
+        varDecl.init.val,
+        expectedDimensions,
+        accept,
+        varDecl
+      );
     }
   }
 
@@ -622,6 +703,9 @@ export class BCSControlLangValidator {
     const leftType = this.inferType(stmt.target, accept);
     const rightType = this.inferType(stmt.value, accept);
 
+    this.checkArrayIndexTypes(stmt.target, accept);
+    this.checkArrayIndexTypes(stmt.value, accept);
+
     if (!leftType || !rightType) {
       accept(
         "warning",
@@ -630,6 +714,11 @@ export class BCSControlLangValidator {
         } = ${this.stringifyExpression(stmt.value)}`,
         { node: stmt }
       );
+      return;
+    }
+
+    if (leftType.startsWith("STRUCT:") && rightType === "STRUCT") {
+      this.validateStructLiteralAssignment(stmt, accept);
       return;
     }
 
@@ -661,11 +750,124 @@ export class BCSControlLangValidator {
         return expr.ref?.ref?.name ?? "[unresolved ref]";
       case "EnumMemberLiteral":
         return `${expr.value.ref?.name}.${expr.member.ref?.name}`;
-      default:
-        if (typeof expr.val !== "undefined") {
+
+      case "Primary":
+        if (expr.val) {
+          if (Array.isArray(expr.val?.elements)) {
+            // It's an ArrayLiteral
+            return `[${expr.val.elements
+              .map((e: any) => this.stringifyExpression(e))
+              .join(", ")}]`;
+          }
+          if (Array.isArray(expr.val?.fields)) {
+            // It's a StructLiteral
+            return `{${expr.val.fields
+              .map(
+                (f: any) => `${f.name}: ${this.stringifyExpression(f.value)}`
+              )
+              .join(", ")}}`;
+          }
           return `${expr.val}`;
         }
+        return "[Primary]";
+
+      default:
         return `[${expr.$type}]`;
+    }
+  }
+
+  private validateStructLiteralAssignment(
+    node: VarDecl | AssignmentStmt | Primary,
+    accept: ValidationAcceptor,
+    forceStructName?: string
+  ) {
+    let structName: string | undefined;
+    let valueExpr: any;
+
+    if (isVarDecl(node)) {
+      const typeDecl = node.typeRef?.ref?.ref;
+      if (!isStructDecl(typeDecl)) return;
+      structName = typeDecl.name;
+      valueExpr = node.init;
+    } else if (isAssignmentStmt(node)) {
+      structName = node.target.ref?.ref?.name;
+      valueExpr = node.value;
+    } else if (isPrimary(node)) {
+      // case for array elements
+      structName = forceStructName;
+      valueExpr = node;
+    } else {
+      return;
+    }
+
+    if (!structName || !valueExpr) {
+      return;
+    }
+
+    if (!isPrimary(valueExpr)) {
+      return;
+    }
+
+    const structLiteral = valueExpr.val;
+
+    if (!isStructLiteral(structLiteral)) {
+      return;
+    }
+
+    // lookup struct
+    const controlModel = AstUtils.getContainerOfType(node, isControlModel);
+    if (!controlModel) return;
+
+    const structDecl =
+      (controlModel.controlBlock.items.find(
+        (d) => isStructDecl(d) && d.name === structName
+      ) as StructDecl | undefined) ??
+      (controlModel.externTypeDecls.find(
+        (d) => isStructDecl(d) && d.name === structName
+      ) as StructDecl | undefined);
+
+    if (!structDecl) {
+      return;
+    }
+
+    const expectedFields = new Set(structDecl.fields.map((f) => f.name));
+    const givenFields = new Set(structLiteral.fields.map((f) => f.name));
+
+    const seenFields = new Set<string>();
+    for (const field of structLiteral.fields) {
+      if (seenFields.has(field.name)) {
+        accept(
+          "error",
+          `Duplicate field '${field.name}' in struct literal for '${structName}'.`,
+          { node: field }
+        );
+      } else {
+        seenFields.add(field.name);
+      }
+    }
+
+    let hasUnexpectedField = false;
+    for (const given of givenFields) {
+      if (!expectedFields.has(given)) {
+        accept(
+          "error",
+          `Unexpected field '${given}' in struct literal for '${structName}'.`,
+          { node: valueExpr }
+        );
+        hasUnexpectedField = true;
+      }
+    }
+
+    if (!hasUnexpectedField) {
+      for (const expected of expectedFields) {
+        if (!givenFields.has(expected)) {
+          accept(
+            "error",
+            `Missing field '${expected}' in struct literal for '${structName}'.`,
+            { node: valueExpr }
+          );
+        }
+      }
     }
   }
 
@@ -679,7 +881,12 @@ export class BCSControlLangValidator {
       const op = expr.op;
 
       if (!left || !right) {
-        return left ?? right;
+        accept(
+          "error",
+          `Cannot infer operand types for '${this.stringifyExpression(expr)}'.`,
+          { node: expr }
+        );
+        return undefined;
       }
 
       if (["==", "!=", "<", "<=", ">", ">="].includes(op)) {
@@ -743,32 +950,214 @@ export class BCSControlLangValidator {
     if (expr.$type === "Ref") {
       const ref = expr.ref?.ref;
       if (!ref) return undefined;
+
+      let type = undefined;
+
       if (isVarDecl(ref)) {
-        return this.inferVarDeclType(ref);
-      }
-      if (isDatapoint(ref)) {
-        return (
-          ref.channels.find(
-            (c) =>
-              c.name === (expr.property as Reference<NamedElement>).$refText // TODO: check if this is correct
-          )?.dataType ?? "UNKNOWN"
-        );
-      }
-      if (isEnumDecl(ref)) {
-        return `Enum:${ref.name}`;
+        type = this.inferVarDeclType(ref);
+
+        // FIRST: Apply array indexing if needed
+        if (expr.indices.length > 0 && type) {
+          let arrayMatch = /^ARRAY<(.+)>(\[(?:\d+|\?)+\])+$/u.exec(type);
+
+          if (arrayMatch) {
+            let baseType = arrayMatch[1];
+            let dims = (type.match(/\[\d+|\?\]/g) || []).map((d) =>
+              d.replace(/\[|\]/g, "")
+            );
+
+            for (const _ of expr.indices) {
+              if (dims.length > 0) {
+                dims.shift(); // remove one dimension
+              } else {
+                accept("error", `Too many indices for type '${type}'.`, {
+                  node: expr,
+                });
+                return undefined;
+              }
+            }
+
+            if (dims.length > 0) {
+              // Still an array
+              type = `ARRAY<${baseType}>` + dims.map((d) => `[${d}]`).join("");
+            } else {
+              // Base element
+              type = baseType;
+            }
+          } else if (expr.indices.length > 0) {
+            accept("error", `Cannot index into non-array type '${type}'.`, {
+              node: expr,
+            });
+            return undefined;
+          }
+        }
+
+        // THEN: Walk over struct properties
+        for (const prop of expr.properties) {
+          if (!type?.startsWith("STRUCT:")) {
+            accept(
+              "error",
+              `Cannot access property '${prop.ref?.name}' on non-struct type '${type}'.`,
+              { node: expr }
+            );
+            return undefined;
+          }
+
+          const controlModel = AstUtils.getContainerOfType(
+            expr,
+            isControlModel
+          );
+          const structName = type.substring("STRUCT:".length);
+          const structDecl: StructDecl | undefined =
+            (controlModel?.controlBlock.items.find(
+              (d) => isStructDecl(d) && d.name === structName
+            ) as StructDecl | undefined) ??
+            (controlModel?.externTypeDecls.find(
+              (d) => isStructDecl(d) && d.name === structName
+            ) as StructDecl | undefined);
+
+          if (!structDecl) {
+            accept(
+              "error",
+              `Cannot access property '${prop.ref?.name}' on unknown struct type '${structName}'.`,
+              { node: expr }
+            );
+            return undefined;
+          }
+
+          const field = structDecl.fields.find(
+            (f) => f.name === prop.ref?.name
+          );
+          if (!field) {
+            accept(
+              "error",
+              `Unknown field '${prop.ref?.name}' in struct '${structName}'.`,
+              { node: expr }
+            );
+            return undefined;
+          }
+
+          // Update type
+          if (field.typeRef?.type) {
+            type = field.typeRef.type;
+          } else if (field.typeRef?.ref?.ref) {
+            const refTypeDecl = field.typeRef.ref.ref;
+            if (isStructDecl(refTypeDecl)) {
+              type = `STRUCT:${refTypeDecl.name}`;
+            } else if (isEnumDecl(refTypeDecl)) {
+              type = `ENUM:${refTypeDecl.name}`;
+            }
+          }
+        }
+      } else if (isDatapoint(ref)) {
+        if (expr.properties.length === 1) {
+          const channelRef = expr.properties[0]?.ref;
+          if (isChannel(channelRef)) {
+            type = channelRef.dataType;
+          }
+        }
+      } else if (isEnumDecl(ref)) {
+        type = `ENUM:${ref.name}`;
       }
 
-      return this.inferVarDeclType(expr.ref?.ref);
+      if (ref && expr.indices.length > 0) {
+        if (isVarDecl(ref)) {
+          const sizes = ref.typeRef?.sizes ?? [];
+
+          for (let i = 0; i < expr.indices.length && i < sizes.length; i++) {
+            const indexExpr = expr.indices[i];
+
+            const idxType = this.inferType(indexExpr, accept);
+            if (idxType !== "INT") {
+              accept(
+                "error",
+                `Array index must be of type INT, but got "${idxType}".`,
+                { node: indexExpr }
+              );
+            }
+
+            const sizeExpr = sizes[i];
+
+            // Only check if both index and size are simple numbers
+            if (
+              isPrimary(indexExpr) &&
+              typeof indexExpr.val === "number" &&
+              isPrimary(sizeExpr) &&
+              typeof sizeExpr.val === "number"
+            ) {
+              const indexVal = indexExpr.val;
+              const maxVal = sizeExpr.val;
+
+              if (indexVal < 0 || indexVal >= maxVal) {
+                accept(
+                  "error",
+                  `Array index [${indexVal}] out of bounds: allowed range is 0 to ${
+                    maxVal - 1
+                  }.`,
+                  { node: expr }
+                );
+              }
+            }
+          }
+        }
+      }
+
+      return type;
     }
 
     // 4) If EnumMemberLiteral => check what it points to
     if (isCaseLiteral(expr)) {
       if (isEnumMemberLiteral(expr.val)) {
-        return `Enum:${expr.val.value.$refText}`;
+        return `ENUM:${expr.val.enumDecl.$refText}`;
       }
     }
 
     // 5) If literal => check type
+    if (isArrayLiteral(expr.val)) {
+      const arrayLiteral = expr.val as ArrayLiteral;
+      const elements = arrayLiteral.elements;
+      if (elements.length === 0) return "ARRAY<unknown>[0]";
+
+      // Infer element types
+      let firstElementType = this.inferType(elements[0], accept);
+
+      // If first element is STRUCT but surrounded by a known typeRef, use that
+      if (firstElementType === "STRUCT") {
+        const parentVarDecl = AstUtils.getContainerOfType(expr, isVarDecl);
+        const structDecl = parentVarDecl?.typeRef?.ref?.ref;
+        if (isStructDecl(structDecl)) {
+          firstElementType = `STRUCT:${structDecl.name}`;
+        }
+      }
+
+      if (!firstElementType) return `ARRAY<unknown>[${elements.length}]`;
+
+      if (firstElementType.startsWith("ARRAY<")) {
+        // Nested array inside
+        const innerMatch = /^ARRAY<(.+)>(\[(.+?)\])+$/.exec(firstElementType);
+        if (innerMatch) {
+          const baseType = innerMatch[1];
+          const innerDims = innerMatch[2]; // [5] or [5][5], etc
+          return `ARRAY<${baseType}>[${elements.length}]${innerDims}`;
+        }
+      }
+
+      // Simple flat array
+      const elementTypes = new Set(
+        elements.map((e) => this.inferType(e, accept))
+      );
+      if (elementTypes.size > 1) {
+        return `ARRAY<mixed>[${elements.length}]`;
+      } else {
+        const singleType = [...elementTypes][0];
+        return `ARRAY<${singleType}>[${elements.length}]`;
+      }
+    }
+
+    if (isStructLiteral(expr.val)) {
+      return "STRUCT";
+    }
+
     if (typeof expr.val === "number") {
       const raw = expr.$cstNode?.text;
 
@@ -804,36 +1193,117 @@ export class BCSControlLangValidator {
     if (!varDecl) return undefined;
     if (!varDecl.typeRef) return undefined;
 
-    // Either builtin DataType => "BOOL"/"INT"/"REAL"/"STRING" etc.
+    let baseType: string | undefined;
+
+    // Built-in primitive types
     if (varDecl.typeRef.type) {
-      return varDecl.typeRef.type;
+      baseType = varDecl.typeRef.type;
     }
 
-    // Or referencing (EnumDecl | FunctionBlockDecl)
+    // Referencing user-defined types
     if (varDecl.typeRef.ref) {
       const typeDecl = varDecl.typeRef.ref.ref;
       if (!typeDecl) return undefined;
       if (isEnumDecl(typeDecl)) {
-        return `Enum:${typeDecl.name}`;
+        baseType = `ENUM:${typeDecl.name}`;
       }
-      // Ist es ein FunctionBlockDecl?
       if (isFunctionBlockDecl(typeDecl)) {
-        return `FB:${typeDecl.name}`;
+        baseType = `FB:${typeDecl.name}`;
+      }
+      if (isStructDecl(typeDecl)) {
+        baseType = `STRUCT:${typeDecl.name}`;
       }
     }
 
-    return undefined;
+    if (!baseType) return undefined;
+
+    if (varDecl.typeRef.sizes.length > 0) {
+      const sizes = varDecl.typeRef.sizes
+        .map((s) =>
+          s.$type === "Primary" && typeof s.val === "number" ? s.val : "?"
+        )
+        .join("][");
+      return `ARRAY<${baseType}>[${sizes}]`;
+    }
+
+    return baseType;
+  }
+
+  private validateArrayLiteralSize(
+    arrayLiteral: ArrayLiteral,
+    expectedDimensions: number[],
+    accept: ValidationAcceptor,
+    node: any
+  ): void {
+    const expectedSize = expectedDimensions[0];
+
+    if (arrayLiteral.elements.length !== expectedSize) {
+      accept(
+        "error",
+        `Array size mismatch: expected ${expectedSize} elements, but got ${arrayLiteral.elements.length}.`,
+        { node }
+      );
+    }
+
+    if (expectedDimensions.length > 1) {
+      // We expect nested arrays
+      for (const element of arrayLiteral.elements) {
+        if (isPrimary(element) && isArrayLiteral(element.val)) {
+          this.validateArrayLiteralSize(
+            element.val,
+            expectedDimensions.slice(1),
+            accept,
+            node
+          );
+        } else {
+          accept(
+            "error",
+            `Expected nested array with ${expectedDimensions.length} dimensions.`,
+            { node }
+          );
+        }
+      }
+    }
+  }
+
+  checkArrayIndexTypes(expr: any, accept: ValidationAcceptor) {
+    if (expr.$type === "Ref" && expr.indices.length > 0) {
+      for (const idxExpr of expr.indices) {
+        const idxType = this.inferType(idxExpr, accept);
+        if (idxType !== "INT") {
+          accept(
+            "error",
+            `Array index must be of type INT, but got "${idxType}".`,
+            { node: idxExpr }
+          );
+        }
+      }
+    }
   }
 
   private isTypeAssignable(sourceType: string, targetType: string): boolean {
     if (sourceType === targetType) return true;
 
+    if (sourceType.startsWith("ARRAY<") && targetType.startsWith("ARRAY<")) {
+      // Extract base type and size
+      const sourceMatch = RegExp(/^ARRAY<(.+?)>\[(.+)\]$/).exec(sourceType);
+      const targetMatch = RegExp(/^ARRAY<(.+?)>\[(.+)\]$/).exec(targetType);
+      if (!sourceMatch || !targetMatch) return false;
+
+      const sourceElement = sourceMatch[1];
+      const sourceSize = sourceMatch[2];
+      const targetElement = targetMatch[1];
+      const targetSize = targetMatch[2];
+
+      // Compare both element types and sizes
+      return sourceElement === targetElement && sourceSize === targetSize;
+    }
+
     if (sourceType === "INT" && targetType === "REAL") {
       return true;
     }
 
-    // e.g. source="Enum:Color" target="Enum:Color"
-    if (sourceType.startsWith("Enum:") && targetType === sourceType) {
+    if (sourceType.startsWith("ENUM:") && targetType === sourceType) {
       return true;
     }
 
@@ -855,8 +1325,8 @@ export class BCSControlLangValidator {
     }
 
     if (
-      type1.startsWith("Enum:") &&
-      type2.startsWith("Enum:") &&
+      type1.startsWith("ENUM:") &&
+      type2.startsWith("ENUM:") &&
       type1 === type2
     ) {
       return true;

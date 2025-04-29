@@ -1,6 +1,7 @@
-type DataType = 'BOOL' | 'INT' | 'REAL' | 'STRING' | 'TIME' | 'TOD' | 'DT';
-DataType returns string:
+type PrimitiveType = 'BOOL' | 'INT' | 'REAL' | 'STRING' | 'TIME' | 'TOD' | 'DT';
+PrimitiveType returns string:
     'BOOL' | 'INT' | 'REAL' | 'STRING' | 'TIME' | 'TOD' | 'DT';
+
 
 // ==========================================================================
 // Terminals

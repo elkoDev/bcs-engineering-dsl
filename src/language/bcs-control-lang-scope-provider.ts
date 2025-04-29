@@ -19,6 +19,7 @@ import {
   isInputMapping,
   isMappingUseResult,
   isRef,
+  isStructDecl,
   isUseStmt,
   isVarDecl,
   VarDecl,
@@ -43,19 +44,31 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
         container,
         isControlModel
       );
-      const controller = controlModel?.controller.ref;
+      const controller = controlModel?.controlBlock?.controller.ref;
       const datapoints =
         controller?.components.filter((c) => c.$type === Datapoint) ?? [];
 
-      const enumDecls = controlModel?.items.filter(isEnumDecl) ?? [];
+      const enumDecls =
+        controlModel?.controlBlock?.items.filter(isEnumDecl) ?? [];
+      const structDecls =
+        controlModel?.controlBlock?.items.filter(isStructDecl) ?? [];
 
-      const scopeNodes: AstNode[] = [...localVars, ...datapoints, ...enumDecls];
+      const externalTypeDecls = controlModel?.externTypeDecls ?? [];
+
+      const scopeNodes: AstNode[] = [
+        ...localVars,
+        ...datapoints,
+        ...enumDecls,
+        ...structDecls,
+        ...externalTypeDecls,
+      ];
 
       const isInsideFunctionBlock =
         AstUtils.getContainerOfType(container, isFunctionBlockDecl) !==
         undefined;
       if (!isInsideFunctionBlock) {
-        const globalVars = controlModel?.items.filter(isVarDecl) ?? [];
+        const globalVars =
+          controlModel?.controlBlock?.items.filter(isVarDecl) ?? [];
         scopeNodes.push(...globalVars);
       }
 
@@ -63,8 +76,20 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
     }
 
     // property = enum member reference or datapoint channel reference
-    if (isRef(container) && context.property === "property") {
+    if (isRef(container) && context.property === "properties") {
       const namedElement = container.ref.ref;
+      if (isVarDecl(namedElement)) {
+        const typeRef = namedElement.typeRef;
+        const structDecl = typeRef?.ref?.ref;
+
+        if (structDecl && isStructDecl(structDecl)) {
+          return this.createScopeForNodes(structDecl.fields);
+        }
+      }
+      if (isStructDecl(namedElement)) {
+        const structDecl = namedElement;
+        return this.createScopeForNodes(structDecl.fields);
+      }
       if (isEnumDecl(namedElement)) {
         const enumDecl = namedElement;
         return this.createScopeForNodes(enumDecl.members);
@@ -77,7 +102,7 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
 
     // enum literal member completion
     if (isEnumMemberLiteral(container) && context.property === "member") {
-      const enumDecl = container.value?.ref;
+      const enumDecl = container.enumDecl?.ref;
       if (enumDecl && isEnumDecl(enumDecl)) {
         return this.createScopeForNodes(enumDecl.members);
       }

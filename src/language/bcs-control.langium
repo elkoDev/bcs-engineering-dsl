@@ -2,31 +2,47 @@ grammar BCSControl
 import "./bcs-hardware"
 
 // ==========================================================================
-// 1) Entry Rule: A control block referencing a hardware controller.
-//    Inside, you may define Declarations (enums, variables, function blocks)
-//    and ControlUnits. ControlUnits are the primary construct for all control logic, whether
-//    time‐based (using TOD expressions) or event‐driven.
+// 1) Entry Rule
 // ==========================================================================
-entry ControlModel:
+entry ControlModel: 
+    (importDecls+=ImportDecl)*
+    (externTypeDecls+=TypeDecl)*
+    controlBlock=ControlBlock 
+;
+
+ImportDecl:
+    'import' 'library' libName=ID ';'
+;
+
+
+// ==========================================================================
+// 2) Control block and items
+// ==========================================================================
+ControlBlock:
     'control' controller=[Controller] '{'
         (items+=ControlItem)*
     '}'
 ;
 
 ControlItem:
-      Declaration
-    | ControlUnit
+    Declaration | ControlUnit
 ;
 
 // ==========================================================================
-// 2) Declarations: Enums, Variables, Function Blocks
+// 3) Declarations (types, vars, function blocks)
 // ==========================================================================
 Declaration:
       EnumDecl
+    | StructDecl
     | VarDecl
     | FunctionBlockDecl
 ;
 
+TypeDecl:
+    (isExtern?='extern')? (EnumDecl | StructDecl | FunctionBlockDecl)
+;
+
+// ---------- ENUM ----------
 EnumDecl:
     'enum' name=ID '{'
         members+=EnumMemberDecl (',' members+=EnumMemberDecl)*
@@ -34,16 +50,21 @@ EnumDecl:
 ;
 
 EnumMemberDecl:
-    name=ID;
-
-fragment VarDeclCore:
-    name=ID ':' typeRef=TypeRef ('=' init=Expr)? ';'
+    name=ID
 ;
 
-VarDecl:
-    'var' VarDeclCore
+// ---------- STRUCT ----------
+StructDecl:
+    'struct' name=ID '{'
+        fields+=StructFieldDecl (',' fields+=StructFieldDecl)*
+    '}'
 ;
 
+StructFieldDecl:
+    name=ID ':' typeRef=TypeRef ('=' init=Expr)? // allow default value
+;
+
+// ---------- FUNCTION BLOCK ----------
 FunctionBlockDecl:
     'functionblock' name=ID '{'
         members+=FunctionBlockMember*
@@ -73,28 +94,33 @@ FunctionBlockLogic:
     'logic' Block
 ;
 
-TypeDecl:
-    EnumDecl
-    | FunctionBlockDecl
+// ---------- VARIABLE ----------
+fragment VarDeclCore:
+    name=ID ':' typeRef=TypeRef ('=' init=Expr)? ';'
 ;
 
-TypeRef:
-      type=DataType
-    | ref=[TypeDecl]
+VarDecl:
+    'var' VarDeclCore
 ;
+
 
 // ==========================================================================
-// 3) ControlUnits (Control Logic)
-//    A unit is a named block of control logic that may be triggered by any
-//    expression – for example, a time-of-day comparison using now or a TOD literal.
+TypeRef:
+    (type=PrimitiveType | ref=[TypeDecl]) ('[' (sizes+=Expr)? ']')*
+;
+
+
+// ==========================================================================
+// 4) Control Units
 // ==========================================================================
 ControlUnit:
     // Future Note: Support on `event` and raise `event` stmt
-    'unit' name=ID (('once'? 'when' '(' condition=Expr ')') | ('at' time=TodLiteral))? Block;
+    'unit' name=ID (('once'? 'when' '(' condition=Expr ')') | ('at' time=TodLiteral))? Block
+;
 
 
 // ==========================================================================
-// 4) Block and Statements: Assignment, Conditionals, Loops, Calls, Timing & Edge actions
+// 5) Blocks and Statements
 // ==========================================================================
 fragment Block:
     '{' (stmts+=Statement)* '}'
@@ -218,9 +244,7 @@ RampStmt:
 ;
 
 // ==========================================================================
-// 5) Expressions & Literals
-//    Expressions are the core of the control logic, allowing for complex evaluations and assignments.
-//    Literals are the basic building blocks of expressions, including numbers, booleans, strings, and enums.
+// 6) Expressions and Literals
 // ==========================================================================
 CaseLiteral:
        val=(NumberLiteral | BooleanLiteral | StringLiteral | EnumMemberLiteral)
@@ -228,8 +252,21 @@ CaseLiteral:
 
 
 EnumMemberLiteral:
-    value=[EnumDecl:ID] op='.' member=[EnumMemberDecl:ID]  
+    enumDecl=[EnumDecl:ID] op='.' member=[EnumMemberDecl:ID]  
 ;
+
+ArrayLiteral:
+    '[' (elements+=Expr (',' elements+=Expr)*)? ']'
+;
+
+StructLiteral:
+    '{' (fields+=StructFieldInit (',' fields+=StructFieldInit)*)? '}'
+;
+
+StructFieldInit:
+    name=ID ':' value=Expr
+;
+
 
 Expr:
     OrExpr
@@ -265,7 +302,9 @@ Primary:
   | val=BooleanLiteral
   | val=StringLiteral
   | val=TodLiteral   
-  | val=TimeLiteral                  
+  | val=TimeLiteral 
+  | val=ArrayLiteral
+  | val=StructLiteral                 
 ;
 
 NegExpr:
@@ -281,9 +320,9 @@ ParenExpr:
 ;
 
 Ref:
-    ref=[NamedElement] ('.' property=[NamedElement])?;
+    ref=[NamedElement] ('.' properties+=[NamedElement] | '[' indices+=Expr ']')*;
 
-NamedElement: VarDecl | EnumDecl | Datapoint;
+type NamedElement = VarDecl | EnumDecl | StructDecl | Datapoint;
 
 ComparisonOperator returns string:
     '<' | '<=' | '==' | '!=' | '>=' | '>'
