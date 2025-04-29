@@ -1,19 +1,18 @@
 import library Tc3_DALI;
 
-extern enum E_DALIAddressType {Short, Group, Broadcast, BroadcastUnaddr}
-extern enum E_DALICommandPriority {High, MiddleHigh, Middle, MiddleLow, Low, Unknown}
-extern struct ST_DALIChangeAddressList { 
-    nOldAddress       : INT,
-    nNewAddress       : INT,
-    nRandomAddress    : INT,
-    nErrors           : INT
+extern enum E_DALIAddressType { Short, Group, Broadcast, BroadcastUnaddr }
+extern enum E_DALICommandPriority { High, MiddleHigh, Middle, MiddleLow, Low, Unknown }
+extern struct ST_DALIChangeAddressList {
+    nOldAddress: INT,
+    nNewAddress: INT,
+    nRandomAddress: INT,
+    nErrors: INT
 }
-
-extern functionblock FB_Tc3_DALI { 
+extern functionblock FB_Tc3_DALI {
     inputs {
         var iDALIAddress: E_DALIAddressType;
         var iDALICommandPriority: E_DALICommandPriority;
-        var iAddressList : ST_DALIChangeAddressList;
+        var iAddressList: ST_DALIChangeAddressList;
     }
     outputs {
         var oDALIStatus: BOOL;
@@ -26,14 +25,9 @@ control MainController {
 
     var mode: Mode = Mode.OFF;
     var lightLevel: INT = 0;
-    var retryCount: INT;
-    var temp: REAL;
-    var heating: BOOL;
-    var presenceDetected: BOOL;
-    var blindsClosed: BOOL;
-    var lightBtnPressed: BOOL;
     var heater: BOOL;
-    var lights: BOOL;
+    var lightsOn: BOOL;
+    var heatingEnabled: BOOL;
 
     functionblock HeatingLogic {
         inputs {
@@ -54,38 +48,38 @@ control MainController {
         }
     }
 
-    unit ToggleLightsOnPress {
-        on_rising(PresenceButtons.BtnRoom1) {
-            Lights.LightRoom1 = !Lights.LightRoom1;
+    unit ToggleLightsOnButtonPress {
+        on_rising(Buttons.Room1) {
+            Lights.Room1 = !Lights.Room1;
         }
     }
 
-    unit TurnOnLightsAt6_30 at TOD#06:30:00 {
-        Lights.LightRoom1 = true;
+    unit TurnOnLightsScheduled at TOD#06:30:00 {
+        Lights.Room1 = true;
     }
 
     unit RetryHeaterStartup when (mode != Mode.OFF) {
         var retries: INT = 0;
         while (retries < 3) {
-            retries = retries + 1;
             heater = true;
+            retries = retries + 1;
             wait T#1s;
         }
     }
 
-    unit DimUpLoop {
+    unit DimLightsGradually {
         for (var i: INT = 0 to 5 by 1) {
             lightLevel = i * 20;
             wait T#1s;
         }
     }
 
-    unit UseHeatingFB {
-        use HeatingLogic(iTemp: Temperatures.RoomTemp1, iMode: mode) -> heating;
-        heater = heating;
+    unit ControlHeating {
+        use HeatingLogic(iTemp: Temperatures.Room1, iMode: mode) -> heatingEnabled;
+        heater = heatingEnabled;
     }
 
-    unit LightByMode {
+    unit AdjustLightLevelByMode {
         switch (mode) {
             case Mode.COMFORT: {
                 lightLevel = 100;
@@ -103,43 +97,38 @@ control MainController {
         ramp(lightLevel, 100, 0, T#10s);
     }
 
-    unit NowCheck {
+    unit MorningPresenceCheck {
         if (now >= TOD#07:00:00) {
-            Lights.LightRoom2 = true;
+            Lights.Room2 = true;
         }
     }
 
     unit DelayedStartup once when (now >= TOD#07:05:00) {
         wait T#5s;
         heater = true;
-        Lights.LightRoom1 = false;
+        Lights.Room1 = false;
     }
 
-    unit LocalDemo {
-        var localVal: INT = 42;
-        lightLevel = localVal;
-    }
-
-    unit LogCurrentTime {
-        now; // Parsed for correctness
-    }
-
-    unit DetectButtonRelease {
-        on_falling(PresenceButtons.BtnRoom2) {
-            Lights.LightRoom2 = false;
-        }
-    }
-
-    unit ExternLibraryCall {
-        var DALIAddress: E_DALIAddressType;
-        var DALICommandPriority: E_DALICommandPriority = E_DALICommandPriority.High;
-        var addressList : ST_DALIChangeAddressList = {
+    unit UseDaliLibrary {
+        var daliAddress: E_DALIAddressType;
+        var daliPriority: E_DALICommandPriority = E_DALICommandPriority.High;
+        var addressList: ST_DALIChangeAddressList = {
             nOldAddress: 1,
             nNewAddress: 2,
             nRandomAddress: 3,
             nErrors: 0
         };
-        var oDALIStatus: BOOL;
-        use FB_Tc3_DALI(iDALIAddress : DALIAddress, iDALICommandPriority: DALICommandPriority, iAddressList: addressList) -> oDALIStatus;
+        var status: BOOL;
+        use FB_Tc3_DALI(
+            iDALIAddress: daliAddress,
+            iDALICommandPriority: daliPriority,
+            iAddressList: addressList
+        ) -> status;
+    }
+
+    unit ButtonReleaseHandler {
+        on_falling(Buttons.Room2) {
+            Lights.Room2 = false;
+        }
     }
 }

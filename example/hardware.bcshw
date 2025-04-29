@@ -1,26 +1,27 @@
 controller MainController for Beckhoff {
-    portgroup AnalogInputModule {
+
+    portgroup AnalogInputs {
         moduleType: KL3064
         ioType: ANALOG_INPUT
         startAddress: %IW0
         channels: 4
     }
 
-    portgroup DigitalInputModule {
+    portgroup DigitalInputs {
         moduleType: EL1008
         ioType: DIGITAL_INPUT
         startAddress: %IX8.0
         channels: 8
     }
 
-    portgroup DigitalOutputModule {
+    portgroup DigitalOutputs {
         moduleType: KL2408
         ioType: DIGITAL_OUTPUT
         startAddress: %QX0.0
         channels: 8
     }
 
-    portgroup AnalogOutputModule {
+    portgroup AnalogOutputs {
         moduleType: KL3064
         ioType: ANALOG_OUTPUT
         startAddress: %QW0
@@ -28,28 +29,28 @@ controller MainController for Beckhoff {
     }
 
     datapoint Temperatures {
-        portgroup: AnalogInputModule
+        portgroup: AnalogInputs
         channels: {
-            channel RoomTemp1: REAL at 0,
-            channel RoomTemp2: REAL at 1,
-            channel RoomTemp3: REAL at 2,
-            channel RoomTemp4: REAL at 3
+            channel Room1: REAL at 0,
+            channel Room2: REAL at 1,
+            channel Room3: REAL at 2,
+            channel Room4: REAL at 3
         }
     }
 
-    datapoint PresenceButtons {
-        portgroup: DigitalInputModule
+    datapoint Buttons {
+        portgroup: DigitalInputs
         channels: {
-            channel BtnRoom1: BOOL at 0,
-            channel BtnRoom2: BOOL at 1
+            channel Room1: BOOL at 0,
+            channel Room2: BOOL at 1
         }
     }
 
     datapoint Lights {
-        portgroup: DigitalOutputModule
+        portgroup: DigitalOutputs
         channels: {
-            channel LightRoom1: BOOL at 0,
-            channel LightRoom2: BOOL at 1
+            channel Room1: BOOL at 0,
+            channel Room2: BOOL at 1
         }
     }
 }
