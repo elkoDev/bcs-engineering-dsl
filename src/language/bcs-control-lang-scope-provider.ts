@@ -102,7 +102,7 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
 
     // enum literal member completion
     if (isEnumMemberLiteral(container) && context.property === "member") {
-      const enumDecl = container.value?.ref;
+      const enumDecl = container.enumDecl?.ref;
       if (enumDecl && isEnumDecl(enumDecl)) {
         return this.createScopeForNodes(enumDecl.members);
       }

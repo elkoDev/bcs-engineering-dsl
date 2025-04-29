@@ -252,7 +252,7 @@ CaseLiteral:
 
 
 EnumMemberLiteral:
-    value=[EnumDecl:ID] op='.' member=[EnumMemberDecl:ID]  
+    enumDecl=[EnumDecl:ID] op='.' member=[EnumMemberDecl:ID]  
 ;
 
 ArrayLiteral:

@@ -304,4 +304,18 @@ describe("BCS Control Validation Tests", () => {
       expect(diagString).toMatch(expected);
     }
   });
+
+  test("No errors in valid library call", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    const [mainDoc, allDocs] = await extractDocuments(
+      path.join(__dirname, "files", "valid_library_call", "valid_library_call_control.bcsctrl"),
+      services.bcsControl,
+      false
+    );
+
+    const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
+
+    expect(allDiagnostics.length).toBe(0);
+  });
 });

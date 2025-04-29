@@ -819,9 +819,9 @@ export class BCSControlLangValidator {
     if (!controlModel) return;
 
     const structDecl =
-      controlModel.controlBlock.items.find(
+      (controlModel.controlBlock.items.find(
         (d) => isStructDecl(d) && d.name === structName
-      ) as StructDecl | undefined ??
+      ) as StructDecl | undefined) ??
       (controlModel.externTypeDecls.find(
         (d) => isStructDecl(d) && d.name === structName
       ) as StructDecl | undefined);
@@ -1008,11 +1008,22 @@ export class BCSControlLangValidator {
             isControlModel
           );
           const structName = type.substring("STRUCT:".length);
-          const structDecl = controlModel?.controlBlock?.items.find(
-            (d) => isStructDecl(d) && d.name === structName
-          ) as StructDecl | undefined;
+          const structDecl: StructDecl | undefined =
+            (controlModel?.controlBlock.items.find(
+              (d) => isStructDecl(d) && d.name === structName
+            ) as StructDecl | undefined) ??
+            (controlModel?.externTypeDecls.find(
+              (d) => isStructDecl(d) && d.name === structName
+            ) as StructDecl | undefined);
 
-          if (!structDecl) return undefined;
+          if (!structDecl) {
+            accept(
+              "error",
+              `Cannot access property '${prop.ref?.name}' on unknown struct type '${structName}'.`,
+              { node: expr }
+            );
+            return undefined;
+          }
 
           const field = structDecl.fields.find(
             (f) => f.name === prop.ref?.name
@@ -1097,7 +1108,7 @@ export class BCSControlLangValidator {
     // 4) If EnumMemberLiteral => check what it points to
     if (isCaseLiteral(expr)) {
       if (isEnumMemberLiteral(expr.val)) {
-        return `ENUM:${expr.val.value.$refText}`;
+        return `ENUM:${expr.val.enumDecl.$refText}`;
       }
     }
 

@@ -75,6 +75,11 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         property: "type",
         type: SemanticTokenTypes.type,
       });
+      acceptor({
+        node,
+        property: "sizes",
+        type: SemanticTokenTypes.number,
+      });
     }
     if (isEnumDecl(node)) {
       acceptor({
@@ -90,10 +95,20 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
     }
     if (isRef(node)) {
       let namedElement = node.ref.ref;
+      acceptor({
+        node,
+        property: "indices",
+        type: SemanticTokenTypes.number,
+      });
       if (isVarDecl(namedElement)) {
         acceptor({
           node,
           property: "ref",
+          type: SemanticTokenTypes.variable,
+        });
+        acceptor({
+          node,
+          property: "properties",
           type: SemanticTokenTypes.variable,
         });
       } else if (isEnumDecl(namedElement)) {
@@ -195,7 +210,7 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
     if (isEnumMemberLiteral(node)) {
       acceptor({
         node,
-        property: "value",
+        property: "enumDecl",
         type: SemanticTokenTypes.enum,
       });
       acceptor({

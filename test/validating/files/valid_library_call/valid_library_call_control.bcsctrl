@@ -31,6 +31,8 @@ control ValidLibraryCallTestController {
             nRandomAddress: 3,
             nErrors: 0
         };
+        DALICommandPriority = E_DALICommandPriority.MiddleLow;
+        addressList.nErrors = 1; 
         var oDALIStatus: BOOL;
         use FB_Tc3_DALI(iDALIAddress : DALIAddress, iDALICommandPriority: DALICommandPriority, iAddressList: addressList) -> oDALIStatus;
     }
