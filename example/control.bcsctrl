@@ -131,4 +131,12 @@ control MainController {
             Lights.Room2 = false;
         }
     }
+
+    unit ValidateSensorDistance {
+        var distance: INT = UltrasonicSensor.Distance;
+
+        if (UltrasonicSensor.Valid) {
+            lightLevel = distance;
+        }
+    }
 }

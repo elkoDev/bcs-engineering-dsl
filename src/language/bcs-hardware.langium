@@ -35,7 +35,13 @@ Datapoint:
 ;
 
 Channel:
-    'channel' name=ID ':' dataType=PrimitiveType 'at' index=IntLiteral
+    'channel' name=ID ':' dataType=PrimitiveType
+    ('[' bitRange=BitRange ']')?
+    'at' index=IntLiteral
+;
+
+BitRange:
+    start=IntLiteral ('..' end=IntLiteral)?
 ;
 
 type IOType = 'ANALOG_INPUT' | 'ANALOG_OUTPUT' |'DIGITAL_INPUT' | 'DIGITAL_OUTPUT';

@@ -25,14 +25,6 @@ export function registerBCSHardwareValidationChecks(
 }
 
 export class BCSHardwareLangValidator {
-  /**
-   * Validates that the given controller has a name with a minimum length of 3 characters.
-   * If the name is shorter than 3 characters, a warning is issued through the provided
-   * validation acceptor.
-   *
-   * @param controller - The controller object to validate.
-   * @param accept - The validation acceptor used to report warnings or errors.
-   */
   checkControllerHasName(
     controller: Controller,
     accept: ValidationAcceptor
@@ -45,14 +37,6 @@ export class BCSHardwareLangValidator {
     }
   }
 
-  /**
-   * Validates that all components within a given controller have unique names.
-   * If duplicate component names are found, an error is reported using the provided `ValidationAcceptor`.
-   *
-   * @param controller - The controller object containing the components to validate.
-   * @param accept - A function used to report validation issues. It accepts the severity,
-   *                 a message, and additional context about the validation issue.
-   */
   checkUniqueComponentNames(
     controller: Controller,
     accept: ValidationAcceptor
@@ -71,15 +55,6 @@ export class BCSHardwareLangValidator {
     }
   }
 
-  /**
-   * Validates the indices of datapoint channels within a controller.
-   * It checks if the indices are within the valid range and if there are any duplicate indices.
-   * If any issues are found, they are reported using the provided `ValidationAcceptor`.
-   *
-   * @param controller - The controller object containing the components to validate.
-   * @param accept - A function used to report validation issues. It accepts the severity,
-   *                 a message, and additional context about the validation issue.
-   */
   checkDatapointChannelIndicesAndDuplicates(
     datapoint: Datapoint,
     accept: ValidationAcceptor
@@ -89,13 +64,16 @@ export class BCSHardwareLangValidator {
       accept(
         "error",
         `Datapoint '${datapoint.name}' must be assigned to a portgroup.`,
-        { node: datapoint, property: "portgroup" }
+        {
+          node: datapoint,
+          property: "portgroup",
+        }
       );
       return;
     }
 
     const maxIndex = portgroup.channels - 1;
-    const usedIndices = new Map<number, Channel>();
+    const indexMap = new Map<number, Channel[]>();
 
     for (const channel of datapoint.channels) {
       const index = channel.index;
@@ -109,17 +87,35 @@ export class BCSHardwareLangValidator {
         );
       }
 
-      // Check for duplicate index
-      const existing = usedIndices.get(index);
-      if (existing) {
-        accept(
-          "error",
-          `Duplicate channel index '${index}' used in '${datapoint.name}' (also used by '${existing.name}').`,
-          { node: channel, property: "index" }
-        );
-      } else {
-        usedIndices.set(index, channel);
+      const existingAtIndex = indexMap.get(index) ?? [];
+      for (const existing of existingAtIndex) {
+        if (!channel.bitRange || !existing.bitRange) {
+          // At least one of them has no bitRange -> full overlap
+          accept(
+            "error",
+            `Duplicate channel index '${index}' used in '${datapoint.name}' (also used by '${existing.name}'), without distinct bit ranges.`,
+            { node: channel, property: "index" }
+          );
+          break;
+        }
+
+        // Check if bit ranges overlap
+        const aStart = channel.bitRange.start;
+        const aEnd = channel.bitRange.end ?? channel.bitRange.start;
+        const bStart = existing.bitRange.start;
+        const bEnd = existing.bitRange.end ?? existing.bitRange.start;
+
+        if (aStart <= bEnd && bStart <= aEnd) {
+          accept(
+            "error",
+            `Bit range overlap at index ${index}: '${channel.name}' [${aStart}..${aEnd}] and '${existing.name}' [${bStart}..${bEnd}].`,
+            { node: channel, property: "bitRange" }
+          );
+          break;
+        }
       }
+
+      indexMap.set(index, [...existingAtIndex, channel]);
     }
   }
 
