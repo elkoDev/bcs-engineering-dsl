@@ -2,6 +2,12 @@
 
 # Important Commands
 
+## Install Dependencies
+
+```bash
+npm install
+```
+
 ## Build
 
 ```bash
