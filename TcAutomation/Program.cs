@@ -1,5 +1,5 @@
 ﻿using EnvDTE;
-using System.Runtime.InteropServices;
+using EnvDTE80;
 using System.Runtime.Versioning;
 using TCatSysManagerLib;
 
@@ -7,72 +7,93 @@ namespace TcAutomation
 {
     internal class Program
     {
-        private static readonly string solutionPath = @"C:\Users\elias\mscRepos\bcs-engineering-dsl\TcAutomation\generated\MyGeneratedSolution";
-        private static readonly string templatePath = @"C:\TwinCAT\3.1\Components\Base\PrjTemplate\TwinCAT Project.tsproj";
+        private const string ProgId = "TcXaeShell.DTE.15.0";
+        private const string SolName = "MyGeneratedSolution";
+        private const string PrjName = "MyTwinCATProject";
+
+        private static readonly string SolutionPath =
+            @"C:\Users\elias\mscRepos\bcs-engineering-dsl\TcAutomation\generated\" + SolName;
+        private static readonly string TemplatePath =
+            @"C:\TwinCAT\3.1\Components\Base\PrjTemplate\TwinCAT Project.tsproj";
+
 
         [SupportedOSPlatform("windows")]
-        static void Main(string[] args)
+        [STAThread]
+        private static void Main()
         {
-            Type? dteType = Type.GetTypeFromProgID("TcXaeShell.DTE.15.0");
-            if (dteType == null)
-            {
-                Console.WriteLine("Failed to get DTE type.");
-                return;
-            }
+            DTE2 dte = StartHiddenDte();
 
-            if (Activator.CreateInstance(dteType) is not DTE dte)
+            try
             {
-                Console.WriteLine("Failed to create DTE instance.");
-                return;
-            }
+                // 1) Create an empty solution
+                Solution2 sln = InitSolution(dte);
+                Console.WriteLine("Solution created.");
 
+                // 2) Add TwinCAT project from template
+                Project prj = AddTwinCatProject(sln);
+                Console.WriteLine("Project added from template.");
+
+                // 3) Retrieve TwinCAT system manager interface
+                ITcSysManager4 sysMan = (ITcSysManager4)prj.Object;
+
+
+                // 4) Activate and restart runtime
+                sysMan.ActivateConfiguration();
+                sysMan.StartRestartTwinCAT();
+
+                // 5) Save project + solution
+                prj.Save();
+                sln.SaveAs(Path.Combine(SolutionPath, $"{SolName}.sln"));
+
+                Console.WriteLine("✅ TwinCAT configuration generated successfully.");
+            }
+            finally
+            {
+                dte.Quit();
+                MessageFilter.Revoke();
+            }
+        }
+
+        [SupportedOSPlatform("windows")]
+        private static DTE2 StartHiddenDte()
+        {
+            // A) create the COM object
+            Type? dteType = Type.GetTypeFromProgID(ProgId, throwOnError: true);
+            var dte = (DTE2)Activator.CreateInstance(dteType!, true)!;
+
+            // B) register COM message filter once – prevents RPC_E_SERVERCALL_RETRYLATER
+            if (!MessageFilter.IsRegistered) MessageFilter.Register();
+
+            // C) run headless – but still pump messages while we wait for work to finish
             dte.SuppressUI = true;
             dte.MainWindow.Visible = false;
+            dte.UserControl = false;      // VS will close when we call Quit()
 
-            Directory.CreateDirectory(solutionPath);
+            return dte;
+        }
 
-            var solution = dte.Solution;
-            solution.Create(solutionPath, "MyGeneratedSolution");
-            solution.SaveAs(Path.Combine(solutionPath, "MyGeneratedSolution.sln"));
+        private static Solution2 InitSolution(DTE2 dte)
+        {
+            Directory.CreateDirectory(SolutionPath);
 
-            Console.WriteLine("Solution created.");
+            var sln = (Solution2)dte.Solution;
+            sln.Create(SolutionPath, SolName);
+            sln.SaveAs(Path.Combine(SolutionPath, $"{SolName}.sln"));
 
-            Project project = solution.AddFromTemplate(templatePath, solutionPath, "MyTwinCATProject", false);
+            return sln;
+        }
 
-            Console.WriteLine("Project added from template.");
+        private static Project AddTwinCatProject(Solution2 sln)
+        {
+            if (!File.Exists(TemplatePath))
+                throw new FileNotFoundException("TwinCAT template not found.", TemplatePath);
 
-            ITcSysManager? sysManager = null;
+            Project prj = sln.AddFromTemplate(TemplatePath, SolutionPath, PrjName, Exclusive: false);
 
-            // Retry accessing project.Object
-            const int maxRetries = 10;
-            for (int i = 0; i < maxRetries; i++)
-            {
-                try
-                {
-                    sysManager = (ITcSysManager)project.Object;
-                    break;
-                }
-                catch (COMException ex) when ((uint)ex.HResult == 0x8001010A) // RPC_E_SERVERCALL_RETRYLATER
-                {
-                    Console.WriteLine($"Waiting for project to load... (attempt {i + 1})");
-                    System.Threading.Thread.Sleep(500);
-                }
-            }
+            // Wait until the project is completely finished loading
+            //WaitForProject(prj);
 
-            if (sysManager == null)
-            {
-                throw new InvalidOperationException("Failed to get ITcSysManager from project.Object after retries.");
-            }
-
-            Console.WriteLine("SysManager accessed.");
-
-            sysManager.ActivateConfiguration();
-            sysManager.StartRestartTwinCAT();
-
-            project.Save();
-            solution.SaveAs(Path.Combine(solutionPath, "MyGeneratedSolution.sln"));
-
-            Console.WriteLine("Configuration activated and TwinCAT restarted.");
+            return prj;
         }
     }
 }
