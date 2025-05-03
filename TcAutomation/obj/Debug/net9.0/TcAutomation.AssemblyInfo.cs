@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TcAutomation")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e8d35d405cf459f50acc9192b5599d7dac857f0d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+af2b23c2107b53081e767c2a26f985904ee277fa")]
 [assembly: System.Reflection.AssemblyProductAttribute("TcAutomation")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TcAutomation")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
