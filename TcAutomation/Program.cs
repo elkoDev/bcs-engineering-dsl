@@ -25,23 +25,18 @@ namespace TcAutomation
 
             try
             {
-                // 1) Create an empty solution
                 Solution2 sln = InitSolution(dte);
                 Console.WriteLine("Solution created.");
 
-                // 2) Add TwinCAT project from template
                 Project prj = AddTwinCatProject(sln);
                 Console.WriteLine("Project added from template.");
 
-                // 3) Retrieve TwinCAT system manager interface
                 ITcSysManager4 sysMan = (ITcSysManager4)prj.Object;
 
 
-                // 4) Activate and restart runtime
                 sysMan.ActivateConfiguration();
                 sysMan.StartRestartTwinCAT();
 
-                // 5) Save project + solution
                 prj.Save();
                 sln.SaveAs(Path.Combine(SolutionPath, $"{SolName}.sln"));
 
@@ -57,17 +52,15 @@ namespace TcAutomation
         [SupportedOSPlatform("windows")]
         private static DTE2 StartHiddenDte()
         {
-            // A) create the COM object
             Type? dteType = Type.GetTypeFromProgID(ProgId, throwOnError: true);
             var dte = (DTE2)Activator.CreateInstance(dteType!, true)!;
 
-            // B) register COM message filter once – prevents RPC_E_SERVERCALL_RETRYLATER
             if (!MessageFilter.IsRegistered) MessageFilter.Register();
 
-            // C) run headless – but still pump messages while we wait for work to finish
+            // run headless
             dte.SuppressUI = true;
             dte.MainWindow.Visible = false;
-            dte.UserControl = false;      // VS will close when we call Quit()
+            dte.UserControl = false;
 
             return dte;
         }
@@ -89,9 +82,6 @@ namespace TcAutomation
                 throw new FileNotFoundException("TwinCAT template not found.", TemplatePath);
 
             Project prj = sln.AddFromTemplate(TemplatePath, SolutionPath, PrjName, Exclusive: false);
-
-            // Wait until the project is completely finished loading
-            //WaitForProject(prj);
 
             return prj;
         }
