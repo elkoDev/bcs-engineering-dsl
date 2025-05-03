@@ -1,0 +1,241 @@
+{
+  "version": 3,
+  "targets": {
+    "net9.0": {
+      "envdte/17.13.40008": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.VisualStudio.Interop": "17.13.40008"
+        },
+        "compile": {
+          "lib/net8.0/envdte.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/envdte.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "envdte80/17.13.40008": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.VisualStudio.Interop": "17.13.40008"
+        },
+        "compile": {
+          "lib/net8.0/envdte80.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/envdte80.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "Microsoft.VisualStudio.Imaging.Interop.14.0.DesignTime/17.13.40008": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/Microsoft.VisualStudio.Imaging.Interop.14.0.DesignTime.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.VisualStudio.Imaging.Interop.14.0.DesignTime.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "Microsoft.VisualStudio.Interop/17.13.40008": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.VisualStudio.Imaging.Interop.14.0.DesignTime": "17.13.40008"
+        },
+        "compile": {
+          "lib/net8.0/Microsoft.VisualStudio.Interop.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.VisualStudio.Interop.dll": {
+            "related": ".xml"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "envdte/17.13.40008": {
+      "sha512": "4PUEcmq1u1jMOWVe1JpYwnwuhUx4PlqRmoe7B6TFRjzwdh7B5bvBxEUk/40oKT5K1T0xa+nN4w5pF1u1I31Hwg==",
+      "type": "package",
+      "path": "envdte/17.13.40008",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.txt",
+        "PackageIcon.png",
+        "envdte.17.13.40008.nupkg.sha512",
+        "envdte.nuspec",
+        "lib/net20/envdte.dll",
+        "lib/net20/envdte.xml",
+        "lib/net45/envdte.dll",
+        "lib/net45/envdte.xml",
+        "lib/net472/envdte.dll",
+        "lib/net472/envdte.xml",
+        "lib/net8.0/envdte.dll",
+        "lib/net8.0/envdte.xml",
+        "lib/netstandard2.0/envdte.dll",
+        "lib/netstandard2.0/envdte.xml"
+      ]
+    },
+    "envdte80/17.13.40008": {
+      "sha512": "IsVM4738LatvVdRcMgsM1QTdcDYElhnALDkgYiq/RnC7pBE7cRhjdppFW59NUnxe6l+dVYEA+DkMa+t7L1RKWA==",
+      "type": "package",
+      "path": "envdte80/17.13.40008",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.txt",
+        "PackageIcon.png",
+        "envdte80.17.13.40008.nupkg.sha512",
+        "envdte80.nuspec",
+        "lib/net20/envdte80.dll",
+        "lib/net20/envdte80.xml",
+        "lib/net45/envdte80.dll",
+        "lib/net45/envdte80.xml",
+        "lib/net472/envdte80.dll",
+        "lib/net472/envdte80.xml",
+        "lib/net8.0/envdte80.dll",
+        "lib/net8.0/envdte80.xml",
+        "lib/netstandard2.0/envdte80.dll",
+        "lib/netstandard2.0/envdte80.xml"
+      ]
+    },
+    "Microsoft.VisualStudio.Imaging.Interop.14.0.DesignTime/17.13.40008": {
+      "sha512": "Q76Oj9lFKjx9UKVP3TK2ruOy3XIjQNOo9Ta/IzcdpUSU/Av/GM5ow264d6cgmIdLtwzc1CTEr/UiGTuF0sxnjw==",
+      "type": "package",
+      "path": "microsoft.visualstudio.imaging.interop.14.0.designtime/17.13.40008",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.txt",
+        "PackageIcon.png",
+        "lib/net20/Microsoft.VisualStudio.Imaging.Interop.14.0.DesignTime.dll",
+        "lib/net20/Microsoft.VisualStudio.Imaging.Interop.14.0.DesignTime.xml",
+        "lib/net472/Microsoft.VisualStudio.Imaging.Interop.14.0.DesignTime.dll",
+        "lib/net472/Microsoft.VisualStudio.Imaging.Interop.14.0.DesignTime.xml",
+        "lib/netstandard2.0/Microsoft.VisualStudio.Imaging.Interop.14.0.DesignTime.dll",
+        "lib/netstandard2.0/Microsoft.VisualStudio.Imaging.Interop.14.0.DesignTime.xml",
+        "microsoft.visualstudio.imaging.interop.14.0.designtime.17.13.40008.nupkg.sha512",
+        "microsoft.visualstudio.imaging.interop.14.0.designtime.nuspec"
+      ]
+    },
+    "Microsoft.VisualStudio.Interop/17.13.40008": {
+      "sha512": "hmyYuKLKskhWnb7bH5pGe55OOPh67Rl/V2iA5z+gM9h4IrHW19F8rkGwSkc9eZdJ3o5EFz2LGob/w0Yv25330Q==",
+      "type": "package",
+      "path": "microsoft.visualstudio.interop/17.13.40008",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.txt",
+        "PackageIcon.png",
+        "lib/net20/Microsoft.VisualStudio.Interop.dll",
+        "lib/net20/Microsoft.VisualStudio.Interop.xml",
+        "lib/net472/Microsoft.VisualStudio.Interop.dll",
+        "lib/net472/Microsoft.VisualStudio.Interop.xml",
+        "lib/net8.0/Microsoft.VisualStudio.Interop.dll",
+        "lib/net8.0/Microsoft.VisualStudio.Interop.xml",
+        "lib/netstandard2.0/Microsoft.VisualStudio.Interop.dll",
+        "lib/netstandard2.0/Microsoft.VisualStudio.Interop.xml",
+        "microsoft.visualstudio.interop.17.13.40008.nupkg.sha512",
+        "microsoft.visualstudio.interop.nuspec"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net9.0": [
+      "envdte >= 17.13.40008",
+      "envdte80 >= 17.13.40008"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\elias\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "C:\\Users\\elias\\mscRepos\\bcs-engineering-dsl\\TcAutomation\\TcAutomation.csproj",
+      "projectName": "TcAutomation",
+      "projectPath": "C:\\Users\\elias\\mscRepos\\bcs-engineering-dsl\\TcAutomation\\TcAutomation.csproj",
+      "packagesPath": "C:\\Users\\elias\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\elias\\mscRepos\\bcs-engineering-dsl\\TcAutomation\\obj\\",
+      "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
+      "configFilePaths": [
+        "C:\\Users\\elias\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+      ],
+      "originalTargetFrameworks": [
+        "net9.0"
+      ],
+      "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "projectReferences": {}
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "9.0.200"
+    },
+    "frameworks": {
+      "net9.0": {
+        "targetAlias": "net9.0",
+        "dependencies": {
+          "envdte": {
+            "target": "Package",
+            "version": "[17.13.40008, )"
+          },
+          "envdte80": {
+            "target": "Package",
+            "version": "[17.13.40008, )"
+          }
+        },
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.203/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

@@ -6,28 +6,64 @@ on:
   pull_request:
     branches: [main, develop]
 
+env:
+  DSL_DIR: language
+  AUTOMATION_DIR: TcAutomation
+
 jobs:
-  build:
-    name: Build and Test
+  build-dsl:
+    name: Build and Test DSL
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: ".nvmrc"
+          node-version-file: "${{ env.DSL_DIR }}/.nvmrc"
+          cache: 'npm'
+          cache-dependency-path: '${{ env.DSL_DIR }}/package-lock.json'
 
       - name: Install with npm install
         run: npm install
+        working-directory: ./${{ env.DSL_DIR }}
 
       - name: Generate langium files
         run: npm run langium:generate
+        working-directory: ./${{ env.DSL_DIR }}
 
       - name: Build
         run: npm run build
+        working-directory: ./${{ env.DSL_DIR }}
 
       - name: Run tests
         run: npm test
+        working-directory: ./${{ env.DSL_DIR }}
+
+  build-automation:
+    name: Build TwinCAT Automation
+    runs-on: windows-latest
+    needs: build-dsl
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+        working-directory: ./${{ env.AUTOMATION_DIR }}
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+        working-directory: ./${{ env.AUTOMATION_DIR }}
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release
+        working-directory: ./${{ env.AUTOMATION_DIR }}
