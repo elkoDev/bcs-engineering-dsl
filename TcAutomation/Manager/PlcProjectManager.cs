@@ -46,5 +46,55 @@ namespace TcAutomation.Manager
             libManager.AddLibrary(libraryName, "*", vendor);
             Console.WriteLine($"✅ Library '{libraryName}' added successfully.");
         }
+
+        private string GetParentPathForType(PlcObjectType type)
+        {
+            string basePath = $"{TcShortcut.TIPC.GetShortcutKey()}^{_config.PlcProjectName}^{_config.PlcProjectName} Project";
+
+            return type switch
+            {
+                { Name: "FunctionBlock" or "Function" } => $"{basePath}^POUs",
+                { Name: "Enum" or "Struct" or "Union" or "Alias" } => $"{basePath}^DUTs",
+                { Name: "GlobalVariables" } => $"{basePath}^GVLs",
+                _ => basePath // fallback for root creation
+            };
+        }
+
+
+        public ITcSmTreeItem CreatePlcObject(string name, PlcObjectType type, string? declarationText = null, string? implementationText = null)
+        {
+            string parentPath = GetParentPathForType(type);
+            ITcSmTreeItem parent = _systemManager.LookupTreeItem(parentPath);
+
+            object? language = type.RequiresLanguage ? IECLANGUAGETYPES.IECLANGUAGE_ST : null;
+
+            ITcSmTreeItem newItem = parent.CreateChild(name, type.Code, "", language);
+
+
+            if (type.HasDeclaration && declarationText != null)
+            {
+                var decl = (ITcPlcDeclaration)newItem;
+                decl.DeclarationText = declarationText;
+            }
+
+            if (type.HasImplementation && implementationText != null)
+            {
+                var impl = (ITcPlcImplementation)newItem;
+                impl.ImplementationText = implementationText;
+            }
+
+            Console.WriteLine($"✅ Created {type.Name} '{name}' with optional texts.");
+            return newItem;
+        }
+
+        public void SetMainPlcObject(string? declarationText = null, string? implementationText = null)
+        {
+            ITcSmTreeItem mainPlcObject = _systemManager.LookupTreeItem($"{TcShortcut.TIPC.GetShortcutKey()}^{_config.PlcProjectName}^{_config.PlcProjectName} Project^POUs^MAIN");
+            var decl = (ITcPlcDeclaration)mainPlcObject;
+            decl.DeclarationText = declarationText;
+            var impl = (ITcPlcImplementation)mainPlcObject;
+            impl.ImplementationText = implementationText;
+            Console.WriteLine($"✅ Main PLC object set with optional texts.");
+        }
     }
 }
