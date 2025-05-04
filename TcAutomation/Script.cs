@@ -5,25 +5,19 @@ using TCatSysManagerLib;
 
 namespace TcAutomation
 {
-    public class Script
+    internal class Script
     {
         private DTE2? _dte = null;
         private Solution2? _solution = null;
         private ITcSysManager4? _systemManager = null;
         private Project? _project = null;
 
-        private const string ProgId = "TcXaeShell.DTE.15.0";
-        private const string SolutionName = "MyGeneratedSolution";
-        private const string ProjectName = "MyTwinCATProject";
-
-        private static readonly string SolutionPath =
-            @"C:\Users\elias\mscRepos\bcs-engineering-dsl\TcAutomation\generated\" + SolutionName;
-        private static readonly string TemplatePath =
-            @"C:\TwinCAT\3.1\Components\Base\PrjTemplate\TwinCAT Project.tsproj";
+        private readonly ScriptConfig _config;
 
         [SupportedOSPlatform("windows")]
-        public Script()
+        public Script(ScriptConfig config)
         {
+            _config = config;
             OnInitialize();
         }
 
@@ -58,7 +52,7 @@ namespace TcAutomation
                 _systemManager.StartRestartTwinCAT();
 
                 _project.Save();
-                _solution.SaveAs(Path.Combine(SolutionPath, $"{SolutionName}.sln"));
+                _solution.SaveAs(Path.Combine(_config.SolutionPath, $"{_config.SolutionName}.sln"));
 
                 Console.WriteLine("✅ TwinCAT configuration generated successfully.");
             }
@@ -71,7 +65,7 @@ namespace TcAutomation
         [SupportedOSPlatform("windows")]
         private DTE2 StartHiddenDte()
         {
-            Type? dteType = Type.GetTypeFromProgID(ProgId, throwOnError: true);
+            Type? dteType = Type.GetTypeFromProgID(_config.ProgId, throwOnError: true);
             var dte = (DTE2)Activator.CreateInstance(dteType!, true)!;
 
             if (!MessageFilter.IsRegistered) MessageFilter.Register();
@@ -88,11 +82,11 @@ namespace TcAutomation
         private Solution2 InitSolution(DTE2 dte)
         {
             DeleteSolutionFolder();
-            Directory.CreateDirectory(SolutionPath);
+            Directory.CreateDirectory(_config.SolutionPath);
 
             var sln = (Solution2)dte.Solution;
-            sln.Create(SolutionPath, SolutionName);
-            sln.SaveAs(Path.Combine(SolutionPath, $"{SolutionName}.sln"));
+            sln.Create(_config.SolutionPath, _config.SolutionName);
+            sln.SaveAs(Path.Combine(_config.SolutionPath, $"{_config.SolutionName}.sln"));
 
             Console.WriteLine("Solution created.");
 
@@ -101,9 +95,9 @@ namespace TcAutomation
 
         private bool DeleteSolutionFolder()
         {
-            if (Directory.Exists(SolutionPath))
+            if (Directory.Exists(_config.SolutionPath))
             {
-                Directory.Delete(SolutionPath, true);
+                Directory.Delete(_config.SolutionPath, true);
                 return true;
             }
             return false;
@@ -111,10 +105,10 @@ namespace TcAutomation
 
         private Project AddTwinCatProject(Solution2 sln)
         {
-            if (!File.Exists(TemplatePath))
-                throw new FileNotFoundException("TwinCAT template not found.", TemplatePath);
+            if (!File.Exists(_config.TemplatePath))
+                throw new FileNotFoundException("TwinCAT template not found.", _config.TemplatePath);
 
-            Project prj = sln.AddFromTemplate(TemplatePath, SolutionPath, ProjectName, Exclusive: false);
+            Project prj = sln.AddFromTemplate(_config.TemplatePath, _config.SolutionPath, _config.ProjectName, Exclusive: false);
 
             Console.WriteLine("Project added from template.");
 
