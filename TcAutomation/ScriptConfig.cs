@@ -2,16 +2,15 @@
 {
     public class ScriptConfig
     {
-        public string ProgId = "TcXaeShell.DTE.15.0";
-        public string SolutionName = "MyGeneratedSolution";
-        public string ProjectName = "MyTwinCATProject";
-        public string GenerationPath = @"C:\Users\elias\mscRepos\bcs-engineering-dsl\TcAutomation\generated\";
+        public required string ProgId { get; set; }
+        public required string SolutionName { get; set; }
+        public required string ProjectName { get; set; }
+        public required string GenerationPath { get; set; }
         public string SolutionPath
         {
             get { return GenerationPath + SolutionName; }
         }
-        public string TemplatePath =
-            @"C:\TwinCAT\3.1\Components\Base\PrjTemplate\TwinCAT Project.tsproj";
+        public required string TemplatePath { get; set; }
 
         public ScriptConfig() { }
     }
