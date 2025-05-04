@@ -1,0 +1,142 @@
+import library Tc3_DALI;
+
+extern enum E_DALIAddressType { Short, Group, Broadcast, BroadcastUnaddr }
+extern enum E_DALICommandPriority { High, MiddleHigh, Middle, MiddleLow, Low, Unknown }
+extern struct ST_DALIChangeAddressList {
+    nOldAddress: INT,
+    nNewAddress: INT,
+    nRandomAddress: INT,
+    nErrors: INT
+}
+extern functionblock FB_Tc3_DALI {
+    inputs {
+        var iDALIAddress: E_DALIAddressType;
+        var iDALICommandPriority: E_DALICommandPriority;
+        var iAddressList: ST_DALIChangeAddressList;
+    }
+    outputs {
+        var oDALIStatus: BOOL;
+    }
+}
+
+control MainController {
+
+    enum Mode { OFF, ECO, COMFORT }
+
+    var mode: Mode = Mode.OFF;
+    var lightLevel: INT = 0;
+    var heater: BOOL;
+    var lightsOn: BOOL;
+    var heatingEnabled: BOOL;
+
+    functionblock HeatingLogic {
+        inputs {
+            var iTemp: REAL;
+            var iMode: Mode;
+        }
+        outputs {
+            var oHeating: BOOL;
+        }
+        logic {
+            if (iMode == Mode.COMFORT && iTemp < 21.0) {
+                oHeating = true;
+            } else if (iMode == Mode.ECO && iTemp < 18.0) {
+                oHeating = true;
+            } else {
+                oHeating = false;
+            }
+        }
+    }
+
+    unit ToggleLightsOnButtonPress {
+        on_rising(Buttons.Room1) {
+            Lights.Room1 = !Lights.Room1;
+        }
+    }
+
+    unit TurnOnLightsScheduled at TOD#06:30:00 {
+        Lights.Room1 = true;
+    }
+
+    unit RetryHeaterStartup when (mode != Mode.OFF) {
+        var retries: INT = 0;
+        while (retries < 3) {
+            heater = true;
+            retries = retries + 1;
+            wait T#1s;
+        }
+    }
+
+    unit DimLightsGradually {
+        for (var i: INT = 0 to 5 by 1) {
+            lightLevel = i * 20;
+            wait T#1s;
+        }
+    }
+
+    unit ControlHeating {
+        use HeatingLogic(iTemp: Temperatures.Room1, iMode: mode) -> heatingEnabled;
+        heater = heatingEnabled;
+    }
+
+    unit AdjustLightLevelByMode {
+        switch (mode) {
+            case Mode.COMFORT: {
+                lightLevel = 100;
+            }
+            case Mode.ECO: {
+                lightLevel = 50;
+            }
+            default: {
+                lightLevel = 0;
+            }
+        }
+    }
+
+    unit FadeOutLights at TOD#22:00:00 {
+        ramp(lightLevel, 100, 0, T#10s);
+    }
+
+    unit MorningPresenceCheck {
+        if (now >= TOD#07:00:00) {
+            Lights.Room2 = true;
+        }
+    }
+
+    unit DelayedStartup once when (now >= TOD#07:05:00) {
+        wait T#5s;
+        heater = true;
+        Lights.Room1 = false;
+    }
+
+    unit UseDaliLibrary {
+        var daliAddress: E_DALIAddressType;
+        var daliPriority: E_DALICommandPriority = E_DALICommandPriority.High;
+        var addressList: ST_DALIChangeAddressList = {
+            nOldAddress: 1,
+            nNewAddress: 2,
+            nRandomAddress: 3,
+            nErrors: 0
+        };
+        var status: BOOL;
+        use FB_Tc3_DALI(
+            iDALIAddress: daliAddress,
+            iDALICommandPriority: daliPriority,
+            iAddressList: addressList
+        ) -> status;
+    }
+
+    unit ButtonReleaseHandler {
+        on_falling(Buttons.Room2) {
+            Lights.Room2 = false;
+        }
+    }
+
+    unit ValidateSensorDistance {
+        var distance: INT = UltrasonicSensor.Distance;
+
+        if (UltrasonicSensor.Valid) {
+            lightLevel = distance;
+        }
+    }
+}

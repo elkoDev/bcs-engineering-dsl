@@ -1,0 +1,40 @@
+control InvalidArrayTestController {
+    enum Mode { OFF, ECO, COMFORT }
+
+    unit TestInvalidArrayUnit {
+        var arr1: BOOL[5][5][5];
+        arr1[0][0][0] = 1;
+
+        var arr2: BOOL[3] = [true, true];
+
+        var arr3: INT[5][5][5];
+        arr1 = arr3;
+
+        var arr4: REAL[3] = [1.0, 2.0, 3.0];
+        var realVal : REAL = arr4[-1];
+        var arr5: REAL[1][2][3];
+        arr5[2][3][4] = 5.0;
+
+        var arr6: BOOL[5][5][5] = [true, false, true, false, true];
+        var arr7: INT[5][5][5] = [1, 2, 3, 4, 5];
+        var arr8: REAL[5][5][5] = [1.0, 2.0, 3.0, 4.0, 5.0];
+        var arr9: BOOL[5][5] = [true, false, true, [true, false, true, true, false], true];
+        var arr10: Mode[5][5][5] = [Mode.OFF, Mode.ECO, Mode.COMFORT, Mode.OFF, Mode.ECO];
+
+
+        var x: INT = 5;
+        var invalidIndex : INT = x[1]; // invalid: x is scalar
+
+        var boolArray: BOOL[2] = [1, 2]; // invalid: 1 and 2 are INT, not BOOL
+
+        var badNested: BOOL[3][3] = [[true, true, true]]; // invalid: missing inner dimension
+
+        var invalidScalarIndex: BOOL = true;
+        var invalidAccess : BOOL = invalidScalarIndex[0]; // invalid: scalar indexed
+
+        var arrStrings: BOOL[2] = [true, 0];
+        var z : BOOL = arrStrings["notANumber"]; // invalid: string index
+
+    }
+}
+ 

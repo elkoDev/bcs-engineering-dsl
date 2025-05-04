@@ -1,0 +1,61 @@
+control InvalidStructTestController {
+    struct Rectangle {
+        x: REAL,
+        y: REAL
+    }
+
+    struct Point {
+        x: REAL,
+        y: REAL
+    }
+
+    struct InvalidStruct {
+        x: REAL,
+        x: BOOL
+    }
+
+
+    unit TestStructUnit {
+        // 1. Unexpected field
+        var rect: Rectangle = { x: 5.0, f: 10.0 };
+
+        // 2. Unexpected field first
+        var rect2: Rectangle = { f: 5.0, y: 10.0 };
+
+        // 3. Duplicate field (same field twice)
+        var rect3: Rectangle = { y: 5.0, y: 10.0 };
+
+        // 4. Duplicate field + valid field
+        var rect4: Rectangle = { x: 1.0, y: 5.0, y: 10.0 };
+
+        // 5. Missing field (only x, no y)
+        var rect5: Rectangle = { x: 1.0 };
+
+        // 6. Missing all fields (empty struct literal)
+        var rect6: Rectangle = { };
+
+        // 7. Assign struct to wrong struct
+        var point: Point = { x: 1.0, y: 2.0 };
+        var rect7: Rectangle = point; // Wrong type: STRUCT:Point != STRUCT:Rectangle
+
+        // 8. Array of structs: wrong number of fields inside elements
+        var rectArray: Rectangle[2] = [ 
+            { x: 1.0, y: 2.0 }, 
+            { x: 3.0 } // Missing y
+        ];
+
+        // 9. Array of structs: duplicate fields inside element
+        var rectArray2: Rectangle[2] = [ 
+            { x: 1.0, y: 2.0 }, 
+            { x: 3.0, y: 4.0, y: 5.0 } // Duplicate y
+        ];
+
+        // 10. Array of structs: unexpected field inside element
+        var rectArray3: Rectangle[2] = [
+            { x: 1.0, y: 2.0 },
+            { x: 3.0, y: 4.0, z: 5.0 } // Unexpected z
+        ];
+    }
+
+    // TODO: test invalid struct of structs
+}

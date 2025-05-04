@@ -1,0 +1,64 @@
+controller MainController for Beckhoff {
+
+    portgroup AnalogInputs {
+        moduleType: KL3064
+        ioType: ANALOG_INPUT
+        startAddress: %IW0
+        channels: 4
+    }
+
+    portgroup DigitalInputs {
+        moduleType: EL1008
+        ioType: DIGITAL_INPUT
+        startAddress: %IX8.0
+        channels: 8
+    }
+
+    portgroup DigitalOutputs {
+        moduleType: KL2408
+        ioType: DIGITAL_OUTPUT
+        startAddress: %QX0.0
+        channels: 8
+    }
+
+    portgroup AnalogOutputs {
+        moduleType: KL3064
+        ioType: ANALOG_OUTPUT
+        startAddress: %QW0
+        channels: 4
+    }
+
+    datapoint UltrasonicSensor {
+        portgroup: AnalogInputs
+        channels: {
+            channel Distance: INT [0..11] at 0,
+            channel Valid: BOOL [12] at 0
+        }
+    }
+
+    datapoint Temperatures {
+        portgroup: AnalogInputs
+        channels: {
+            channel Room1: REAL at 0,
+            channel Room2: REAL at 1,
+            channel Room3: REAL at 2,
+            channel Room4: REAL at 3
+        }
+    }
+
+    datapoint Buttons {
+        portgroup: DigitalInputs
+        channels: {
+            channel Room1: BOOL at 0,
+            channel Room2: BOOL at 1
+        }
+    }
+
+    datapoint Lights {
+        portgroup: DigitalOutputs
+        channels: {
+            channel Room1: BOOL at 0,
+            channel Room2: BOOL at 1
+        }
+    }
+}

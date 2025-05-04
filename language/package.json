@@ -1,0 +1,123 @@
+{
+  "version": "0.0.1",
+  "name": "bcs-engineering-dsl",
+  "displayName": "BCS Engineering DSL",
+  "icon": "icon.png",
+  "publisher": "elkoDev",
+  "description": "A Building Control System engineering language",
+  "files": [
+    "bin",
+    "out",
+    "src",
+    "syntaxes",
+    "icon.png"
+  ],
+  "categories": [
+    "Programming Languages"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b tsconfig.src.json && node esbuild.mjs",
+    "watch": "concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.src.json --watch\" \"node esbuild.mjs --watch\"",
+    "lint": "eslint src --ext ts",
+    "langium:generate": "langium generate",
+    "langium:generate:production": "langium generate --mode=production",
+    "langium:watch": "langium generate --watch",
+    "vscode:prepublish": "npm run esbuild-base && npm run lint",
+    "esbuild-base": "esbuild ./src/extension/main.ts --bundle --outfile=out/extension/main.js --external:vscode --format=cjs --platform=node",
+    "build:web": "npm run build",
+    "bundle": "vite build",
+    "bundle:serve": "http-server ./dist --port 5175",
+    "dev": "vite",
+    "dev:debug": "vite --debug --force",
+    "serve": "npm run dev",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@codingame/monaco-vscode-editor-service-override": "~3.2.3",
+    "@codingame/monaco-vscode-keybindings-service-override": "~3.2.3",
+    "chalk": "~5.3.0",
+    "commander": "~11.0.0",
+    "langium": "~3.5.0",
+    "monaco-editor": "npm:@codingame/monaco-vscode-editor-api@~3.2.3",
+    "monaco-editor-wrapper": "~4.0.2",
+    "monaco-languageclient": "~8.1.1",
+    "vscode-languageclient": "~9.0.1",
+    "vscode-languageserver": "~9.0.1"
+  },
+  "devDependencies": {
+    "@codingame/esbuild-import-meta-url-plugin": "~1.0.2",
+    "@types/node": "^18.0.0",
+    "@types/vscode": "~1.67.0",
+    "@typescript-eslint/eslint-plugin": "~7.3.1",
+    "@typescript-eslint/parser": "~7.3.1",
+    "@vscode/vsce": "^3.3.0",
+    "vscode": "npm:@codingame/monaco-vscode-api@~3.2.3",
+    "concurrently": "~8.2.1",
+    "esbuild": "^0.20.2",
+    "eslint": "~8.57.0",
+    "http-server": "~14.1.1",
+    "langium-cli": "~3.4.0",
+    "typescript": "~5.1.6",
+    "vite": "~5.2.7",
+    "vitest": "~1.4.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.9.5"
+  },
+  "volta": {
+    "node": "18.19.1",
+    "npm": "10.2.4"
+  },
+  "engines": {
+    "vscode": "^1.67.0",
+    "node": ">=18.0.0"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "bcs-control-lang",
+        "aliases": [
+          "BCS Control Language",
+          "bcs-control-language"
+        ],
+        "extensions": [
+          ".bcsctrl"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "bcs-hardware-lang",
+        "aliases": [
+          "BCS Hardware Language",
+          "bcs-hardware-language"
+        ],
+        "extensions": [
+          ".bcshw"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "bcs-control-lang",
+        "scopeName": "source.bcs-control-lang",
+        "path": "syntaxes/bcs-control.tmLanguage.json"
+      },
+      {
+        "language": "bcs-hardware-lang",
+        "scopeName": "source.bcs-hardware-lang",
+        "path": "syntaxes/bcs-hardware.tmLanguage.json"
+      }
+    ]
+  },
+  "activationEvents": [
+    "onLanguage:bcs-engineering",
+    "onLanguage:bcs-control-lang",
+    "onLanguage:bcs-hardware-lang"
+  ],
+  "main": "./out/extension/main.cjs",
+  "bin": {
+    "bcs-engineering-cli": "./bin/cli.js"
+  }
+}

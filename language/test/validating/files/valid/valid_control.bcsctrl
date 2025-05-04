@@ -1,0 +1,201 @@
+control ValidTestController {
+
+    enum Mode { OFF, ECO, COMFORT }
+
+    var windowOpen: BOOL;
+    var temp: REAL = 0.0;
+    var intTemp: INT = 4;
+    var heater: BOOL;
+    var lights: BOOL;
+    var lightLevel: INT = 0;
+
+    functionblock LightLogicFB {
+        inputs {
+            var iLightLevel: INT;
+        }
+        outputs {
+            var oLight: BOOL;
+            var oDimmedLight: INT;
+        }
+        logic {
+            if (iLightLevel > 50) {
+                oLight = true;
+                oDimmedLight = iLightLevel - 50;
+            } else {
+                oLight = false;
+                oDimmedLight = 0;
+            }
+        }
+    }
+
+        functionblock HeatingLogicFB {
+        inputs {
+            var iTemp: REAL;
+            var iWindow: BOOL;
+            var iMode: Mode;
+        }
+        outputs {
+            var oHeating: BOOL;
+        }
+        logic {
+            if (iWindow) {
+                oHeating = false || (iTemp < 18.0);
+            } else if (iMode == Mode.COMFORT && iTemp < 21.0) {
+                oHeating = true;
+            } else if (iMode == Mode.ECO && iTemp < 18.0) {
+                oHeating = true;
+            } else {
+                oHeating = false;
+            }
+        }
+    }
+
+    unit TestUnit {
+        heater = (temp > 5.5) || (temp < 4.5) || (temp > 6.0 && temp < 7.0) && false;
+        temp = 5.0 + 5 - 4.0 / 4;
+        windowOpen = windowContact.value || (temp > 5.0 && temp < 6.0) && (intTemp == 4 || intTemp == 5);
+        heater = intTemp != 5;
+        temp = intTemp;
+        //intTemp = temp; TODO: check if this is allowed in the future
+
+        for (var i: INT = 0 to 5 by 1) {
+            lightLevel = i * 20;
+            
+            if (i == 5) {
+                lights = false;
+            } else {
+                lights = true;
+            }
+            
+            lights = i != 5;
+        }
+
+        var dimmedLightVal: INT = 0;
+        var isLightOn: BOOL = false;
+        use LightLogicFB(iLightLevel: 60) -> { oLight: isLightOn, oDimmedLight: dimmedLightVal };
+        use HeatingLogicFB(iTemp: 25.0, iWindow: false, iMode: Mode.ECO) -> heater;
+        use HeatingLogicFB(iTemp: 25.0, iWindow: false, iMode: Mode.ECO) -> { oHeating: heater };
+    }
+
+    unit TestArrays {
+        var arr1: BOOL[5] = [true, false, true, false, true];
+        var arr2: INT[5] = [1, 2, 3, 4, 5];
+        var arr3: REAL[5] = [1.0, 2.0, 3.0, 4.0, 5.0];
+        var arr4: BOOL[5][5] = [[true, false, true, false, true], [false, true, false, false, true], [true, false, true, false, true], [false, true, false, true, false], [true, false, true, false, true]];
+        var arr5: Mode[5] = [Mode.OFF, Mode.ECO, Mode.COMFORT, Mode.OFF, Mode.ECO];
+        
+        var extractedBool: BOOL = arr1[2];
+        var extractedInt: INT = arr2[3];
+        var extractedReal: REAL = arr3[4];
+        var extractedBoolArray: BOOL[5] = arr4[2];
+        var extractedBoolArrayElement: BOOL = arr4[2][3];
+        var extractedMode: Mode = arr5[1];
+
+        arr1[0] = true;
+        arr2[1] = 2;
+        arr3[2] = 3.0;
+        arr4[3][4] = false;
+        arr5[4] = Mode.OFF;
+        arr1[0] = arr1[1] && arr1[2] || arr1[3] && arr1[4];
+        arr2[0] = arr2[1] + arr2[2] - arr2[3] * arr2[4] / 2;
+        arr3[0] = arr3[1] + arr3[2] - arr3[3] * arr3[4] / 2.0;
+        arr4[0][0] = arr4[1][1] && arr4[2][2] || arr4[3][3] && arr4[4][4];
+        arr4[1] = [true, false, true, false, true];
+        arr4[1] = arr1;
+    }
+
+    struct Rectangle {
+        x: REAL,
+        y: REAL
+    }
+
+    struct Point {
+        x: REAL,
+        y: REAL
+    }
+
+    struct Circle {
+        radius: REAL
+    }
+
+    struct StructOfStructs {
+        rect: Rectangle,
+        point: Point,
+        array: Rectangle[2]
+    }
+
+    unit TestStructs {
+        // 1. Correct struct initialization
+        var rect: Rectangle = { x: 5.0, y: 10.0 };
+
+        // 2. Accessing struct fields
+        var area: REAL;
+        var perimeter: REAL;
+
+        area = rect.x * rect.y;
+        perimeter = 2 * (rect.x + rect.y);
+
+        // 3. Struct array correctly initialized
+        var rects: Rectangle[2] = [
+            { x: 1.0, y: 2.0 },
+            { x: 3.0, y: 4.0 }
+        ];
+
+        // 4. Access struct fields from array
+        var area2: REAL = rects[0].x * rects[0].y;
+
+        // 5. Nested operations using struct fields
+        var doubleArea: REAL = area2 * 2.0;
+
+        // 6. Separate struct initialization after declaration
+        var p: Point;
+        p = { x: 1.0, y: 2.0 };
+
+        // 7. Array element accessed and modified
+        var tempX: REAL;
+        tempX = rects[1].x;
+    }
+
+    unit TestStructAssignments {
+        // 8. Valid reassignment of structs
+        var c1: Circle = { radius: 5.0 };
+        var c2: Circle;
+        c2 = { radius: 10.0 };
+        var newRadius: REAL = c2.radius;
+    }
+
+    /* TODO: later
+    unit TestStructOfStructs {
+        // 9. Correct initialization of StructOfStructs
+        var complex: StructOfStructs = {
+            rect: { x: 1.0, y: 2.0 },
+            point: { x: 3.0, y: 4.0 },
+            array: [
+                { x: 5.0, y: 6.0 },
+                { x: 7.0, y: 8.0 }
+            ]
+        };
+
+        // 10. Access nested struct fields
+        rectArea = complex.rect.x * complex.rect.y;
+
+        // 11. Access nested array inside struct
+        var arrayArea: REAL;
+        arrayArea = complex.array[0].x * complex.array[0].y;
+
+        // 12. Separate struct assignment after declaration
+        var separateComplex: StructOfStructs;
+        separateComplex = {
+            rect: { x: 9.0, y: 10.0 },
+            point: { x: 11.0, y: 12.0 },
+            array: [
+                { x: 13.0, y: 14.0 },
+                { x: 15.0, y: 16.0 }
+            ]
+        };
+
+        // 13. Nested operations
+        var totalArea: REAL;
+        totalArea = separateComplex.rect.x * separateComplex.rect.y + separateComplex.array[1].x * separateComplex.array[1].y;
+    }*/
+}
