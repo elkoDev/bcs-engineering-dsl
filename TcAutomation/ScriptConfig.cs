@@ -11,6 +11,7 @@
             get { return GenerationPath + SolutionName; }
         }
         public required string TemplatePath { get; set; }
+        public required string VsXaePlcEmptyTemplateName = "Empty PLC Template.plcproj";
 
         public ScriptConfig() { }
     }

@@ -2,6 +2,7 @@
 using EnvDTE80;
 using System.Runtime.Versioning;
 using TCatSysManagerLib;
+using TcAutomation.Manager;
 
 namespace TcAutomation
 {
@@ -11,6 +12,7 @@ namespace TcAutomation
         private Solution2? _solution = null;
         private ITcSysManager4? _systemManager = null;
         private Project? _project = null;
+        private PlcProjectManager? _plcProjectManager = null;
 
         private readonly ScriptConfig _config;
 
@@ -47,6 +49,9 @@ namespace TcAutomation
                 _project = AddTwinCatProject(_solution!);
 
                 _systemManager = (ITcSysManager4)_project!.Object;
+
+                _plcProjectManager = new PlcProjectManager(_systemManager, _config);
+                _plcProjectManager.AddPlcProject("MyPlcProject");
 
                 _systemManager.ActivateConfiguration();
                 _systemManager.StartRestartTwinCAT();

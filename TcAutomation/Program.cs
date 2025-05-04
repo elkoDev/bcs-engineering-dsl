@@ -8,16 +8,17 @@ namespace TcAutomation
         [STAThread]
         private static void Main()
         {
-            ScriptConfig config = new ScriptConfig()
+            ScriptConfig config = new()
             {
                 ProgId = "TcXaeShell.DTE.15.0",
-                SolutionName = "MyGeneratedSolution",
+                SolutionName = "MyGeneratedSolution2",
                 ProjectName = "MyTwinCATProject",
                 GenerationPath = @"C:\Users\elias\mscRepos\bcs-engineering-dsl\TcAutomation\generated\",
                 TemplatePath = @"C:\TwinCAT\3.1\Components\Base\PrjTemplate\TwinCAT Project.tsproj",
+                VsXaePlcEmptyTemplateName = "Standard PLC Template.plcproj"
             };
 
-            Script script = new Script(config);
+            Script script = new(config);
             script.Run();
         }
     }
