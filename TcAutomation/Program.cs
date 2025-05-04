@@ -11,8 +11,9 @@ namespace TcAutomation
             ScriptConfig config = new()
             {
                 ProgId = "TcXaeShell.DTE.15.0",
-                SolutionName = "MyGeneratedSolution2",
+                SolutionName = "MyGeneratedSolution",
                 ProjectName = "MyTwinCATProject",
+                PlcProjectName = "MyPlcProject",
                 GenerationPath = @"C:\Users\elias\mscRepos\bcs-engineering-dsl\TcAutomation\generated\",
                 TemplatePath = @"C:\TwinCAT\3.1\Components\Base\PrjTemplate\TwinCAT Project.tsproj",
                 VsXaePlcEmptyTemplateName = "Standard PLC Template.plcproj"

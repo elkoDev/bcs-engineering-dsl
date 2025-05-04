@@ -16,17 +16,35 @@ namespace TcAutomation.Manager
             _config = config;
         }
 
-        public void AddPlcProject(string plcProjectName)
+        public void AddPlcProject()
         {
-            ITcSmTreeItem plcConfig = _systemManager.LookupTreeItem("TIPC");
-            ITcSmTreeItem plcProjectRoot = plcConfig.CreateChild(plcProjectName, 0, "", _config.VsXaePlcEmptyTemplateName);
+            ITcSmTreeItem plcConfig = _systemManager.LookupTreeItem(TcShortcut.TIPC.GetShortcutKey());
+            ITcSmTreeItem plcProjectRoot = plcConfig.CreateChild(_config.PlcProjectName, 0, "", _config.VsXaePlcEmptyTemplateName);
 
             ITcPlcProject plcProjectRootIec = (ITcPlcProject)plcProjectRoot;
             plcProjectRootIec.BootProjectAutostart = true;
             plcProjectRootIec.GenerateBootProject(true);
 
-            _plcProject = plcProjectRoot.LookupChild(plcProjectName + " Project");
-            _realTimeTasks = _systemManager.LookupTreeItem("TIRT");
+            _plcProject = plcProjectRoot.LookupChild(_config.PlcProjectName + " Project");
+            _realTimeTasks = _systemManager.LookupTreeItem(TcShortcut.TIRT.GetShortcutKey());
+
+            Console.WriteLine($"✅ PLC project '{_config.PlcProjectName}' created successfully.");
+        }
+
+        public void SetTaskCycleTime(int cycleTime)
+        {
+            string xmlCycleTime = "<TreeItem><TaskDef><CycleTime>" + cycleTime + "</CycleTime></TaskDef></TreeItem>";
+            ITcSmTreeItem task = _systemManager.LookupTreeItem("TIRT^PlcTask");
+            task.ConsumeXml(xmlCycleTime);
+            Console.WriteLine("✅ Task cycle time successfully set to " + cycleTime / 1000 + "ms.");
+        }
+
+        public void AddReference(string libraryName, string vendor = "Beckhoff Automation GmbH")
+        {
+            ITcSmTreeItem references = _systemManager.LookupTreeItem($"{TcShortcut.TIPC.GetShortcutKey()}^{_config.PlcProjectName}^{_config.PlcProjectName} Project^References");
+            ITcPlcLibraryManager libManager = (ITcPlcLibraryManager)references;
+            libManager.AddLibrary(libraryName, "*", vendor);
+            Console.WriteLine($"✅ Library '{libraryName}' added successfully.");
         }
     }
 }

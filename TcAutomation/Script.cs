@@ -51,15 +51,18 @@ namespace TcAutomation
                 _systemManager = (ITcSysManager4)_project!.Object;
 
                 _plcProjectManager = new PlcProjectManager(_systemManager, _config);
-                _plcProjectManager.AddPlcProject("MyPlcProject");
+                _plcProjectManager.AddPlcProject();
+                _plcProjectManager.SetTaskCycleTime(10000); // 10ms
+                _plcProjectManager.AddReference("Tc3_DALI", "Beckhoff Automation GmbH");
 
                 _systemManager.ActivateConfiguration();
+                Console.WriteLine("✅ TwinCAT configuration activated.");
                 _systemManager.StartRestartTwinCAT();
+                Console.WriteLine("✅ TwinCAT restarted.");
 
                 _project.Save();
                 _solution.SaveAs(Path.Combine(_config.SolutionPath, $"{_config.SolutionName}.sln"));
-
-                Console.WriteLine("✅ TwinCAT configuration generated successfully.");
+                Console.WriteLine("✅ TwinCAT project saved.");
             }
             catch (Exception ex)
             {
