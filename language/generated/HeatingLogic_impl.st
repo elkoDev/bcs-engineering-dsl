@@ -1,12 +1,7 @@
-// ******** Implementation of HeatingLogic
-IF iMode == Mode.COMFORT && iTemp < 21.0 THEN
-oHeating := true;
-
-ELSIF iMode == Mode.ECO && iTemp < 18.0 THEN
-oHeating := true;
-
+IF FALSE = FALSE AND FALSE < 21 THEN
+  FALSE := TRUE;
+ELSIF FALSE = FALSE AND FALSE < 18 THEN
+  FALSE := TRUE;
 ELSE
-oHeating := false;
-
-END_IF
-
+  FALSE := FALSE;
+END_IF;

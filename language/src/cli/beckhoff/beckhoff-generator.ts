@@ -541,41 +541,6 @@ function writeProgramMain(
     }
   }
 
-  // Create instance variables for all used function blocks
-  const fbInstanceVars = fbInstances.map((fb) => {
-    // Create a VarDecl for the function block instance
-    const varDecl: VarDecl = {
-      $type: "VarDecl",
-      name: `${fb.name.charAt(0).toLowerCase() + fb.name.slice(1)}Instance`,
-      typeRef: {
-        $type: "TypeRef",
-        ref: { ref: fb } as any,
-        sizes: [],
-      },
-    } as VarDecl;
-
-    return varDecl;
-  });
-
-  mainVars.push(...fbInstanceVars);
-
-  // Add standard variables for the MAIN program
-  const runOnceVar: VarDecl = {
-    $type: "VarDecl",
-    name: "bRunOnlyOnce",
-    typeRef: {
-      $type: "TypeRef",
-      type: "BOOL",
-      sizes: [],
-    },
-    init: {
-      $type: "Primary",
-      val: false,
-    },
-  } as VarDecl;
-
-  mainVars.push(runOnceVar);
-
   // Generate declaration part
   const declContent = toString(
     expandToNode`
@@ -590,6 +555,16 @@ function writeProgramMain(
             `,
             { appendNewLineIfNotEmpty: true }
           )}
+          ${joinToNode(
+            fbInstances,
+            (fb) => expandToNode`
+              ${fb.name.charAt(0).toLowerCase() + fb.name.slice(1)}Instance: ${
+              fb.name
+            };
+            `,
+            { appendNewLineIfNotEmpty: true }
+          )}
+          "bRunOnlyOnce": BOOL := FALSE;
       END_VAR
     `
   );
