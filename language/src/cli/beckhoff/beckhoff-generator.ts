@@ -34,7 +34,10 @@ import {
   isParenExpr,
   ControlUnit,
   isControlUnit,
-  TypeDecl,
+  NegExpr,
+  NotExpr,
+  ParenExpr,
+  isVarDecl,
 } from "../../language/generated/ast.js";
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
@@ -96,11 +99,14 @@ function convertExprToST(expr: Expr): string {
     const op = translateOperator(expr.op);
     return `${convertExprToST(expr.e1)} ${op} ${convertExprToST(expr.e2)}`;
   } else if (isNegExpr(expr)) {
-    return `-${convertExprToST(expr.expr)}`;
+    const negExpr = expr as NegExpr;
+    return `-${convertExprToST(negExpr.expr)}`;
   } else if (isNotExpr(expr)) {
-    return `NOT ${convertExprToST(expr.expr)}`;
+    const notExpr = expr as NotExpr;
+    return `NOT ${convertExprToST(notExpr.expr)}`;
   } else if (isParenExpr(expr)) {
-    return `(${convertExprToST(expr.expr)})`;
+    const parenExpr = expr as ParenExpr;
+    return `(${convertExprToST(parenExpr.expr)})`;
   }
 
   return "UNKNOWN_EXPR";
@@ -235,10 +241,10 @@ function convertTypeRefToST(typeRef: TypeRef): string {
   } else if (typeRef.ref) {
     // User defined type
     const typeDecl = typeRef.ref.ref;
-    const typeName = typeDecl ? typeDecl.name : "UNKNOWN";
+    const typeName = typeDecl && "name" in typeDecl ? typeDecl.name : "UNKNOWN";
 
     if (typeRef.sizes.length === 0) {
-      return typeName;
+      return typeName as string;
     } else {
       // Array of user defined type
       return `ARRAY [${typeRef.sizes
@@ -492,7 +498,7 @@ function convertStatementToST(stmt: Statement): string {
     };`;
   }
 
-  return `// Unsupported statement type: ${stmt.$type}`;
+  return `// Unsupported statement type: ${(stmt as any).$type}`;
 }
 
 /**
@@ -650,7 +656,7 @@ export function generateBeckhoffCode(
   // Process each item in the control model to create C# ready strings
   for (const item of controlModel.controlBlock.items) {
     // Skip items marked as extern
-    if (item.$type === "TypeDecl" && (item as TypeDecl).isExtern) continue;
+    if ("isExtern" in item && item.isExtern) continue;
 
     if (isEnumDecl(item)) {
       const filePath = path.join(destination, `${item.name}.st`);
