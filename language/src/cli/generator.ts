@@ -3,8 +3,10 @@ import { ControlModel, HardwareModel } from "../language/generated/ast.js";
 import { extractDestinationAndName } from "./cli-util.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { generatePlcObjects } from "./plc-object-generator.js";
+import { generateBeckhoffArtifacts } from "./beckhoff/beckhoff-generator.js";
 
-export function generateCodeAndConfig(
+export function generateArtifacts(
   controlModel: ControlModel,
   hardwareModel: HardwareModel,
   fileName: string,
@@ -12,45 +14,27 @@ export function generateCodeAndConfig(
 ): string[] {
   const filePathData = extractDestinationAndName(fileName, destination);
 
-  const generatedCodePath = generateCode(
-    controlModel,
-    filePathData.destination
-  );
-  const generatedConfigPath = generateConfig(
-    hardwareModel,
-    filePathData.destination
-  );
-
-  return [generatedCodePath, generatedConfigPath];
-}
-
-function generateCode(controlModel: ControlModel, destination: string): string {
-  const fileNode = expandToNode`
-    Control code for ${controlModel.controlBlock?.controller?.ref?.name}
-  `.appendNewLineIfNotEmpty();
-
-  if (!fs.existsSync(destination)) {
-    fs.mkdirSync(destination, { recursive: true });
+  const targetPlatform = controlModel.controlBlock.controller.ref?.platform;
+  if (!targetPlatform) {
+    throw new Error("Target platform not found in control model.");
   }
 
-  const generatedCodePath = `${path.join(destination, "control")}.st`;
-  fs.writeFileSync(generatedCodePath, toString(fileNode));
-  return generatedCodePath;
-}
-
-function generateConfig(
-  hardwareModel: HardwareModel,
-  destination: string
-): string {
-  const fileNode = expandToNode`
-  Config for ${hardwareModel.controllers?.at(0)?.name ?? ""}
-`.appendNewLineIfNotEmpty();
-
-  if (!fs.existsSync(destination)) {
-    fs.mkdirSync(destination, { recursive: true });
+  switch (targetPlatform) {
+    case "Siemens":
+      // Add Siemens specific code generation logic here
+      break;
+    case "Beckhoff":
+      return generateBeckhoffArtifacts(
+        controlModel,
+        hardwareModel,
+        filePathData.destination
+      );
+    case "KNX":
+      // Add KNX specific code generation logic here
+      break;
+    default:
+      throw new Error(`Unsupported target platform: ${targetPlatform}`);
   }
 
-  const generatedConfigPath = `${path.join(destination, "config")}.xml`;
-  fs.writeFileSync(generatedConfigPath, toString(fileNode));
-  return generatedConfigPath;
+  return [];
 }
