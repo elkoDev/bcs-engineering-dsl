@@ -1,9 +1,5 @@
-import { expandToNode, toString } from "langium/generate";
 import { ControlModel, HardwareModel } from "../language/generated/ast.js";
 import { extractDestinationAndName } from "./cli-util.js";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { generatePlcObjects } from "./plc-object-generator.js";
 import { generateBeckhoffArtifacts } from "./beckhoff/beckhoff-generator.js";
 
 export function generateArtifacts(

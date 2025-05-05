@@ -7,21 +7,14 @@ import {
   EnumDecl,
   StructDecl,
   FunctionBlockDecl,
-  FunctionBlockMember,
   VarDecl,
-  isFunctionBlockInputs,
-  isFunctionBlockOutputs,
-  isFunctionBlockLocals,
-  isFunctionBlockLogic,
   TypeRef,
   Primary,
   isRef,
   isBinExpr,
-  BinExpr,
   isNegExpr,
   isNotExpr,
   isPrimary,
-  isPrimitive,
   isArrayLiteral,
   isStructLiteral,
   isEnumMemberLiteral,
@@ -35,11 +28,13 @@ import {
   isWaitStmt,
   isRampStmt,
   isExpressionStmt,
-  isLocalVarDeclStmt,
   isOnRisingEdgeStmt,
   isOnFallingEdgeStmt,
   Expr,
-  isVarDecl,
+  isParenExpr,
+  ControlUnit,
+  isControlUnit,
+  TypeDecl,
 } from "../../language/generated/ast.js";
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
@@ -50,6 +45,84 @@ import {
   getLocals,
   getLogic,
 } from "../../language/utils/function-block-utils.js";
+
+// Helper function to check if a node is a primitive value
+function isPrimitive(expr: Primary): boolean {
+  return (
+    typeof expr.val === "number" ||
+    typeof expr.val === "string" ||
+    typeof expr.val === "boolean"
+  );
+}
+
+/**
+ * Convert an expression to a valid ST expression
+ */
+function convertExprToST(expr: Expr): string {
+  if (isPrimary(expr)) {
+    if (isPrimitive(expr)) {
+      if (typeof expr.val === "string") {
+        return `'${expr.val}'`; // String literals use single quotes in ST
+      } else if (typeof expr.val === "boolean") {
+        return expr.val ? "TRUE" : "FALSE"; // Booleans are uppercase in ST
+      } else if (expr.val !== undefined) {
+        return expr.val.toString(); // Numbers as strings
+      }
+    } else if (isArrayLiteral(expr.val)) {
+      return `[${expr.val.elements.map((e) => convertExprToST(e)).join(", ")}]`;
+    } else if (isStructLiteral(expr.val)) {
+      return `(${expr.val.fields
+        .map((f) => `${f.name}:=${convertExprToST(f.value)}`)
+        .join(", ")})`;
+    } else if (isRef(expr)) {
+      let result = expr.ref.ref?.name || "";
+
+      // Add indices if any
+      if (expr.indices.length > 0) {
+        result += `[${expr.indices
+          .map((idx) => convertExprToST(idx))
+          .join(", ")}]`;
+      }
+
+      // Add properties if any
+      for (const prop of expr.properties) {
+        result += `.${prop.ref?.name || ""}`;
+      }
+
+      return result;
+    }
+  } else if (isBinExpr(expr)) {
+    // Special handling for operators that are different in ST
+    const op = translateOperator(expr.op);
+    return `${convertExprToST(expr.e1)} ${op} ${convertExprToST(expr.e2)}`;
+  } else if (isNegExpr(expr)) {
+    return `-${convertExprToST(expr.expr)}`;
+  } else if (isNotExpr(expr)) {
+    return `NOT ${convertExprToST(expr.expr)}`;
+  } else if (isParenExpr(expr)) {
+    return `(${convertExprToST(expr.expr)})`;
+  }
+
+  return "UNKNOWN_EXPR";
+}
+
+/**
+ * Translate operators from DSL to ST format
+ */
+function translateOperator(op: string): string {
+  switch (op) {
+    case "&&":
+      return "AND";
+    case "||":
+      return "OR";
+    case "==":
+      return "=";
+    case "!=":
+      return "<>";
+    default:
+      return op;
+  }
+}
 
 export function generateBeckhoffArtifacts(
   controlModel: ControlModel,
@@ -62,7 +135,9 @@ export function generateBeckhoffArtifacts(
 
   for (const item of controlModel.controlBlock.items) {
     // Skip items marked as extern
-    if (item.$type === "TypeDecl" && item.isExtern) continue;
+    if (isEnumDecl(item) || isStructDecl(item) || isFunctionBlockDecl(item)) {
+      if (item.isExtern) continue;
+    }
 
     if (isEnumDecl(item)) files.push(writeEnum(item, destination));
     else if (isStructDecl(item)) files.push(writeStruct(item, destination));
@@ -149,95 +224,35 @@ function convertTypeRefToST(typeRef: TypeRef): string {
     } else {
       // Array type
       return `ARRAY [${typeRef.sizes
-        .map(
-          (size, i) => `0..${typeof size.val === "number" ? size.val - 1 : "?"}`
-        )
+        .map((size) => {
+          if (isPrimary(size) && typeof size.val === "number") {
+            return `0..${size.val - 1}`;
+          }
+          return "0..?";
+        })
         .join(", ")}] OF ${typeRef.type}`;
     }
   } else if (typeRef.ref) {
     // User defined type
-    const typeName = typeRef.ref.ref?.name || "UNKNOWN";
+    const typeDecl = typeRef.ref.ref;
+    const typeName = typeDecl ? typeDecl.name : "UNKNOWN";
 
     if (typeRef.sizes.length === 0) {
       return typeName;
     } else {
       // Array of user defined type
       return `ARRAY [${typeRef.sizes
-        .map(
-          (size, i) => `0..${typeof size.val === "number" ? size.val - 1 : "?"}`
-        )
+        .map((size) => {
+          if (isPrimary(size) && typeof size.val === "number") {
+            return `0..${size.val - 1}`;
+          }
+          return "0..?";
+        })
         .join(", ")}] OF ${typeName}`;
     }
   }
 
   return "UNKNOWN_TYPE";
-}
-
-/**
- * Convert an expression to a valid ST expression
- */
-function convertExprToST(expr: Expr): string {
-  if (isPrimary(expr)) {
-    if (isPrimitive(expr)) {
-      if (typeof expr.val === "string") {
-        return `'${expr.val}'`; // String literals use single quotes in ST
-      } else if (typeof expr.val === "boolean") {
-        return expr.val ? "TRUE" : "FALSE"; // Booleans are uppercase in ST
-      } else if (expr.val !== undefined) {
-        return expr.val.toString(); // Numbers as strings
-      }
-    } else if (isArrayLiteral(expr.val)) {
-      return `[${expr.val.elements.map((e) => convertExprToST(e)).join(", ")}]`;
-    } else if (isStructLiteral(expr.val)) {
-      return `(${expr.val.fields
-        .map((f) => `${f.name}:=${convertExprToST(f.value)}`)
-        .join(", ")})`;
-    } else if (isRef(expr)) {
-      let result = expr.ref.ref?.name || "";
-
-      // Add indices if any
-      if (expr.indices.length > 0) {
-        result += `[${expr.indices
-          .map((idx) => convertExprToST(idx))
-          .join(", ")}]`;
-      }
-
-      // Add properties if any
-      for (const prop of expr.properties) {
-        result += `.${prop.ref?.name || ""}`;
-      }
-
-      return result;
-    } else if (isNegExpr(expr)) {
-      return `-${convertExprToST(expr.expr)}`;
-    } else if (isNotExpr(expr)) {
-      return `NOT ${convertExprToST(expr.expr)}`;
-    }
-  } else if (isBinExpr(expr)) {
-    // Special handling for operators that are different in ST
-    const op = translateOperator(expr.op);
-    return `${convertExprToST(expr.e1)} ${op} ${convertExprToST(expr.e2)}`;
-  }
-
-  return "UNKNOWN_EXPR";
-}
-
-/**
- * Translate operators from DSL to ST format
- */
-function translateOperator(op: string): string {
-  switch (op) {
-    case "&&":
-      return "AND";
-    case "||":
-      return "OR";
-    case "==":
-      return "=";
-    case "!=":
-      return "<>";
-    default:
-      return op;
-  }
 }
 
 /**
@@ -382,7 +397,7 @@ function convertStatementToST(stmt: Statement): string {
           if (isEnumMemberLiteral(lit.val)) {
             return `${lit.val.enumDecl.ref?.name}.${lit.val.member.ref?.name}`;
           } else {
-            return lit.val.toString();
+            return String(lit.val);
           }
         })
         .join(", ");
@@ -480,6 +495,12 @@ function convertStatementToST(stmt: Statement): string {
   return `// Unsupported statement type: ${stmt.$type}`;
 }
 
+/**
+ * Generate ST code for the MAIN program
+ * @param controlModel Control model from the DSL
+ * @param destination Output directory
+ * @returns Path to the generated file
+ */
 function writeProgramMain(
   controlModel: ControlModel,
   destination: string
@@ -493,8 +514,8 @@ function writeProgramMain(
 
   // Look for control units that should be included in MAIN
   for (const item of controlModel.controlBlock.items) {
-    if (item.$type === "ControlUnit") {
-      const controlUnit = item as any; // Type as any since we access it directly
+    if (isControlUnit(item)) {
+      const controlUnit = item as ControlUnit;
 
       // Add statements from this control unit
       mainStatements.push(...controlUnit.stmts);
@@ -516,6 +537,7 @@ function writeProgramMain(
 
   // Create instance variables for all used function blocks
   const fbInstanceVars = fbInstances.map((fb) => {
+    // Create a VarDecl for the function block instance
     const varDecl: VarDecl = {
       $type: "VarDecl",
       name: `${fb.name.charAt(0).toLowerCase() + fb.name.slice(1)}Instance`,
@@ -524,7 +546,7 @@ function writeProgramMain(
         ref: { ref: fb } as any,
         sizes: [],
       },
-    } as any; // Type as any since we're constructing it manually
+    } as VarDecl;
 
     return varDecl;
   });
@@ -544,7 +566,7 @@ function writeProgramMain(
       $type: "Primary",
       val: false,
     },
-  } as any;
+  } as VarDecl;
 
   mainVars.push(runOnceVar);
 
@@ -628,7 +650,7 @@ export function generateBeckhoffCode(
   // Process each item in the control model to create C# ready strings
   for (const item of controlModel.controlBlock.items) {
     // Skip items marked as extern
-    if (item.$type === "TypeDecl" && item.isExtern) continue;
+    if (item.$type === "TypeDecl" && (item as TypeDecl).isExtern) continue;
 
     if (isEnumDecl(item)) {
       const filePath = path.join(destination, `${item.name}.st`);
@@ -673,15 +695,4 @@ export function generateBeckhoffCode(
   };
 
   return { files, csharpStrings };
-}
-
-/**
- * Helper function to check if a Primary node is a primitive value (number, string, boolean)
- */
-function isPrimitive(expr: Primary): boolean {
-  return (
-    typeof expr.val === "number" ||
-    typeof expr.val === "string" ||
-    typeof expr.val === "boolean"
-  );
 }
