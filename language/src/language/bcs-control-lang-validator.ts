@@ -600,7 +600,7 @@ export class BCSControlLangValidator {
     }
 
     const expectedDimensions = this.extractArrayDimensions(
-      varDecl.typeRef!.sizes
+      varDecl.typeRef.sizes
     );
     if (expectedDimensions.length === 0) {
       return;
