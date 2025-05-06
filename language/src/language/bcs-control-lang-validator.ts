@@ -36,6 +36,7 @@ import {
   isWhileStmt,
   Primary,
   StructDecl,
+  StructLiteral,
   SwitchStmt,
   UseStmt,
   VarDecl,
@@ -431,6 +432,15 @@ export class BCSControlLangValidator {
     const fb = useStmt.functionBlockRef?.ref;
     if (!fb) return;
 
+    this.validateFunctionBlockInputs(useStmt, fb, accept);
+    this.validateFunctionBlockOutputs(useStmt, fb, accept);
+  }
+
+  private validateFunctionBlockInputs(
+    useStmt: UseStmt,
+    fb: FunctionBlockDecl,
+    accept: ValidationAcceptor
+  ) {
     // 1) Check: Number of input arguments vs number of inputs
     if (useStmt.inputArgs.length !== getInputs(fb).length) {
       accept(
@@ -443,6 +453,17 @@ export class BCSControlLangValidator {
     }
 
     // 2) Check: Input types
+    this.validateInputTypes(useStmt, fb, accept);
+
+    // 3) Check: Duplicate input mappings
+    this.checkDuplicateInputMappings(useStmt, fb, accept);
+  }
+
+  private validateInputTypes(
+    useStmt: UseStmt,
+    fb: FunctionBlockDecl,
+    accept: ValidationAcceptor
+  ) {
     for (const arg of useStmt.inputArgs) {
       const paramName = arg.inputVar.ref?.name;
       const paramDecl = getInputs(fb).find((i) => i.name === paramName);
@@ -461,8 +482,13 @@ export class BCSControlLangValidator {
         );
       }
     }
+  }
 
-    // 3) Check: Duplicate input mappings
+  private checkDuplicateInputMappings(
+    useStmt: UseStmt,
+    fb: FunctionBlockDecl,
+    accept: ValidationAcceptor
+  ) {
     const seenInputs = new Set<string>();
     for (const arg of useStmt.inputArgs) {
       const varName = arg.inputVar.ref?.name;
@@ -477,7 +503,13 @@ export class BCSControlLangValidator {
         seenInputs.add(varName);
       }
     }
+  }
 
+  private validateFunctionBlockOutputs(
+    useStmt: UseStmt,
+    fb: FunctionBlockDecl,
+    accept: ValidationAcceptor
+  ) {
     const output = useStmt.useOutput;
     if (!output) return;
 
@@ -496,86 +528,12 @@ export class BCSControlLangValidator {
 
     // 4) Single output result (direct reference)
     if (isSingle) {
-      if (getOutputs(fb).length !== 1) {
-        accept(
-          "error",
-          `Function block '${fb.name}' has ${
-            getOutputs(fb).length
-          } outputs, cannot use direct assignment. Use mapping instead.`,
-          { node: useStmt, property: "useOutput" }
-        );
-        return;
-      }
-
-      const expected = getOutputs(fb)[0];
-      const actual = output.singleOutput!.outputVar?.ref;
-
-      if (actual) {
-        const expectedType = this.inferVarDeclType(expected);
-        const actualType = this.inferVarDeclType(actual);
-
-        if (
-          expectedType &&
-          actualType &&
-          !this.isTypeAssignable(expectedType, actualType)
-        ) {
-          accept(
-            "error",
-            `Type mismatch for output '${expected.name}': cannot assign to '${actual.name}' of type '${actualType}', expected '${expectedType}'.`,
-            { node: output.singleOutput!, property: "outputVar" }
-          );
-        }
-      }
+      this.validateSingleOutput(useStmt, fb, output, accept);
     }
-
     // 5) Output mapping list (explicit mappings)
     else if (isMapping) {
-      if (output.mappingOutputs.length !== getOutputs(fb).length) {
-        accept(
-          "error",
-          `Function block '${fb.name}' expects ${
-            getOutputs(fb).length
-          } outputs, but got ${output.mappingOutputs.length}.`,
-          { node: useStmt, property: "useOutput" }
-        );
-      }
-
-      const seen = new Set<string>();
-      for (const map of output.mappingOutputs) {
-        const targetVar = map.outputVar?.ref;
-        const fbOutputVar = map.fbOutput?.ref;
-
-        if (!targetVar || !fbOutputVar) continue;
-
-        if (seen.has(targetVar.name)) {
-          accept(
-            "error",
-            `Duplicate output mapping to variable '${targetVar.name}' in use of '${fb.name}'.`,
-            { node: map, property: "outputVar" }
-          );
-        }
-        seen.add(targetVar.name);
-
-        const expected = getOutputs(fb).find((o) => o.name === targetVar.name);
-        const expectedType = expected
-          ? this.inferVarDeclType(expected)
-          : undefined;
-        const actualType = this.inferVarDeclType(fbOutputVar);
-
-        if (
-          expectedType &&
-          actualType &&
-          !this.isTypeAssignable(expectedType, actualType)
-        ) {
-          accept(
-            "error",
-            `Type mismatch for mapped output '${targetVar.name}': expected '${expectedType}', got '${actualType}'.`,
-            { node: map, property: "outputVar" }
-          );
-        }
-      }
+      this.validateMappedOutputs(useStmt, fb, output, accept);
     }
-
     // 6) No outputs provided
     else if (getOutputs(fb).length > 0) {
       accept(
@@ -585,6 +543,105 @@ export class BCSControlLangValidator {
         } outputs, but got 0.`,
         { node: useStmt, property: "useOutput" }
       );
+    }
+  }
+
+  private validateSingleOutput(
+    useStmt: UseStmt,
+    fb: FunctionBlockDecl,
+    output: any,
+    accept: ValidationAcceptor
+  ) {
+    if (getOutputs(fb).length !== 1) {
+      accept(
+        "error",
+        `Function block '${fb.name}' has ${
+          getOutputs(fb).length
+        } outputs, cannot use direct assignment. Use mapping instead.`,
+        { node: useStmt, property: "useOutput" }
+      );
+      return;
+    }
+
+    const expected = getOutputs(fb)[0];
+    const actual = output.singleOutput!.outputVar?.ref;
+
+    if (actual) {
+      const expectedType = this.inferVarDeclType(expected);
+      const actualType = this.inferVarDeclType(actual);
+
+      if (
+        expectedType &&
+        actualType &&
+        !this.isTypeAssignable(expectedType, actualType)
+      ) {
+        accept(
+          "error",
+          `Type mismatch for output '${expected.name}': cannot assign to '${actual.name}' of type '${actualType}', expected '${expectedType}'.`,
+          { node: output.singleOutput!, property: "outputVar" }
+        );
+      }
+    }
+  }
+
+  private validateMappedOutputs(
+    useStmt: UseStmt,
+    fb: FunctionBlockDecl,
+    output: any,
+    accept: ValidationAcceptor
+  ) {
+    if (output.mappingOutputs.length !== getOutputs(fb).length) {
+      accept(
+        "error",
+        `Function block '${fb.name}' expects ${
+          getOutputs(fb).length
+        } outputs, but got ${output.mappingOutputs.length}.`,
+        { node: useStmt, property: "useOutput" }
+      );
+    }
+
+    this.checkDuplicateAndTypesMappedOutputs(useStmt, fb, output, accept);
+  }
+
+  private checkDuplicateAndTypesMappedOutputs(
+    useStmt: UseStmt,
+    fb: FunctionBlockDecl,
+    output: any,
+    accept: ValidationAcceptor
+  ) {
+    const seen = new Set<string>();
+    for (const map of output.mappingOutputs) {
+      const targetVar = map.outputVar?.ref;
+      const fbOutputVar = map.fbOutput?.ref;
+
+      if (!targetVar || !fbOutputVar) continue;
+
+      if (seen.has(targetVar.name)) {
+        accept(
+          "error",
+          `Duplicate output mapping to variable '${targetVar.name}' in use of '${fb.name}'.`,
+          { node: map, property: "outputVar" }
+        );
+      }
+      seen.add(targetVar.name);
+
+      const expected = getOutputs(fb).find((o) => o.name === targetVar.name);
+      const expectedType = expected
+        ? this.inferVarDeclType(expected)
+        : undefined;
+      const actualType = this.inferVarDeclType(fbOutputVar);
+
+      if (
+        expectedType &&
+        actualType &&
+        !this.isTypeAssignable(expectedType, actualType)
+      ) {
+        accept(
+          "error",
+          `Type mismatch for mapped output '${targetVar.name}': expected '${expectedType}', got '${actualType}'.`,
+          { node: map, property: "outputVar" }
+        );
+      }
     }
   }
 
@@ -781,12 +838,34 @@ export class BCSControlLangValidator {
     accept: ValidationAcceptor,
     forceStructName?: string
   ) {
+    const structInfo = this.extractStructInfo(node, forceStructName);
+    if (!structInfo) return;
+
+    const { structName, valueExpr, structLiteral } = structInfo;
+
+    // lookup struct
+    const structDecl = this.findStructDeclaration(node, structName);
+    if (!structDecl) return;
+
+    this.validateStructFields(
+      structName,
+      structLiteral,
+      structDecl,
+      valueExpr,
+      accept
+    );
+  }
+
+  private extractStructInfo(
+    node: VarDecl | AssignmentStmt | Primary,
+    forceStructName?: string
+  ): { structName: string; valueExpr: any; structLiteral: any } | undefined {
     let structName: string | undefined;
     let valueExpr: any;
 
     if (isVarDecl(node)) {
       const typeDecl = node.typeRef?.ref?.ref;
-      if (!isStructDecl(typeDecl)) return;
+      if (!isStructDecl(typeDecl)) return undefined;
       structName = typeDecl.name;
       valueExpr = node.init;
     } else if (isAssignmentStmt(node)) {
@@ -797,42 +876,82 @@ export class BCSControlLangValidator {
       structName = forceStructName;
       valueExpr = node;
     } else {
-      return;
+      return undefined;
     }
 
     if (!structName || !valueExpr) {
-      return;
+      return undefined;
     }
 
     if (!isPrimary(valueExpr)) {
-      return;
+      return undefined;
     }
 
     const structLiteral = valueExpr.val;
 
     if (!isStructLiteral(structLiteral)) {
-      return;
+      return undefined;
     }
 
-    // lookup struct
-    const controlModel = AstUtils.getContainerOfType(node, isControlModel);
-    if (!controlModel) return;
+    return { structName, valueExpr, structLiteral };
+  }
 
-    const structDecl =
+  private findStructDeclaration(
+    node: VarDecl | AssignmentStmt | Primary,
+    structName: string
+  ): StructDecl | undefined {
+    const controlModel = AstUtils.getContainerOfType(node, isControlModel);
+    if (!controlModel) return undefined;
+
+    return (
       (controlModel.controlBlock.items.find(
         (d) => isStructDecl(d) && d.name === structName
       ) as StructDecl | undefined) ??
       (controlModel.externTypeDecls.find(
         (d) => isStructDecl(d) && d.name === structName
-      ) as StructDecl | undefined);
+      ) as StructDecl | undefined)
+    );
+  }
 
-    if (!structDecl) {
-      return;
-    }
-
+  private validateStructFields(
+    structName: string,
+    structLiteral: StructLiteral,
+    structDecl: StructDecl,
+    valueExpr: any,
+    accept: ValidationAcceptor
+  ): void {
     const expectedFields = new Set(structDecl.fields.map((f) => f.name));
     const givenFields = new Set(structLiteral.fields.map((f) => f.name));
 
+    // Check for duplicate fields in the literal
+    this.checkDuplicateFields(structName, structLiteral, accept);
+
+    // Check for unexpected fields in the literal
+    let hasUnexpectedField = this.checkUnexpectedFields(
+      structName,
+      givenFields,
+      expectedFields,
+      valueExpr,
+      accept
+    );
+
+    // Check for missing fields
+    if (!hasUnexpectedField) {
+      this.checkMissingFields(
+        structName,
+        givenFields,
+        expectedFields,
+        valueExpr,
+        accept
+      );
+    }
+  }
+
+  private checkDuplicateFields(
+    structName: string,
+    structLiteral: any,
+    accept: ValidationAcceptor
+  ): void {
     const seenFields = new Set<string>();
     for (const field of structLiteral.fields) {
       if (seenFields.has(field.name)) {
@@ -845,7 +964,15 @@ export class BCSControlLangValidator {
         seenFields.add(field.name);
       }
     }
+  }
 
+  private checkUnexpectedFields(
+    structName: string,
+    givenFields: Set<string>,
+    expectedFields: Set<string>,
+    valueExpr: any,
+    accept: ValidationAcceptor
+  ): boolean {
     let hasUnexpectedField = false;
     for (const given of givenFields) {
       if (!expectedFields.has(given)) {
@@ -857,16 +984,23 @@ export class BCSControlLangValidator {
         hasUnexpectedField = true;
       }
     }
+    return hasUnexpectedField;
+  }
 
-    if (!hasUnexpectedField) {
-      for (const expected of expectedFields) {
-        if (!givenFields.has(expected)) {
-          accept(
-            "error",
-            `Missing field '${expected}' in struct literal for '${structName}'.`,
-            { node: valueExpr }
-          );
-        }
+  private checkMissingFields(
+    structName: string,
+    givenFields: Set<string>,
+    expectedFields: Set<string>,
+    valueExpr: any,
+    accept: ValidationAcceptor
+  ): void {
+    for (const expected of expectedFields) {
+      if (!givenFields.has(expected)) {
+        accept(
+          "error",
+          `Missing field '${expected}' in struct literal for '${structName}'.`,
+          { node: valueExpr }
+        );
       }
     }
   }
@@ -1031,42 +1165,40 @@ export class BCSControlLangValidator {
       }
 
       if (ref && expr.indices.length > 0) {
-        if (isVarDecl(ref)) {
-          const sizes = ref.typeRef?.sizes ?? [];
+        const sizes = ref.typeRef?.sizes ?? [];
 
-          for (let i = 0; i < expr.indices.length && i < sizes.length; i++) {
-            const indexExpr = expr.indices[i];
+        for (let i = 0; i < expr.indices.length && i < sizes.length; i++) {
+          const indexExpr = expr.indices[i];
 
-            const idxType = this.inferType(indexExpr, accept);
-            if (idxType !== "INT") {
+          const idxType = this.inferType(indexExpr, accept);
+          if (idxType !== "INT") {
+            accept(
+              "error",
+              `Array index must be of type INT, but got "${idxType}".`,
+              { node: indexExpr }
+            );
+          }
+
+          const sizeExpr = sizes[i];
+
+          // Only check if both index and size are simple numbers
+          if (
+            isPrimary(indexExpr) &&
+            typeof indexExpr.val === "number" &&
+            isPrimary(sizeExpr) &&
+            typeof sizeExpr.val === "number"
+          ) {
+            const indexVal = indexExpr.val;
+            const maxVal = sizeExpr.val;
+
+            if (indexVal < 0 || indexVal >= maxVal) {
               accept(
                 "error",
-                `Array index must be of type INT, but got "${idxType}".`,
-                { node: indexExpr }
+                `Array index [${indexVal}] out of bounds: allowed range is 0 to ${
+                  maxVal - 1
+                }.`,
+                { node: expr }
               );
-            }
-
-            const sizeExpr = sizes[i];
-
-            // Only check if both index and size are simple numbers
-            if (
-              isPrimary(indexExpr) &&
-              typeof indexExpr.val === "number" &&
-              isPrimary(sizeExpr) &&
-              typeof sizeExpr.val === "number"
-            ) {
-              const indexVal = indexExpr.val;
-              const maxVal = sizeExpr.val;
-
-              if (indexVal < 0 || indexVal >= maxVal) {
-                accept(
-                  "error",
-                  `Array index [${indexVal}] out of bounds: allowed range is 0 to ${
-                    maxVal - 1
-                  }.`,
-                  { node: expr }
-                );
-              }
             }
           }
         }
@@ -1315,7 +1447,7 @@ export class BCSControlLangValidator {
     if (arrayMatch) {
       let baseType = arrayMatch[1];
       let dims = (type.match(/\[\d+|\?\]/g) || []).map((d) =>
-        d.replace(/\[|\]/g, "")
+        d.replace(/[[\]]/g, "")
       );
 
       for (const _ of expr.indices) {
