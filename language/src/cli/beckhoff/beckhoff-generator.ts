@@ -59,32 +59,32 @@ function isPrimitive(expr: Primary): boolean {
 }
 
 /**
- * Helper function to get a reference name using various strategies
- * Improved to better handle complex references in DSL
+ * Helper function to extract the name from a reference
+ * This function properly handles all types of references in our AST
  */
-function getReferenceName(ref: any): string {
-  // First, check for a resolved reference with a name
-  if (ref?.ref?.name) {
-    return ref.ref.name;
-  }
-  
-  // For references with original text (unresolved references)
+function getReferenceText(ref: any): string {
+  // First try to check if the reference has a $refText property which contains original source text
   if (ref && "$refText" in ref) {
     return ref.$refText;
   }
   
-  // For direct name property
+  // Check if it's a resolved reference with a name on the target
+  if (ref?.ref?.name) {
+    return ref.ref.name;
+  }
+  
+  // Direct name property
   if (ref && "name" in ref) {
     return ref.name;
   }
   
-  // For property references
-  if (ref?.property && "name" in ref.property) {
+  // Check for a property name
+  if (ref?.property?.name) {
     return ref.property.name;
   }
   
-  // Only use this as a last resort
-  return "UNKNOWN_REF";
+  // Last resort: return a descriptive comment
+  return "UNRESOLVED_REF";
 }
 
 /**
@@ -111,21 +111,21 @@ function convertExprToST(expr: Expr): string {
       if (expr.ref && expr.properties && expr.properties.length > 0) {
         // This is likely a hardware reference like Buttons.Room1
         // First get the base name (e.g., "Buttons")
-        const baseName = getReferenceName(expr.ref);
-        
+        const baseName = getReferenceText(expr.ref);
+
         // Collect all property names (e.g., "Room1")
-        const propNames = expr.properties.map(prop => getReferenceName(prop));
-        
+        const propNames = expr.properties.map((prop) => getReferenceText(prop));
+
         // Join them with dots to form the full reference
-        return [baseName, ...propNames].join('.');
+        return [baseName, ...propNames].join(".");
       }
-      
+
       // Standard reference without properties
       let result = "";
-      
+
       // Get the reference name
       if (expr.ref) {
-        result = getReferenceName(expr.ref);
+        result = getReferenceText(expr.ref);
       } else {
         result = "UNKNOWN_REF";
       }

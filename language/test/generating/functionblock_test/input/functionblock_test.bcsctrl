@@ -1,0 +1,20 @@
+// A test file for function block code generation
+control ValidTestController {
+    functionblock SimpleLogicFB {
+        inputs {
+            var iInput: BOOL;
+        }
+        outputs {
+            var oOutput: BOOL;
+        }
+        logic {
+            oOutput = iInput;
+        }
+    }
+
+    unit TestFunctionBlock {
+        var input: BOOL = true;
+        var output: BOOL;
+        use SimpleLogicFB(iInput: input) -> { oOutput: output };
+    }
+}

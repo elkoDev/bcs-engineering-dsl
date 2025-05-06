@@ -1,0 +1,37 @@
+// A test file for struct code generation
+control ValidTestController {
+    struct Rectangle {
+        x: REAL,
+        y: REAL
+    }
+
+    struct Point {
+        x: REAL,
+        y: REAL
+    }
+
+    struct Circle {
+        radius: REAL
+    }
+
+    unit TestStructs {
+        // 1. Correct struct initialization
+        var rect: Rectangle = { x: 5.0, y: 10.0 };
+
+        // 2. Accessing struct fields
+        var area: REAL;
+        var perimeter: REAL;
+
+        area = rect.x * rect.y;
+        perimeter = 2 * (rect.x + rect.y);
+
+        // 3. Struct array correctly initialized
+        var rects: Rectangle[2] = [
+            { x: 1.0, y: 2.0 },
+            { x: 3.0, y: 4.0 }
+        ];
+
+        // 4. Access struct fields from array
+        var area2: REAL = rects[0].x * rects[0].y;
+    }
+}
