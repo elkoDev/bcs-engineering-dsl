@@ -177,41 +177,80 @@ export class BCSControlLangValidator {
     const local = new Set<string>();
     const withOuter = () => new Set([...outerNames, ...local]);
 
-    const add = (v: VarDecl) => {
-      const name = v.name;
-      if (local.has(name) || outerNames.has(name)) {
-        accept("error", `Duplicate variable '${name}' in this scope.`, {
-          node: v,
-          property: "name",
-        });
-      } else {
-        local.add(name);
-      }
-    };
+    const add = (v: VarDecl) => this.addVariable(v, local, outerNames, accept);
 
     for (const s of stmts) {
       if (isVarDecl(s)) {
         add(s);
-      } else if (isIfStmt(s)) {
-        this.validateBlock(s.stmts, withOuter(), accept);
-        for (const e of s.elseIfStmts)
-          this.validateBlock(e.stmts, withOuter(), accept);
-        if (s.elseStmt)
-          this.validateBlock(s.elseStmt.stmts, withOuter(), accept);
-      } else if (
-        isWhileStmt(s) ||
-        isOnRisingEdgeStmt(s) ||
-        isOnFallingEdgeStmt(s)
-      ) {
-        this.validateBlock(s.stmts, withOuter(), accept);
-      } else if (isForStmt(s)) {
-        if (s.loopVar) add(s.loopVar);
-        this.validateBlock(s.stmts, withOuter(), accept);
-      } else if (isSwitchStmt(s)) {
-        for (const c of s.cases)
-          this.validateBlock(c.stmts, withOuter(), accept);
-        if (s.default) this.validateBlock(s.default.stmts, withOuter(), accept);
+      } else {
+        this.handleStatement(s, withOuter(), accept, add);
       }
+    }
+  }
+
+  private addVariable(
+    v: VarDecl,
+    local: Set<string>,
+    outerNames: Set<string>,
+    accept: ValidationAcceptor
+  ) {
+    const name = v.name;
+    if (local.has(name) || outerNames.has(name)) {
+      accept("error", `Duplicate variable '${name}' in this scope.`, {
+        node: v,
+        property: "name",
+      });
+    } else {
+      local.add(name);
+    }
+  }
+
+  private handleStatement(
+    stmt: any,
+    outerNames: Set<string>,
+    accept: ValidationAcceptor,
+    add: (v: VarDecl) => void
+  ) {
+    if (isIfStmt(stmt)) {
+      this.handleIfStmt(stmt, outerNames, accept);
+    } else if (
+      isWhileStmt(stmt) ||
+      isOnRisingEdgeStmt(stmt) ||
+      isOnFallingEdgeStmt(stmt)
+    ) {
+      this.validateBlock(stmt.stmts, outerNames, accept);
+    } else if (isForStmt(stmt)) {
+      if (stmt.loopVar) add(stmt.loopVar);
+      this.validateBlock(stmt.stmts, outerNames, accept);
+    } else if (isSwitchStmt(stmt)) {
+      this.handleSwitchStmt(stmt, outerNames, accept);
+    }
+  }
+
+  private handleIfStmt(
+    stmt: any,
+    outerNames: Set<string>,
+    accept: ValidationAcceptor
+  ) {
+    this.validateBlock(stmt.stmts, outerNames, accept);
+    for (const e of stmt.elseIfStmts) {
+      this.validateBlock(e.stmts, outerNames, accept);
+    }
+    if (stmt.elseStmt) {
+      this.validateBlock(stmt.elseStmt.stmts, outerNames, accept);
+    }
+  }
+
+  private handleSwitchStmt(
+    stmt: any,
+    outerNames: Set<string>,
+    accept: ValidationAcceptor
+  ) {
+    for (const c of stmt.cases) {
+      this.validateBlock(c.stmts, outerNames, accept);
+    }
+    if (stmt.default) {
+      this.validateBlock(stmt.default.stmts, outerNames, accept);
     }
   }
 
@@ -252,7 +291,13 @@ export class BCSControlLangValidator {
     const globalVarNames = new Set<string>();
 
     for (const item of model.controlBlock?.items ?? []) {
-      this.checkDuplicateItem(item, structNames, isStructDecl, "struct", accept);
+      this.checkDuplicateItem(
+        item,
+        structNames,
+        isStructDecl,
+        "struct",
+        accept
+      );
       this.checkDuplicateItem(item, enumNames, isEnumDecl, "enum", accept);
       this.checkDuplicateItem(
         item,
