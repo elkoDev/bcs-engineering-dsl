@@ -669,92 +669,200 @@ export class BCSControlLangValidator {
    * @param accept - A function to report validation errors.
    */
   checkVarDeclTypes(varDecl: VarDecl, accept: ValidationAcceptor) {
+    // 1. Infer and validate the declared type
     const type = this.inferVarDeclType(varDecl);
     if (!type) {
-      accept(
-        "error",
-        `Cannot infer type for variable declaration: ${varDecl.name}`,
-        { node: varDecl, property: "typeRef" }
-      );
+      this.reportNoTypeError(varDecl, accept);
       return;
     }
 
-    let initType: string | undefined;
-
-    if (varDecl.init) {
-      initType = this.inferType(varDecl.init, accept);
-      if (!initType) {
-        accept(
-          "error",
-          `Cannot infer type for variable initialization: ${
-            varDecl.name
-          } = ${this.stringifyExpression(varDecl.init)}`,
-          { node: varDecl, property: "init" }
-        );
-        return;
-      }
-
-      if (type.startsWith("STRUCT:") && initType === "STRUCT") {
-        this.validateStructLiteralAssignment(varDecl, accept);
-        return;
-      }
-
-      // Special case: Struct array assignment
-      if (
-        initType.startsWith("ARRAY<STRUCT>") &&
-        type.startsWith("ARRAY<STRUCT:")
-      ) {
-        const expectedStructName = /^ARRAY<STRUCT:(.+?)>\[/.exec(type)?.[1];
-        if (expectedStructName) {
-          if (isPrimary(varDecl.init) && isArrayLiteral(varDecl.init.val)) {
-            for (const element of varDecl.init.val.elements) {
-              if (isPrimary(element) && isStructLiteral(element.val)) {
-                this.validateStructLiteralAssignment(
-                  element,
-                  accept,
-                  expectedStructName
-                );
-              }
-            }
-          }
-        }
-        return; // Struct array case handled already, no normal type check needed
-      }
-
-      // Regular type mismatch check
-      if (!this.isTypeAssignable(initType, type)) {
-        accept(
-          "error",
-          `Type mismatch: Cannot assign "${initType}" to "${type}".`,
-          { node: varDecl, property: "init" }
-        );
-      }
+    // 2. Skip further checks if there's no initializer
+    if (!varDecl.init) {
+      return;
     }
 
-    // Array Size Checking
+    // 3. Check the initialization type and compatibility
+    this.checkInitializerTypeCompatibility(varDecl, type, accept);
+
+    // 4. Check array size if applicable
+    this.checkArraySizeConsistency(varDecl, accept);
+  }
+
+  /**
+   * Reports an error when the variable declaration type cannot be inferred
+   */
+  private reportNoTypeError(
+    varDecl: VarDecl,
+    accept: ValidationAcceptor
+  ): void {
+    accept(
+      "error",
+      `Cannot infer type for variable declaration: ${varDecl.name}`,
+      { node: varDecl, property: "typeRef" }
+    );
+  }
+
+  /**
+   * Checks that the initializer's type is compatible with the variable's declared type
+   */
+  private checkInitializerTypeCompatibility(
+    varDecl: VarDecl,
+    declaredType: string,
+    accept: ValidationAcceptor
+  ): void {
+    const initType = this.inferType(varDecl.init, accept);
+    if (!initType) {
+      this.reportNoInitTypeError(varDecl, accept);
+      return;
+    }
+
+    // Handle struct literals which require special validation
+    if (declaredType.startsWith("STRUCT:") && initType === "STRUCT") {
+      this.validateStructLiteralAssignment(varDecl, accept);
+      return;
+    }
+
+    // Handle struct array literals which require element-wise validation
+    if (this.isStructArrayAssignment(declaredType, initType)) {
+      this.validateStructArrayAssignment(varDecl, declaredType, accept);
+      return;
+    }
+
+    // Regular type compatibility check
+    if (!this.isTypeAssignable(initType, declaredType)) {
+      this.reportTypeMismatchError(varDecl, initType, declaredType, accept);
+    }
+  }
+
+  /**
+   * Reports an error when the initializer type cannot be inferred
+   */
+  private reportNoInitTypeError(
+    varDecl: VarDecl,
+    accept: ValidationAcceptor
+  ): void {
+    accept(
+      "error",
+      `Cannot infer type for variable initialization: ${
+        varDecl.name
+      } = ${this.stringifyExpression(varDecl.init)}`,
+      { node: varDecl, property: "init" }
+    );
+  }
+
+  /**
+   * Reports a type mismatch error between initializer and variable declaration
+   */
+  private reportTypeMismatchError(
+    varDecl: VarDecl,
+    initType: string,
+    declaredType: string,
+    accept: ValidationAcceptor
+  ): void {
+    accept(
+      "error",
+      `Type mismatch: Cannot assign "${initType}" to "${declaredType}".`,
+      { node: varDecl, property: "init" }
+    );
+  }
+
+  /**
+   * Determines if we're dealing with a struct array assignment that needs special handling
+   */
+  private isStructArrayAssignment(
+    declaredType: string,
+    initType: string
+  ): boolean {
+    return (
+      initType.startsWith("ARRAY<STRUCT>") &&
+      declaredType.startsWith("ARRAY<STRUCT:")
+    );
+  }
+
+  /**
+   * Validates struct array assignment by checking each element against the expected struct type
+   */
+  private validateStructArrayAssignment(
+    varDecl: VarDecl,
+    declaredType: string,
+    accept: ValidationAcceptor
+  ): void {
+    const expectedStructName = /^ARRAY<STRUCT:(.+?)>\[/.exec(declaredType)?.[1];
+    if (!expectedStructName) return;
+
+    if (isPrimary(varDecl.init) && isArrayLiteral(varDecl.init.val)) {
+      for (const element of varDecl.init.val.elements) {
+        if (isPrimary(element) && isStructLiteral(element.val)) {
+          this.validateStructLiteralAssignment(
+            element,
+            accept,
+            expectedStructName
+          );
+        }
+      }
+    }
+  }
+
+  /**
+   * Checks that array initializer sizes match the declared dimensions
+   */
+  private checkArraySizeConsistency(
+    varDecl: VarDecl,
+    accept: ValidationAcceptor
+  ): void {
     if (
-      varDecl.typeRef?.sizes.length > 0 &&
-      isPrimary(varDecl.init) &&
-      isArrayLiteral(varDecl.init.val)
+      !this.hasArrayTypeWithSizes(varDecl) ||
+      !this.hasArrayLiteralInit(varDecl)
     ) {
-      const expectedDimensions: number[] = [];
-
-      for (const sizeExpr of varDecl.typeRef.sizes) {
-        if (sizeExpr.$type === "Primary" && typeof sizeExpr.val === "number") {
-          expectedDimensions.push(sizeExpr.val);
-        } else {
-          console.log("Skipping size validation: complex size expression.");
-          return;
-        }
-      }
-
-      this.validateArrayLiteralSize(
-        varDecl.init.val,
-        expectedDimensions,
-        accept,
-        varDecl
-      );
+      return;
     }
+
+    const expectedDimensions = this.extractArrayDimensions(
+      varDecl.typeRef!.sizes
+    );
+    if (expectedDimensions.length === 0) {
+      return;
+    }
+
+    // We've already checked that init exists and is a Primary with an ArrayLiteral val in hasArrayLiteralInit
+    this.validateArrayLiteralSize(
+      (varDecl.init! as Primary).val as ArrayLiteral,
+      expectedDimensions,
+      accept,
+      varDecl
+    );
+  }
+
+  /**
+   * Checks if the variable declaration has an array type with specified sizes
+   */
+  private hasArrayTypeWithSizes(varDecl: VarDecl): boolean {
+    return !!varDecl.typeRef?.sizes.length;
+  }
+
+  /**
+   * Checks if the variable has an array literal as initializer
+   */
+  private hasArrayLiteralInit(varDecl: VarDecl): boolean {
+    return isPrimary(varDecl.init) && isArrayLiteral(varDecl.init.val);
+  }
+
+  /**
+   * Extracts array dimensions from size expressions
+   */
+  private extractArrayDimensions(sizeExprs: any[]): number[] {
+    const dimensions: number[] = [];
+
+    for (const sizeExpr of sizeExprs) {
+      if (sizeExpr.$type === "Primary" && typeof sizeExpr.val === "number") {
+        dimensions.push(sizeExpr.val);
+      } else {
+        console.log("Skipping size validation: complex size expression.");
+        return [];
+      }
+    }
+
+    return dimensions;
   }
 
   /**
