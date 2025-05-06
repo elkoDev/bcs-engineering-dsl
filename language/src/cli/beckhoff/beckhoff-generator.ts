@@ -59,6 +59,35 @@ function isPrimitive(expr: Primary): boolean {
 }
 
 /**
+ * Helper function to get a reference name using various strategies
+ * Improved to better handle complex references in DSL
+ */
+function getReferenceName(ref: any): string {
+  // First, check for a resolved reference with a name
+  if (ref?.ref?.name) {
+    return ref.ref.name;
+  }
+  
+  // For references with original text (unresolved references)
+  if (ref && "$refText" in ref) {
+    return ref.$refText;
+  }
+  
+  // For direct name property
+  if (ref && "name" in ref) {
+    return ref.name;
+  }
+  
+  // For property references
+  if (ref?.property && "name" in ref.property) {
+    return ref.property.name;
+  }
+  
+  // Only use this as a last resort
+  return "UNKNOWN_REF";
+}
+
+/**
  * Convert an expression to a valid ST expression
  */
 function convertExprToST(expr: Expr): string {
@@ -78,42 +107,34 @@ function convertExprToST(expr: Expr): string {
         .map((f) => `${f.name}:=${convertExprToST(f.value)}`)
         .join(", ")})`;
     } else if (isRef(expr)) {
-      // Create reference path
+      // Special handling for hardware references and dot notation
+      if (expr.ref && expr.properties && expr.properties.length > 0) {
+        // This is likely a hardware reference like Buttons.Room1
+        // First get the base name (e.g., "Buttons")
+        const baseName = getReferenceName(expr.ref);
+        
+        // Collect all property names (e.g., "Room1")
+        const propNames = expr.properties.map(prop => getReferenceName(prop));
+        
+        // Join them with dots to form the full reference
+        return [baseName, ...propNames].join('.');
+      }
+      
+      // Standard reference without properties
       let result = "";
-
-      // Handle the root reference
-      if (expr.ref?.ref?.name) {
-        // Reference is resolved to a known symbol
-        result = expr.ref.ref.name;
-      } else if (expr.ref && "$refText" in expr.ref) {
-        // Reference name is known but not resolved (hardware references)
-        // Use $refText to get the name from the reference
-        result = (expr.ref as any).$refText;
+      
+      // Get the reference name
+      if (expr.ref) {
+        result = getReferenceName(expr.ref);
       } else {
-        // Fallback case for completely unresolved references
-        result = "UNRESOLVED_REF";
+        result = "UNKNOWN_REF";
       }
 
       // Add indices if any
-      if (expr.indices.length > 0) {
+      if (expr.indices && expr.indices.length > 0) {
         result += `[${expr.indices
           .map((idx) => convertExprToST(idx))
           .join(", ")}]`;
-      }
-
-      // Add properties if any (important for hardware references like Buttons.Room1)
-      for (const prop of expr.properties) {
-        if ("name" in prop || (prop.ref && "$refText" in prop.ref)) {
-          const propName =
-            "name" in prop
-              ? prop.name
-              : prop.ref && "$refText" in prop.ref
-              ? (prop.ref as any).$refText
-              : "";
-          if (propName) {
-            result += `.${propName}`;
-          }
-        }
       }
 
       return result;
