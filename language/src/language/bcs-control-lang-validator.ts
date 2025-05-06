@@ -18,7 +18,6 @@ import {
   isControlUnit,
   isDatapoint,
   isEnumDecl,
-  isEnumMemberLiteral,
   isForStmt,
   isFunctionBlockDecl,
   isFunctionBlockInputs,
@@ -47,6 +46,19 @@ import {
   getLocals,
   getLogic,
 } from "./utils/function-block-utils.js";
+import {
+  inferBinaryExpressionType,
+  inferUnaryExpressionType,
+  inferArrayLiteralType,
+  inferPrimitiveLiteralType,
+  inferVarDeclType,
+  applyArrayIndexing,
+  inferStructPropertyType,
+  inferDatapointChannelType,
+  inferEnumDeclType,
+  validateArrayIndex,
+  inferCaseLiteralType,
+} from "./utils/type-inference-utils.js";
 
 export function registerBCSControlValidationChecks(
   services: BCSControlLangServices
@@ -1008,287 +1020,123 @@ export class BCSControlLangValidator {
   private inferType(expr: any, accept: ValidationAcceptor): string | undefined {
     if (!expr) return undefined;
 
-    // 1) If BinaryExpr => check left and right side
+    // 1) Binary expression (e.g., 1 + 2, x > y)
     if (isBinExpr(expr)) {
       const left = this.inferType(expr.e1, accept);
       const right = this.inferType(expr.e2, accept);
-      const op = expr.op;
-
-      if (!left || !right) {
-        accept(
-          "error",
-          `Cannot infer operand types for '${this.stringifyExpression(expr)}'.`,
-          { node: expr }
-        );
-        return undefined;
-      }
-
-      if (["==", "!=", "<", "<=", ">", ">="].includes(op)) {
-        if (this.areTypesComparable(left, right)) {
-          return "BOOL";
-        } else {
-          accept(
-            "error",
-            `Cannot compare values of types '${left}' and '${right}' with '${op}'.`,
-            {
-              node: expr,
-            }
-          );
-          return undefined;
-        }
-      }
-
-      if (op === "&&" || op === "||") {
-        if (left === "BOOL" && right === "BOOL") {
-          return "BOOL";
-        } else {
-          accept(
-            "error",
-            `Logical operator '${op}' can only be applied to BOOL operands, but got '${left}' and '${right}'.`,
-            { node: expr }
-          );
-          return undefined;
-        }
-      }
-
-      if (["+", "-", "*", "/"].includes(op)) {
-        if (
-          (left === "INT" || left === "REAL") &&
-          (right === "INT" || right === "REAL")
-        ) {
-          return left === "REAL" || right === "REAL" ? "REAL" : "INT";
-        } else {
-          accept(
-            "error",
-            `Operator '${op}' not applicable to types '${left}' and '${right}'.`,
-            {
-              node: expr,
-            }
-          );
-          return undefined;
-        }
-      }
-      return undefined;
+      return inferBinaryExpressionType(expr, left, right, expr.op, accept);
     }
 
-    // 2) If Negation / Not / Paren
+    // 2) Unary expressions (negation, not, parenthesized)
     if (
       expr.$type === "NegExpr" ||
       expr.$type === "NotExpr" ||
       expr.$type === "ParenExpr"
     ) {
-      return this.inferType(expr.expr, accept);
+      return inferUnaryExpressionType(this.inferType(expr.expr, accept));
     }
 
-    // 3) If Ref => check what it points to
+    // 3) Reference expressions (variable, enum, etc.)
     if (expr.$type === "Ref") {
-      const ref = expr.ref?.ref;
-      if (!ref) return undefined;
-
-      let type = undefined;
-
-      if (isVarDecl(ref)) {
-        type = this.inferVarDeclType(ref);
-
-        // FIRST: Apply array indexing if needed
-        if (expr.indices.length > 0 && type) {
-          type = this.applyArrayIndexing(expr, type, accept);
-          if (!type) return undefined;
-        }
-
-        // THEN: Walk over struct properties
-        for (const prop of expr.properties) {
-          if (!type?.startsWith("STRUCT:")) {
-            accept(
-              "error",
-              `Cannot access property '${prop.ref?.name}' on non-struct type '${type}'.`,
-              { node: expr }
-            );
-            return undefined;
-          }
-
-          const controlModel = AstUtils.getContainerOfType(
-            expr,
-            isControlModel
-          );
-          const structName = type.substring("STRUCT:".length);
-          const structDecl: StructDecl | undefined =
-            (controlModel?.controlBlock.items.find(
-              (d) => isStructDecl(d) && d.name === structName
-            ) as StructDecl | undefined) ??
-            (controlModel?.externTypeDecls.find(
-              (d) => isStructDecl(d) && d.name === structName
-            ) as StructDecl | undefined);
-
-          if (!structDecl) {
-            accept(
-              "error",
-              `Cannot access property '${prop.ref?.name}' on unknown struct type '${structName}'.`,
-              { node: expr }
-            );
-            return undefined;
-          }
-
-          const field = structDecl.fields.find(
-            (f) => f.name === prop.ref?.name
-          );
-          if (!field) {
-            accept(
-              "error",
-              `Unknown field '${prop.ref?.name}' in struct '${structName}'.`,
-              { node: expr }
-            );
-            return undefined;
-          }
-
-          // Update type
-          if (field.typeRef?.type) {
-            type = field.typeRef.type;
-          } else if (field.typeRef?.ref?.ref) {
-            const refTypeDecl = field.typeRef.ref.ref;
-            if (isStructDecl(refTypeDecl)) {
-              type = `STRUCT:${refTypeDecl.name}`;
-            } else if (isEnumDecl(refTypeDecl)) {
-              type = `ENUM:${refTypeDecl.name}`;
-            }
-          }
-        }
-      } else if (isDatapoint(ref)) {
-        if (expr.properties.length === 1) {
-          const channelRef = expr.properties[0]?.ref;
-          if (isChannel(channelRef)) {
-            type = channelRef.dataType;
-          }
-        }
-      } else if (isEnumDecl(ref)) {
-        type = `ENUM:${ref.name}`;
-      }
-
-      if (ref && expr.indices.length > 0) {
-        const sizes = ref.typeRef?.sizes ?? [];
-
-        for (let i = 0; i < expr.indices.length && i < sizes.length; i++) {
-          const indexExpr = expr.indices[i];
-
-          const idxType = this.inferType(indexExpr, accept);
-          if (idxType !== "INT") {
-            accept(
-              "error",
-              `Array index must be of type INT, but got "${idxType}".`,
-              { node: indexExpr }
-            );
-          }
-
-          const sizeExpr = sizes[i];
-
-          // Only check if both index and size are simple numbers
-          if (
-            isPrimary(indexExpr) &&
-            typeof indexExpr.val === "number" &&
-            isPrimary(sizeExpr) &&
-            typeof sizeExpr.val === "number"
-          ) {
-            const indexVal = indexExpr.val;
-            const maxVal = sizeExpr.val;
-
-            if (indexVal < 0 || indexVal >= maxVal) {
-              accept(
-                "error",
-                `Array index [${indexVal}] out of bounds: allowed range is 0 to ${
-                  maxVal - 1
-                }.`,
-                { node: expr }
-              );
-            }
-          }
-        }
-      }
-
-      return type;
+      return this.inferReferenceType(expr, accept);
     }
 
-    // 4) If EnumMemberLiteral => check what it points to
+    // 4) Case literal with enum member
     if (isCaseLiteral(expr)) {
-      if (isEnumMemberLiteral(expr.val)) {
-        return `ENUM:${expr.val.enumDecl.$refText}`;
-      }
+      return inferCaseLiteralType(expr, accept);
     }
 
-    // 5) If literal => check type
+    // 5) Array literal
     if (isArrayLiteral(expr.val)) {
-      const arrayLiteral = expr.val as ArrayLiteral;
-      const elements = arrayLiteral.elements;
-      if (elements.length === 0) return "ARRAY<unknown>[0]";
-
-      // Infer element types
-      let firstElementType = this.inferType(elements[0], accept);
-
-      // If first element is STRUCT but surrounded by a known typeRef, use that
-      if (firstElementType === "STRUCT") {
-        const parentVarDecl = AstUtils.getContainerOfType(expr, isVarDecl);
-        const structDecl = parentVarDecl?.typeRef?.ref?.ref;
-        if (isStructDecl(structDecl)) {
-          firstElementType = `STRUCT:${structDecl.name}`;
-        }
-      }
-
-      if (!firstElementType) return `ARRAY<unknown>[${elements.length}]`;
-
-      if (firstElementType.startsWith("ARRAY<")) {
-        // Nested array inside
-        const innerMatch = /^ARRAY<(.+)>(\[(.+?)\])+$/.exec(firstElementType);
-        if (innerMatch) {
-          const baseType = innerMatch[1];
-          const innerDims = innerMatch[2]; // [5] or [5][5], etc
-          return `ARRAY<${baseType}>[${elements.length}]${innerDims}`;
-        }
-      }
-
-      // Simple flat array
-      const elementTypes = new Set(
-        elements.map((e) => this.inferType(e, accept))
+      return inferArrayLiteralType(
+        expr,
+        expr.val,
+        this.inferType.bind(this),
+        accept
       );
-      if (elementTypes.size > 1) {
-        return `ARRAY<mixed>[${elements.length}]`;
-      } else {
-        const singleType = [...elementTypes][0];
-        return `ARRAY<${singleType}>[${elements.length}]`;
-      }
     }
 
+    // 6) Struct literal
     if (isStructLiteral(expr.val)) {
       return "STRUCT";
     }
 
-    if (typeof expr.val === "number") {
-      const raw = expr.$cstNode?.text;
+    // 7) Primitive literals (numbers, strings, booleans)
+    return inferPrimitiveLiteralType(expr);
+  }
 
-      if (raw?.includes(".")) {
-        return "REAL";
-      } else {
-        return "INT";
+  /**
+   * Infers the type of a reference expression (variable, field access, array indexing)
+   */
+  private inferReferenceType(
+    expr: any,
+    accept: ValidationAcceptor
+  ): string | undefined {
+    const ref = expr.ref?.ref;
+    if (!ref) return undefined;
+
+    let type: string | undefined;
+
+    // Variable reference
+    if (isVarDecl(ref)) {
+      type = inferVarDeclType(ref);
+
+      // First: Apply array indexing if needed
+      if (expr.indices.length > 0 && type) {
+        type = applyArrayIndexing(expr, type, accept);
+        if (!type) return undefined;
+      }
+
+      // Then: Process struct properties
+      for (const prop of expr.properties) {
+        type = inferStructPropertyType(expr, type!, prop, accept);
+        if (!type) return undefined;
       }
     }
-    if (typeof expr.val === "boolean" && expr.$cstNode?.text !== "now") {
-      return "BOOL";
+    // Datapoint reference
+    else if (isDatapoint(ref)) {
+      type = inferDatapointChannelType(ref, expr);
     }
-    if (typeof expr.val === "string") {
-      // "TOD#" => TIME OF DAY
-      // "T#"   => TIME
-      // "..."  => STRING
-      if (expr.val.startsWith("TOD#")) {
-        return "TOD";
-      } else if (expr.val.startsWith("T#")) {
-        return "TIME";
-      } else {
-        return "STRING";
-      }
-    }
-    if (isPrimary(expr) && expr.$cstNode?.text === "now") {
-      return "TOD";
+    // Enum declaration reference
+    else if (isEnumDecl(ref)) {
+      type = inferEnumDeclType(ref);
     }
 
-    return undefined;
+    // Check array indices if this is an indexed access
+    if (ref && expr.indices.length > 0) {
+      this.validateArrayIndices(ref, expr, accept);
+    }
+
+    return type;
+  }
+
+  /**
+   * Validates the indices of an array reference expression
+   */
+  private validateArrayIndices(
+    ref: any,
+    expr: any,
+    accept: ValidationAcceptor
+  ): void {
+    const sizes = ref.typeRef?.sizes ?? [];
+
+    for (let i = 0; i < expr.indices.length && i < sizes.length; i++) {
+      const indexExpr = expr.indices[i];
+      const sizeExpr = sizes[i];
+
+      // Validate index type
+      const idxType = this.inferType(indexExpr, accept);
+      if (idxType !== "INT") {
+        accept(
+          "error",
+          `Array index must be of type INT, but got "${idxType}".`,
+          { node: indexExpr }
+        );
+      }
+
+      // Validate index bounds when possible
+      validateArrayIndex(expr, indexExpr, sizeExpr, accept);
+    }
   }
 
   private inferVarDeclType(varDecl: VarDecl | undefined): string | undefined {
@@ -1410,71 +1258,5 @@ export class BCSControlLangValidator {
     }
 
     return false;
-  }
-
-  private areTypesComparable(type1: string, type2: string): boolean {
-    const comparableGroups: string[][] = [
-      ["INT", "REAL"],
-      ["STRING"],
-      ["BOOL"],
-      ["TOD"],
-    ];
-
-    for (const group of comparableGroups) {
-      if (group.includes(type1) && group.includes(type2)) {
-        return true;
-      }
-    }
-
-    if (
-      type1.startsWith("ENUM:") &&
-      type2.startsWith("ENUM:") &&
-      type1 === type2
-    ) {
-      return true;
-    }
-
-    return false;
-  }
-
-  private applyArrayIndexing(
-    expr: any,
-    type: string,
-    accept: ValidationAcceptor
-  ): string | undefined {
-    let arrayMatch = /^ARRAY<(.+)>(\[(?:\d+|\?)+\])+$/u.exec(type);
-
-    if (arrayMatch) {
-      let baseType = arrayMatch[1];
-      let dims = (type.match(/\[\d+|\?\]/g) || []).map((d) =>
-        d.replace(/[[\]]/g, "")
-      );
-
-      for (const _ of expr.indices) {
-        if (dims.length > 0) {
-          dims.shift(); // remove one dimension
-        } else {
-          accept("error", `Too many indices for type '${type}'.`, {
-            node: expr,
-          });
-          return undefined;
-        }
-      }
-
-      if (dims.length > 0) {
-        // Still an array
-        type = `ARRAY<${baseType}>` + dims.map((d) => `[${d}]`).join("");
-      } else {
-        // Base element
-        type = baseType;
-      }
-    } else if (expr.indices.length > 0) {
-      accept("error", `Cannot index into non-array type '${type}'.`, {
-        node: expr,
-      });
-      return undefined;
-    }
-
-    return type;
   }
 }
