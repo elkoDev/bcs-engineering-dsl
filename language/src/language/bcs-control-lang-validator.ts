@@ -958,38 +958,8 @@ export class BCSControlLangValidator {
 
         // FIRST: Apply array indexing if needed
         if (expr.indices.length > 0 && type) {
-          let arrayMatch = /^ARRAY<(.+)>(\[(?:\d+|\?)+\])+$/u.exec(type);
-
-          if (arrayMatch) {
-            let baseType = arrayMatch[1];
-            let dims = (type.match(/\[\d+|\?\]/g) || []).map((d) =>
-              d.replace(/\[|\]/g, "")
-            );
-
-            for (const _ of expr.indices) {
-              if (dims.length > 0) {
-                dims.shift(); // remove one dimension
-              } else {
-                accept("error", `Too many indices for type '${type}'.`, {
-                  node: expr,
-                });
-                return undefined;
-              }
-            }
-
-            if (dims.length > 0) {
-              // Still an array
-              type = `ARRAY<${baseType}>` + dims.map((d) => `[${d}]`).join("");
-            } else {
-              // Base element
-              type = baseType;
-            }
-          } else if (expr.indices.length > 0) {
-            accept("error", `Cannot index into non-array type '${type}'.`, {
-              node: expr,
-            });
-            return undefined;
-          }
+          type = this.applyArrayIndexing(expr, type, accept);
+          if (!type) return undefined;
         }
 
         // THEN: Walk over struct properties
@@ -1333,5 +1303,46 @@ export class BCSControlLangValidator {
     }
 
     return false;
+  }
+
+  private applyArrayIndexing(
+    expr: any,
+    type: string,
+    accept: ValidationAcceptor
+  ): string | undefined {
+    let arrayMatch = /^ARRAY<(.+)>(\[(?:\d+|\?)+\])+$/u.exec(type);
+
+    if (arrayMatch) {
+      let baseType = arrayMatch[1];
+      let dims = (type.match(/\[\d+|\?\]/g) || []).map((d) =>
+        d.replace(/\[|\]/g, "")
+      );
+
+      for (const _ of expr.indices) {
+        if (dims.length > 0) {
+          dims.shift(); // remove one dimension
+        } else {
+          accept("error", `Too many indices for type '${type}'.`, {
+            node: expr,
+          });
+          return undefined;
+        }
+      }
+
+      if (dims.length > 0) {
+        // Still an array
+        type = `ARRAY<${baseType}>` + dims.map((d) => `[${d}]`).join("");
+      } else {
+        // Base element
+        type = baseType;
+      }
+    } else if (expr.indices.length > 0) {
+      accept("error", `Cannot index into non-array type '${type}'.`, {
+        node: expr,
+      });
+      return undefined;
+    }
+
+    return type;
   }
 }
