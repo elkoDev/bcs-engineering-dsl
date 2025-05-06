@@ -15,24 +15,17 @@ import {
   isCaseLiteral,
   isChannel,
   isControlModel,
-  isControlUnit,
   isDatapoint,
   isEnumDecl,
-  isForStmt,
   isFunctionBlockDecl,
   isFunctionBlockInputs,
   isFunctionBlockLocals,
   isFunctionBlockLogic,
   isFunctionBlockOutputs,
-  isIfStmt,
-  isOnFallingEdgeStmt,
-  isOnRisingEdgeStmt,
   isPrimary,
   isStructDecl,
   isStructLiteral,
-  isSwitchStmt,
   isVarDecl,
-  isWhileStmt,
   Primary,
   StructDecl,
   StructLiteral,
@@ -40,12 +33,7 @@ import {
   UseStmt,
   VarDecl,
 } from "./generated/ast.js";
-import {
-  getInputs,
-  getOutputs,
-  getLocals,
-  getLogic,
-} from "./utils/function-block-utils.js";
+import { getInputs, getOutputs } from "./utils/function-block-utils.js";
 import {
   inferBinaryExpressionType,
   inferUnaryExpressionType,
@@ -59,6 +47,7 @@ import {
   validateArrayIndex,
   inferCaseLiteralType,
 } from "./utils/type-inference-utils.js";
+import { DuplicationValidator } from "./utils/duplication-validation-utils.js";
 
 export function registerBCSControlValidationChecks(
   services: BCSControlLangServices
@@ -161,97 +150,25 @@ export class BCSControlLangValidator {
   }
 
   checkNestedVarDuplicates(unit: ControlUnit, accept: ValidationAcceptor) {
-    const model = unit.$container;
-    const globalNames = new Set(
-      model.items.filter(isVarDecl).map((v) => v.name)
-    );
-
-    this.validateBlock(unit.stmts, globalNames, accept);
+    DuplicationValidator.checkNestedScopeVariableDuplicates(unit, accept);
   }
 
-  private validateBlock(
-    stmts: Array<any>,
-    outerNames: Set<string>,
+  checkUniqueVarNamesInFunctionBlock(
+    fb: FunctionBlockDecl,
     accept: ValidationAcceptor
   ) {
-    const local = new Set<string>();
-    const withOuter = () => new Set([...outerNames, ...local]);
-
-    const add = (v: VarDecl) => this.addVariable(v, local, outerNames, accept);
-
-    for (const s of stmts) {
-      if (isVarDecl(s)) {
-        add(s);
-      } else {
-        this.handleStatement(s, withOuter(), accept, add);
-      }
-    }
+    DuplicationValidator.checkUniqueVarNamesInFunctionBlock(fb, accept);
   }
 
-  private addVariable(
-    v: VarDecl,
-    local: Set<string>,
-    outerNames: Set<string>,
+  checkUniqueVarNamesInUnit(unit: ControlUnit, accept: ValidationAcceptor) {
+    DuplicationValidator.checkUniqueVarNamesInUnit(unit, accept);
+  }
+
+  checkUniqueEnumsAndTypesAndUnits(
+    model: ControlModel,
     accept: ValidationAcceptor
   ) {
-    const name = v.name;
-    if (local.has(name) || outerNames.has(name)) {
-      accept("error", `Duplicate variable '${name}' in this scope.`, {
-        node: v,
-        property: "name",
-      });
-    } else {
-      local.add(name);
-    }
-  }
-
-  private handleStatement(
-    stmt: any,
-    outerNames: Set<string>,
-    accept: ValidationAcceptor,
-    add: (v: VarDecl) => void
-  ) {
-    if (isIfStmt(stmt)) {
-      this.handleIfStmt(stmt, outerNames, accept);
-    } else if (
-      isWhileStmt(stmt) ||
-      isOnRisingEdgeStmt(stmt) ||
-      isOnFallingEdgeStmt(stmt)
-    ) {
-      this.validateBlock(stmt.stmts, outerNames, accept);
-    } else if (isForStmt(stmt)) {
-      if (stmt.loopVar) add(stmt.loopVar);
-      this.validateBlock(stmt.stmts, outerNames, accept);
-    } else if (isSwitchStmt(stmt)) {
-      this.handleSwitchStmt(stmt, outerNames, accept);
-    }
-  }
-
-  private handleIfStmt(
-    stmt: any,
-    outerNames: Set<string>,
-    accept: ValidationAcceptor
-  ) {
-    this.validateBlock(stmt.stmts, outerNames, accept);
-    for (const e of stmt.elseIfStmts) {
-      this.validateBlock(e.stmts, outerNames, accept);
-    }
-    if (stmt.elseStmt) {
-      this.validateBlock(stmt.elseStmt.stmts, outerNames, accept);
-    }
-  }
-
-  private handleSwitchStmt(
-    stmt: any,
-    outerNames: Set<string>,
-    accept: ValidationAcceptor
-  ) {
-    for (const c of stmt.cases) {
-      this.validateBlock(c.stmts, outerNames, accept);
-    }
-    if (stmt.default) {
-      this.validateBlock(stmt.default.stmts, outerNames, accept);
-    }
+    DuplicationValidator.checkUniqueGlobalDeclarations(model, accept);
   }
 
   checkWhenConditionType(unit: ControlUnit, accept: ValidationAcceptor) {
@@ -277,68 +194,6 @@ export class BCSControlLangValidator {
           property: "name",
         }
       );
-    }
-  }
-
-  checkUniqueEnumsAndTypesAndUnits(
-    model: ControlModel,
-    accept: ValidationAcceptor
-  ) {
-    const enumNames = new Set<string>();
-    const structNames = new Set<string>();
-    const fbNames = new Set<string>();
-    const unitNames = new Set<string>();
-    const globalVarNames = new Set<string>();
-
-    for (const item of model.controlBlock?.items ?? []) {
-      this.checkDuplicateItem(
-        item,
-        structNames,
-        isStructDecl,
-        "struct",
-        accept
-      );
-      this.checkDuplicateItem(item, enumNames, isEnumDecl, "enum", accept);
-      this.checkDuplicateItem(
-        item,
-        fbNames,
-        isFunctionBlockDecl,
-        "function block",
-        accept
-      );
-      this.checkDuplicateItem(
-        item,
-        unitNames,
-        isControlUnit,
-        "control unit",
-        accept
-      );
-      this.checkDuplicateItem(
-        item,
-        globalVarNames,
-        isVarDecl,
-        "global variable",
-        accept
-      );
-    }
-  }
-
-  private checkDuplicateItem(
-    item: any,
-    nameSet: Set<string>,
-    typeCheckFn: (item: any) => boolean,
-    itemType: string,
-    accept: ValidationAcceptor
-  ) {
-    if (typeCheckFn(item)) {
-      if (nameSet.has(item.name)) {
-        accept("error", `Duplicate ${itemType} '${item.name}'.`, {
-          node: item,
-          property: "name",
-        });
-      } else {
-        nameSet.add(item.name);
-      }
     }
   }
 
@@ -396,87 +251,6 @@ export class BCSControlLangValidator {
     }
   }
 
-  /**
-   * Validates that all variable names within a given function block are unique.
-   * This includes inputs, outputs, local variables, and variables declared within logic statements.
-   *
-   * @param fb - The function block declaration to validate.
-   * @param accept - A callback function to report validation issues.
-   *                 It accepts the severity level, a message, and additional context.
-   *
-   * The function checks for duplicate variable names across:
-   * - Input variables (`fb.inputs`)
-   * - Output variables (`fb.outputs`)
-   * - Local variables (`fb.locals`)
-   * - Variables declared in logic statements (`LocalVarDeclStmt`)
-   *
-   * If a duplicate variable name is found, an error is reported using the `accept` function.
-   */
-  checkUniqueVarNamesInFunctionBlock(
-    fb: FunctionBlockDecl,
-    accept: ValidationAcceptor
-  ) {
-    const allVars: VarDecl[] = [
-      ...getInputs(fb),
-      ...getOutputs(fb),
-      ...getLocals(fb),
-    ];
-    for (const stmt of getLogic(fb)?.stmts ?? []) {
-      if (isVarDecl(stmt)) {
-        allVars.push(stmt);
-      }
-    }
-
-    const seen = new Set<string>();
-    for (const v of allVars) {
-      if (seen.has(v.name)) {
-        accept(
-          "error",
-          `Duplicate variable name '${v.name}' in function block '${fb.name}'.`,
-          { node: v, property: "name" }
-        );
-      } else {
-        seen.add(v.name);
-      }
-    }
-  }
-
-  /**
-   * Checks for duplicate variable names within a given control unit and reports errors
-   * if any duplicates are found.
-   *
-   * @param unit - The control unit to validate, containing a list of statements.
-   * @param accept - A function used to report validation issues, such as duplicate variable names.
-   *
-   * This function iterates through all variable declarations (`VarDecl`) in the provided
-   * control unit's statements, ensuring that each variable name is unique. If a duplicate
-   * variable name is detected, an error is reported using the `accept` function.
-   */
-  checkUniqueVarNamesInUnit(unit: ControlUnit, accept: ValidationAcceptor) {
-    const allVars: VarDecl[] = [];
-    // gather statements
-    for (const s of unit.stmts) {
-      if (isVarDecl(s)) {
-        allVars.push(s);
-      }
-    }
-    const seen = new Set<string>();
-    for (const v of allVars) {
-      if (seen.has(v.name)) {
-        accept(
-          "error",
-          `Duplicate local var name '${v.name}' in unit '${unit.name}'.`,
-          {
-            node: v,
-            property: "name",
-          }
-        );
-      } else {
-        seen.add(v.name);
-      }
-    }
-  }
-
   checkUseStmtTypes(useStmt: UseStmt, accept: ValidationAcceptor) {
     const fb = useStmt.functionBlockRef?.ref;
     if (!fb) return;
@@ -505,7 +279,7 @@ export class BCSControlLangValidator {
     this.validateInputTypes(useStmt, fb, accept);
 
     // 3) Check: Duplicate input mappings
-    this.checkDuplicateInputMappings(useStmt, fb, accept);
+    DuplicationValidator.checkDuplicateInputMappings(useStmt, fb, accept);
   }
 
   private validateInputTypes(
@@ -514,8 +288,10 @@ export class BCSControlLangValidator {
     accept: ValidationAcceptor
   ) {
     for (const arg of useStmt.inputArgs) {
-      const paramName = arg.inputVar.ref?.name;
-      const paramDecl = getInputs(fb).find((i) => i.name === paramName);
+      const inputVarName = arg.inputVar.ref?.name;
+      if (!inputVarName) continue;
+
+      const paramDecl = getInputs(fb).find((i) => i.name === inputVarName);
       const expectedType = this.inferVarDeclType(paramDecl);
       const actualType = this.inferType(arg.value, accept);
 
@@ -526,30 +302,9 @@ export class BCSControlLangValidator {
       ) {
         accept(
           "error",
-          `Type mismatch for input '${paramName}': expected '${expectedType}', got '${actualType}'.`,
+          `Type mismatch for input '${inputVarName}': expected '${expectedType}', got '${actualType}'.`,
           { node: arg.value }
         );
-      }
-    }
-  }
-
-  private checkDuplicateInputMappings(
-    useStmt: UseStmt,
-    fb: FunctionBlockDecl,
-    accept: ValidationAcceptor
-  ) {
-    const seenInputs = new Set<string>();
-    for (const arg of useStmt.inputArgs) {
-      const varName = arg.inputVar.ref?.name;
-      if (varName) {
-        if (seenInputs.has(varName)) {
-          accept(
-            "error",
-            `Duplicate mapping for input '${varName}' in use of function block '${fb.name}'.`,
-            { node: arg, property: "inputVar" }
-          );
-        }
-        seenInputs.add(varName);
       }
     }
   }
@@ -649,30 +404,20 @@ export class BCSControlLangValidator {
       );
     }
 
-    this.checkDuplicateAndTypesMappedOutputs(useStmt, fb, output, accept);
-  }
+    // Check for duplicates and type compatibility
+    DuplicationValidator.checkDuplicateOutputMappings(
+      useStmt,
+      fb,
+      output,
+      accept
+    );
 
-  private checkDuplicateAndTypesMappedOutputs(
-    useStmt: UseStmt,
-    fb: FunctionBlockDecl,
-    output: any,
-    accept: ValidationAcceptor
-  ) {
-    const seen = new Set<string>();
+    // Perform type checking for mappings
     for (const map of output.mappingOutputs) {
       const targetVar = map.outputVar?.ref;
       const fbOutputVar = map.fbOutput?.ref;
 
       if (!targetVar || !fbOutputVar) continue;
-
-      if (seen.has(targetVar.name)) {
-        accept(
-          "error",
-          `Duplicate output mapping to variable '${targetVar.name}' in use of '${fb.name}'.`,
-          { node: map, property: "outputVar" }
-        );
-      }
-      seen.add(targetVar.name);
 
       const expected = getOutputs(fb).find((o) => o.name === targetVar.name);
       const expectedType = expected
