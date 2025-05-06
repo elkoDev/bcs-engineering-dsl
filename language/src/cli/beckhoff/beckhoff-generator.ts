@@ -80,7 +80,7 @@ function convertExprToST(expr: Expr): string {
     } else if (isRef(expr)) {
       // Create reference path
       let result = "";
-      
+
       // Handle the root reference
       if (expr.ref?.ref?.name) {
         // Reference is resolved to a known symbol
@@ -104,7 +104,12 @@ function convertExprToST(expr: Expr): string {
       // Add properties if any (important for hardware references like Buttons.Room1)
       for (const prop of expr.properties) {
         if ("name" in prop || (prop.ref && "$refText" in prop.ref)) {
-          const propName = "name" in prop ? prop.name : (prop.ref && "$refText" in prop.ref ? (prop.ref as any).$refText : "");
+          const propName =
+            "name" in prop
+              ? prop.name
+              : prop.ref && "$refText" in prop.ref
+              ? (prop.ref as any).$refText
+              : "";
           if (propName) {
             result += `.${propName}`;
           }
@@ -489,9 +494,10 @@ function convertStatementToST(stmt: Statement): string {
     // Get the signal name and expression
     const signalExpr = convertExprToST(stmt.signal);
     // Generate a unique instance name for the R_TRIG based on the signal
-    const signalRefText = stmt.signal.ref && "$refText" in stmt.signal.ref 
-                        ? (stmt.signal.ref as any).$refText 
-                        : "signal";
+    const signalRefText =
+      stmt.signal.ref && "$refText" in stmt.signal.ref
+        ? (stmt.signal.ref as any).$refText
+        : "signal";
     const instanceName = `R_TRIG_${signalRefText}_instance`;
 
     // Using Beckhoff's built-in R_TRIG function block for rising edge detection
@@ -509,9 +515,10 @@ function convertStatementToST(stmt: Statement): string {
     // Get the signal name and expression
     const signalExpr = convertExprToST(stmt.signal);
     // Generate a unique instance name for the F_TRIG based on the signal
-    const signalRefText = stmt.signal.ref && "$refText" in stmt.signal.ref 
-                        ? (stmt.signal.ref as any).$refText 
-                        : "signal";
+    const signalRefText =
+      stmt.signal.ref && "$refText" in stmt.signal.ref
+        ? (stmt.signal.ref as any).$refText
+        : "signal";
     const instanceName = `F_TRIG_${signalRefText}_instance`;
 
     // Using Beckhoff's built-in F_TRIG function block for falling edge detection
@@ -586,16 +593,18 @@ function writeProgramMain(
     if (isOnRisingEdgeStmt(stmt)) {
       const signal = stmt.signal;
       // Use $refText to get the signal name
-      const signalRefText = signal.ref && "$refText" in signal.ref 
-                          ? (signal.ref as any).$refText 
-                          : "signal";
+      const signalRefText =
+        signal.ref && "$refText" in signal.ref
+          ? (signal.ref as any).$refText
+          : "signal";
       edgeDetectionFBs.push(`R_TRIG_${signalRefText}_instance: R_TRIG;`);
     } else if (isOnFallingEdgeStmt(stmt)) {
       const signal = stmt.signal;
       // Use $refText to get the signal name
-      const signalRefText = signal.ref && "$refText" in signal.ref 
-                          ? (signal.ref as any).$refText 
-                          : "signal";
+      const signalRefText =
+        signal.ref && "$refText" in signal.ref
+          ? (signal.ref as any).$refText
+          : "signal";
       edgeDetectionFBs.push(`F_TRIG_${signalRefText}_instance: F_TRIG;`);
     }
   });
