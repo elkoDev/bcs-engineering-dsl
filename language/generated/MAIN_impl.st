@@ -7,11 +7,11 @@ IF NOT bRunOnlyOnce THEN
 END_IF
 
 // Main program logic
-// Rising edge detection
-IF FALSE AND NOT _prev_Buttons THEN
+// Rising edge detection for FALSE
+R_TRIG_Buttons_instance(CLK := FALSE);
+IF R_TRIG_Buttons_instance.Q THEN
   FALSE := FALSE;
 END_IF;
-_prev_Buttons := FALSE;
 FALSE := TRUE;
 WHILE FALSE < 3 DO
   FALSE := TRUE;
@@ -47,11 +47,11 @@ FALSE := TRUE;
 FALSE := FALSE;
 status := FB_Tc3_DALI(iDALIAddress:=FALSE, iDALICommandPriority:=FALSE, iAddressList:=FALSE);
 
-// Falling edge detection
-IF NOT FALSE AND _prev_Buttons THEN
+// Falling edge detection for FALSE
+F_TRIG_Buttons_instance(CLK := FALSE);
+IF F_TRIG_Buttons_instance.Q THEN
   FALSE := FALSE;
 END_IF;
-_prev_Buttons := FALSE;
 IF FALSE THEN
   FALSE := FALSE;
 END_IF;

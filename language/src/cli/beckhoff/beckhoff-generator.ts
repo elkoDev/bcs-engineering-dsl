@@ -78,7 +78,21 @@ function convertExprToST(expr: Expr): string {
         .map((f) => `${f.name}:=${convertExprToST(f.value)}`)
         .join(", ")})`;
     } else if (isRef(expr)) {
-      let result = expr.ref.ref?.name || "";
+      // Create reference path
+      let result = "";
+      
+      // Handle the root reference
+      if (expr.ref?.ref?.name) {
+        // Reference is resolved to a known symbol
+        result = expr.ref.ref.name;
+      } else if (expr.ref && "$refText" in expr.ref) {
+        // Reference name is known but not resolved (hardware references)
+        // Use $refText to get the name from the reference
+        result = (expr.ref as any).$refText;
+      } else {
+        // Fallback case for completely unresolved references
+        result = "UNRESOLVED_REF";
+      }
 
       // Add indices if any
       if (expr.indices.length > 0) {
@@ -87,9 +101,14 @@ function convertExprToST(expr: Expr): string {
           .join(", ")}]`;
       }
 
-      // Add properties if any
+      // Add properties if any (important for hardware references like Buttons.Room1)
       for (const prop of expr.properties) {
-        result += `.${prop.ref?.name || ""}`;
+        if ("name" in prop || (prop.ref && "$refText" in prop.ref)) {
+          const propName = "name" in prop ? prop.name : (prop.ref && "$refText" in prop.ref ? (prop.ref as any).$refText : "");
+          if (propName) {
+            result += `.${propName}`;
+          }
+        }
       }
 
       return result;
@@ -151,7 +170,7 @@ export function generateBeckhoffArtifacts(
       files.push(...writeFunctionBlock(item, destination));
   }
 
-  files.push(writeProgramMain(controlModel, destination));
+  files.push(writeProgramMain(controlModel, hardwareModel, destination));
   return files;
 }
 
@@ -467,30 +486,44 @@ function convertStatementToST(stmt: Statement): string {
 
     return useContent;
   } else if (isOnRisingEdgeStmt(stmt)) {
-    let risingContent = `// Rising edge detection\nIF ${convertExprToST(
-      stmt.signal
-    )} AND NOT _prev_${stmt.signal.ref.ref?.name || "signal"} THEN\n`;
+    // Get the signal name and expression
+    const signalExpr = convertExprToST(stmt.signal);
+    // Generate a unique instance name for the R_TRIG based on the signal
+    const signalRefText = stmt.signal.ref && "$refText" in stmt.signal.ref 
+                        ? (stmt.signal.ref as any).$refText 
+                        : "signal";
+    const instanceName = `R_TRIG_${signalRefText}_instance`;
+
+    // Using Beckhoff's built-in R_TRIG function block for rising edge detection
+    let risingContent = `// Rising edge detection for ${signalExpr}\n`;
+    risingContent += `${instanceName}(CLK := ${signalExpr});\n`;
+    risingContent += `IF ${instanceName}.Q THEN\n`;
 
     for (const subStmt of stmt.stmts) {
       risingContent += `  ${convertStatementToST(subStmt)}\n`;
     }
 
-    risingContent += `END_IF;\n_prev_${
-      stmt.signal.ref.ref?.name || "signal"
-    } := ${convertExprToST(stmt.signal)};`;
+    risingContent += `END_IF;`;
     return risingContent;
   } else if (isOnFallingEdgeStmt(stmt)) {
-    let fallingContent = `// Falling edge detection\nIF NOT ${convertExprToST(
-      stmt.signal
-    )} AND _prev_${stmt.signal.ref.ref?.name || "signal"} THEN\n`;
+    // Get the signal name and expression
+    const signalExpr = convertExprToST(stmt.signal);
+    // Generate a unique instance name for the F_TRIG based on the signal
+    const signalRefText = stmt.signal.ref && "$refText" in stmt.signal.ref 
+                        ? (stmt.signal.ref as any).$refText 
+                        : "signal";
+    const instanceName = `F_TRIG_${signalRefText}_instance`;
+
+    // Using Beckhoff's built-in F_TRIG function block for falling edge detection
+    let fallingContent = `// Falling edge detection for ${signalExpr}\n`;
+    fallingContent += `${instanceName}(CLK := ${signalExpr});\n`;
+    fallingContent += `IF ${instanceName}.Q THEN\n`;
 
     for (const subStmt of stmt.stmts) {
       fallingContent += `  ${convertStatementToST(subStmt)}\n`;
     }
 
-    fallingContent += `END_IF;\n_prev_${
-      stmt.signal.ref.ref?.name || "signal"
-    } := ${convertExprToST(stmt.signal)};`;
+    fallingContent += `END_IF;`;
     return fallingContent;
   } else if (isVarDecl(stmt)) {
     return `${stmt.name}: ${convertTypeRefToST(stmt.typeRef)}${
@@ -509,6 +542,7 @@ function convertStatementToST(stmt: Statement): string {
  */
 function writeProgramMain(
   controlModel: ControlModel,
+  hardwareModel: HardwareModel,
   destination: string
 ): string {
   // Collect all variables that need to be declared in the MAIN program
@@ -541,10 +575,53 @@ function writeProgramMain(
     }
   }
 
+  // Extract hardware datapoints
+  const { inputs, outputs } = extractHardwareDatapoints(hardwareModel);
+
+  // Include R_TRIG and F_TRIG instances for edge detection
+  const edgeDetectionFBs: string[] = [];
+
+  // Look for edge detection statements and create FB instances for them
+  mainStatements.forEach((stmt) => {
+    if (isOnRisingEdgeStmt(stmt)) {
+      const signal = stmt.signal;
+      // Use $refText to get the signal name
+      const signalRefText = signal.ref && "$refText" in signal.ref 
+                          ? (signal.ref as any).$refText 
+                          : "signal";
+      edgeDetectionFBs.push(`R_TRIG_${signalRefText}_instance: R_TRIG;`);
+    } else if (isOnFallingEdgeStmt(stmt)) {
+      const signal = stmt.signal;
+      // Use $refText to get the signal name
+      const signalRefText = signal.ref && "$refText" in signal.ref 
+                          ? (signal.ref as any).$refText 
+                          : "signal";
+      edgeDetectionFBs.push(`F_TRIG_${signalRefText}_instance: F_TRIG;`);
+    }
+  });
+
   // Generate declaration part
   const declContent = toString(
     expandToNode`
       PROGRAM MAIN
+      VAR_INPUT
+          ${joinToNode(
+            inputs,
+            (input) => expandToNode`
+              ${input.name}: ${input.type} AT ${input.ioBinding}; (* Input channel from hardware *)
+            `,
+            { appendNewLineIfNotEmpty: true }
+          )}
+      END_VAR
+      VAR_OUTPUT
+          ${joinToNode(
+            outputs,
+            (output) => expandToNode`
+              ${output.name}: ${output.type} AT ${output.ioBinding}; (* Output channel to hardware *)
+            `,
+            { appendNewLineIfNotEmpty: true }
+          )}
+      END_VAR
       VAR
           ${joinToNode(
             mainVars,
@@ -564,7 +641,8 @@ function writeProgramMain(
             `,
             { appendNewLineIfNotEmpty: true }
           )}
-          "bRunOnlyOnce": BOOL := FALSE;
+          ${edgeDetectionFBs.join("\n          ")}
+          bRunOnlyOnce: BOOL := FALSE;
       END_VAR
     `
   );
@@ -676,4 +754,122 @@ export function generateBeckhoffCode(
   };
 
   return { files, csharpStrings };
+}
+
+/**
+ * Extract hardware datapoints from the hardware model
+ * These will be used to create I/O variables in the PLC program
+ */
+function extractHardwareDatapoints(hardwareModel: HardwareModel): {
+  inputs: Array<{ name: string; type: string; ioBinding: string }>;
+  outputs: Array<{ name: string; type: string; ioBinding: string }>;
+} {
+  const inputs: Array<{ name: string; type: string; ioBinding: string }> = [];
+  const outputs: Array<{ name: string; type: string; ioBinding: string }> = [];
+
+  // Process each controller in the hardware model
+  for (const controller of hardwareModel.controllers) {
+    // We only process Beckhoff hardware components
+    if (controller.platform !== "Beckhoff") continue;
+
+    // Map to hold port groups for reference
+    const portGroups = new Map();
+
+    // First pass: collect all port groups
+    for (const component of controller.components) {
+      if ("moduleType" in component) {
+        // PortGroup
+        portGroups.set(component.name, component);
+      }
+    }
+
+    // Second pass: process all datapoints
+    for (const component of controller.components) {
+      if ("portgroup" in component) {
+        // Datapoint
+        const datapoint = component;
+        const portgroup = portGroups.get(datapoint.portgroup.ref?.name);
+
+        if (!portgroup) continue;
+
+        // Determine if this is an input or output based on the port group
+        const isInput =
+          portgroup.ioType === "DIGITAL_INPUT" ||
+          portgroup.ioType === "ANALOG_INPUT";
+
+        // Process each channel in the datapoint
+        for (const channel of datapoint.channels) {
+          // Create variable name: [DatapointName]_[ChannelName]
+          const varName = `${datapoint.name}_${channel.name}`;
+
+          // Determine PLC data type from channel type
+          let plcType: string;
+          switch (channel.dataType) {
+            case "BOOL":
+              plcType = "BOOL";
+              break;
+            case "INT":
+              plcType = "INT";
+              break;
+            case "REAL":
+              plcType = "REAL";
+              break;
+            default:
+              plcType = "BYTE"; // Default to BYTE for unknown types
+          }
+
+          // Calculate the IO binding address
+          // Parse the start address from the IOBinding format: %I* or %Q*
+          const addrMatch = portgroup.startAddress?.match(
+            /%([IQ])([XBWDL])?([0-9]+(\.[0-9]+)?)?/
+          );
+          if (!addrMatch) continue;
+
+          const ioPrefix = addrMatch[1]; // I or Q
+          const ioType = addrMatch[2] || getDefaultIOType(plcType); // X, B, W, D, L if specified
+          const ioBaseAddr = addrMatch[3] ? parseInt(addrMatch[3]) : 0;
+
+          // Calculate the offset based on channel index
+          const offsetAddr = ioBaseAddr + channel.index;
+
+          // Construct the IO binding
+          const ioBinding = `%${ioPrefix}${ioType}${offsetAddr}`;
+
+          // Add to the appropriate array
+          if (isInput) {
+            inputs.push({ name: varName, type: plcType, ioBinding });
+          } else {
+            outputs.push({ name: varName, type: plcType, ioBinding });
+          }
+        }
+      }
+    }
+  }
+
+  return { inputs, outputs };
+}
+
+/**
+ * Get the default IO type suffix based on the data type
+ */
+function getDefaultIOType(plcType: string): string {
+  switch (plcType) {
+    case "BOOL":
+      return "X"; // Single bit
+    case "BYTE":
+      return "B"; // 8 bits
+    case "WORD":
+    case "INT":
+      return "W"; // 16 bits
+    case "DWORD":
+    case "DINT":
+    case "REAL":
+      return "D"; // 32 bits
+    case "LWORD":
+    case "LINT":
+    case "LREAL":
+      return "L"; // 64 bits
+    default:
+      return "B"; // Default to byte
+  }
 }
