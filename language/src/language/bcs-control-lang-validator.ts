@@ -252,55 +252,47 @@ export class BCSControlLangValidator {
     const globalVarNames = new Set<string>();
 
     for (const item of model.controlBlock?.items ?? []) {
-      if (isStructDecl(item)) {
-        if (structNames.has(item.name)) {
-          accept("error", `Duplicate struct '${item.name}'.`, {
-            node: item,
-            property: "name",
-          });
-        } else {
-          structNames.add(item.name);
-        }
-      }
-      if (isEnumDecl(item)) {
-        if (enumNames.has(item.name)) {
-          accept("error", `Duplicate enum '${item.name}'.`, {
-            node: item,
-            property: "name",
-          });
-        } else {
-          enumNames.add(item.name);
-        }
-      }
-      if (isFunctionBlockDecl(item)) {
-        if (fbNames.has(item.name)) {
-          accept("error", `Duplicate function block '${item.name}'.`, {
-            node: item,
-            property: "name",
-          });
-        } else {
-          fbNames.add(item.name);
-        }
-      }
-      if (isControlUnit(item)) {
-        if (unitNames.has(item.name)) {
-          accept("error", `Duplicate control unit '${item.name}'.`, {
-            node: item,
-            property: "name",
-          });
-        } else {
-          unitNames.add(item.name);
-        }
-      }
-      if (isVarDecl(item)) {
-        if (globalVarNames.has(item.name)) {
-          accept("error", `Duplicate global variable '${item.name}'.`, {
-            node: item,
-            property: "name",
-          });
-        } else {
-          globalVarNames.add(item.name);
-        }
+      this.checkDuplicateItem(item, structNames, isStructDecl, "struct", accept);
+      this.checkDuplicateItem(item, enumNames, isEnumDecl, "enum", accept);
+      this.checkDuplicateItem(
+        item,
+        fbNames,
+        isFunctionBlockDecl,
+        "function block",
+        accept
+      );
+      this.checkDuplicateItem(
+        item,
+        unitNames,
+        isControlUnit,
+        "control unit",
+        accept
+      );
+      this.checkDuplicateItem(
+        item,
+        globalVarNames,
+        isVarDecl,
+        "global variable",
+        accept
+      );
+    }
+  }
+
+  private checkDuplicateItem(
+    item: any,
+    nameSet: Set<string>,
+    typeCheckFn: (item: any) => boolean,
+    itemType: string,
+    accept: ValidationAcceptor
+  ) {
+    if (typeCheckFn(item)) {
+      if (nameSet.has(item.name)) {
+        accept("error", `Duplicate ${itemType} '${item.name}'.`, {
+          node: item,
+          property: "name",
+        });
+      } else {
+        nameSet.add(item.name);
       }
     }
   }
