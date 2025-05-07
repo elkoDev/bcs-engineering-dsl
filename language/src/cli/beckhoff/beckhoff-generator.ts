@@ -1148,9 +1148,7 @@ export function generateBeckhoffCode(
     if (isEnumDecl(item)) {
       const filePath = path.join(destination, `${item.name}.st`);
       csharpStrings[item.name] = {
-        declaration: fs
-          .readFileSync(filePath, "utf8")
-          .replace(/\r\n/g, "\\r\\n"),
+        declaration: createCSharpString(filePath),
       };
     } else if (isStructDecl(item)) {
       const filePath = path.join(destination, `${item.name}.st`);
