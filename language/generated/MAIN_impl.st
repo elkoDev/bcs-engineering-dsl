@@ -10,12 +10,12 @@ END_IF
 // Rising edge detection for Buttons.Room1
 r_TRIG_Buttons_Room1_Instance(CLK := Buttons.Room1);
 IF r_TRIG_Buttons_Room1_Instance.Q THEN
-  Lights.Room1 := FALSE;
+  Lights.Room1 := NOT Lights.Room1;
 END_IF;
 // Rising edge detection for Buttons.Room2
 r_TRIG_Buttons_Room2_Instance2(CLK := Buttons.Room2);
 IF r_TRIG_Buttons_Room2_Instance2.Q THEN
-  Lights.Room2 := FALSE;
+  Lights.Room2 := NOT Lights.Room2;
 END_IF;
 Lights.Room1 := TRUE;
 arrayOfLights[0] := TRUE;

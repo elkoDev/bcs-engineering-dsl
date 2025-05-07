@@ -103,7 +103,7 @@ describe("Beckhoff Generator Tests", () => {
     );
 
     // Verify the generated files
-    expect(result.files.length).toBeGreaterThan(0);
+    expect(Object.keys(result.csharpStrings).length).toBe(2);
 
     // Compare each expected file with the generated file
     compareGeneratedWithExpected({
@@ -144,22 +144,32 @@ describe("Beckhoff Generator Tests", () => {
       outputDir
     );
 
-    // Verify Point.st was generated
+    expect(Object.keys(result.csharpStrings).length).toBe(4);
+
+    // Compare each expected file with the generated file
+    compareGeneratedWithExpected({
+      generatedFilePath: path.join(outputDir, "Circle.st"),
+      expectedFilePath: path.join(expectedDir, "Circle.st"),
+    });
+
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "Point.st"),
       expectedFilePath: path.join(expectedDir, "Point.st"),
     });
 
-    // Verify SimpleLogicFB_decl.st was generated
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "SimpleLogicFB_decl.st"),
-      expectedFilePath: path.join(expectedDir, "SimpleLogicFB_decl.st"),
+      generatedFilePath: path.join(outputDir, "Rectangle.st"),
+      expectedFilePath: path.join(expectedDir, "Rectangle.st"),
     });
 
-    // Verify SimpleLogicFB_impl.st was generated
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "SimpleLogicFB_impl.st"),
-      expectedFilePath: path.join(expectedDir, "SimpleLogicFB_impl.st"),
+      generatedFilePath: path.join(outputDir, "MAIN_decl.st"),
+      expectedFilePath: path.join(expectedDir, "MAIN_decl.st"),
+    });
+
+    compareGeneratedWithExpected({
+      generatedFilePath: path.join(outputDir, "MAIN_impl.st"),
+      expectedFilePath: path.join(expectedDir, "MAIN_impl.st"),
     });
   });
 

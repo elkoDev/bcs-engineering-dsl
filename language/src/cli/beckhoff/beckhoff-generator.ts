@@ -79,7 +79,9 @@ function getReferenceName(ref: Reference<NamedElement>): string {
  * Check if a referenced element belongs to a control unit
  * This helps us determine if we need to qualify the variable name
  */
-function isControlUnitVariable(ref: Reference<NamedElement>): [boolean, string | null] {
+function isControlUnitVariable(
+  ref: Reference<NamedElement>
+): [boolean, string | null] {
   if (ref && ref.ref) {
     const container = ref.ref.$container;
     if (container && isControlUnit(container)) {
@@ -119,6 +121,21 @@ function convertExprToST(expr: Expr): string {
       }
 
       return result;
+    } else if (isParenExpr(expr)) {
+      const parenExpr = expr as ParenExpr;
+      return `(${convertExprToST(parenExpr.expr)})`;
+    } else if (isNegExpr(expr)) {
+      const negExpr = expr as NegExpr;
+      return `-${convertExprToST(negExpr.expr)}`;
+    } else if (isNotExpr(expr)) {
+      const notExpr = expr as NotExpr;
+      return `NOT ${convertExprToST(notExpr.expr)}`;
+    } else if (isArrayLiteral(expr.val)) {
+      return `[${expr.val.elements.map((e) => convertExprToST(e)).join(", ")}]`;
+    } else if (isStructLiteral(expr.val)) {
+      return `(${expr.val.fields
+        .map((f) => `${f.name}:=${convertExprToST(f.value)}`)
+        .join(", ")})`;
     } else if (isPrimitive(expr)) {
       if (typeof expr.val === "string") {
         return `'${expr.val}'`; // String literals use single quotes in ST
@@ -127,26 +144,10 @@ function convertExprToST(expr: Expr): string {
       } else if (expr.val !== undefined) {
         return expr.val.toString(); // Numbers as strings
       }
-    } else if (isArrayLiteral(expr.val)) {
-      return `[${expr.val.elements.map((e) => convertExprToST(e)).join(", ")}]`;
-    } else if (isStructLiteral(expr.val)) {
-      return `(${expr.val.fields
-        .map((f) => `${f.name}:=${convertExprToST(f.value)}`)
-        .join(", ")})`;
     }
   } else if (isBinExpr(expr)) {
-    // Special handling for operators that are different in ST
     const op = translateOperator(expr.op);
     return `${convertExprToST(expr.e1)} ${op} ${convertExprToST(expr.e2)}`;
-  } else if (isNegExpr(expr)) {
-    const negExpr = expr as NegExpr;
-    return `-${convertExprToST(negExpr.expr)}`;
-  } else if (isNotExpr(expr)) {
-    const notExpr = expr as NotExpr;
-    return `NOT ${convertExprToST(notExpr.expr)}`;
-  } else if (isParenExpr(expr)) {
-    const parenExpr = expr as ParenExpr;
-    return `(${convertExprToST(parenExpr.expr)})`;
   }
 
   return "UNKNOWN_EXPR";
@@ -157,12 +158,12 @@ function convertExprToST(expr: Expr): string {
  */
 function getQualifiedReferenceName(ref: Reference<NamedElement>): string {
   const [isInControlUnit, unitName] = isControlUnitVariable(ref);
-  
+
   if (isInControlUnit && unitName && isVarDecl(ref.ref)) {
     // This is a variable from a control unit, so we need to qualify it
     return `${unitName}_${getReferenceName(ref)}`;
   }
-  
+
   // For all other references, use the standard name
   return getReferenceName(ref);
 }

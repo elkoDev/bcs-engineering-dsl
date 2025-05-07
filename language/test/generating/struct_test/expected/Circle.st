@@ -1,5 +1,5 @@
 TYPE Circle :
 STRUCT
-	radius : REAL;
+    radius : REAL;
 END_STRUCT
 END_TYPE
