@@ -5,7 +5,7 @@ ELSE
 END_IF;
 IF tempValue > 100 THEN
     IF iValue1 > 50 THEN
-    oResult := 100;
+        oResult := 100;
     ELSE
         tempValue := -100;
     END_IF;
