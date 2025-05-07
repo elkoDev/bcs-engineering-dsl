@@ -30,6 +30,7 @@ import {
   StructDecl,
   StructLiteral,
   SwitchStmt,
+  UseOutput,
   UseStmt,
   VarDecl,
 } from "./generated/ast.js";
@@ -353,7 +354,7 @@ export class BCSControlLangValidator {
   private validateSingleOutput(
     useStmt: UseStmt,
     fb: FunctionBlockDecl,
-    output: any,
+    output: UseOutput,
     accept: ValidationAcceptor
   ) {
     if (getOutputs(fb).length !== 1) {
@@ -368,7 +369,7 @@ export class BCSControlLangValidator {
     }
 
     const expected = getOutputs(fb)[0];
-    const actual = output.singleOutput!.outputVar?.ref;
+    const actual = output.singleOutput!.targetOutputVar?.ref;
 
     if (actual) {
       const expectedType = this.inferVarDeclType(expected);
@@ -382,7 +383,7 @@ export class BCSControlLangValidator {
         accept(
           "error",
           `Type mismatch for output '${expected.name}': cannot assign to '${actual.name}' of type '${actualType}', expected '${expectedType}'.`,
-          { node: output.singleOutput!, property: "outputVar" }
+          { node: output.singleOutput!, property: "targetOutputVar" }
         );
       }
     }
@@ -391,7 +392,7 @@ export class BCSControlLangValidator {
   private validateMappedOutputs(
     useStmt: UseStmt,
     fb: FunctionBlockDecl,
-    output: any,
+    output: UseOutput,
     accept: ValidationAcceptor
   ) {
     if (output.mappingOutputs.length !== getOutputs(fb).length) {
@@ -414,16 +415,16 @@ export class BCSControlLangValidator {
 
     // Perform type checking for mappings
     for (const map of output.mappingOutputs) {
-      const targetVar = map.outputVar?.ref;
-      const fbOutputVar = map.fbOutput?.ref;
+      const fbOutputVar = map.fbOutputVar?.ref;
+      const targetOutputVar = map.targetOutputVar?.ref;
 
-      if (!targetVar || !fbOutputVar) continue;
+      if (!targetOutputVar || !fbOutputVar) continue;
 
-      const expected = getOutputs(fb).find((o) => o.name === targetVar.name);
+      const expected = getOutputs(fb).find((o) => o.name === fbOutputVar.name);
       const expectedType = expected
         ? this.inferVarDeclType(expected)
         : undefined;
-      const actualType = this.inferVarDeclType(fbOutputVar);
+      const actualType = this.inferVarDeclType(targetOutputVar);
 
       if (
         expectedType &&
@@ -432,8 +433,8 @@ export class BCSControlLangValidator {
       ) {
         accept(
           "error",
-          `Type mismatch for mapped output '${targetVar.name}': expected '${expectedType}', got '${actualType}'.`,
-          { node: map, property: "outputVar" }
+          `Type mismatch for mapped output '${fbOutputVar.name}': expected '${expectedType}', got '${actualType}'.`,
+          { node: map, property: "fbOutputVar" }
         );
       }
     }

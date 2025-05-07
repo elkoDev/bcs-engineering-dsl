@@ -209,11 +209,11 @@ UseOutput:
 ;
 
 SimpleUseResult:
-    outputVar=[VarDecl]
+    targetOutputVar=[VarDecl]
 ;
 
 MappingUseResult:
-    outputVar=[VarDecl] ':' fbOutput=[VarDecl]
+    fbOutputVar=[VarDecl] ':' targetOutputVar=[VarDecl]
 ;
 
 

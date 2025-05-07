@@ -3,6 +3,7 @@ import {
   ControlModel,
   ControlUnit,
   FunctionBlockDecl,
+  UseOutput,
   UseStmt,
   VarDecl,
   isControlUnit,
@@ -296,24 +297,24 @@ export class DuplicationValidator {
   static checkDuplicateOutputMappings(
     useStmt: UseStmt,
     fb: FunctionBlockDecl,
-    output: any,
+    output: UseOutput,
     accept: ValidationAcceptor
   ) {
     const seen = new Set<string>();
 
     for (const map of output.mappingOutputs) {
-      const targetVar = map.outputVar?.ref;
+      const fbOutputVar = map.fbOutputVar?.ref;
 
-      if (!targetVar) continue;
+      if (!fbOutputVar) continue;
 
-      if (seen.has(targetVar.name)) {
+      if (seen.has(fbOutputVar.name)) {
         accept(
           "error",
-          `Duplicate output mapping to variable '${targetVar.name}' in use of '${fb.name}'.`,
-          { node: map, property: "outputVar" }
+          `Duplicate output mapping to variable '${fbOutputVar.name}' in use of '${fb.name}'.`,
+          { node: map, property: "fbOutputVar" }
         );
       }
-      seen.add(targetVar.name);
+      seen.add(fbOutputVar.name);
     }
   }
 

@@ -501,16 +501,17 @@ function convertStatementToST(stmt: Statement): string {
 
     // Handle output mapping
     if (stmt.useOutput.singleOutput) {
-      const outVarName = stmt.useOutput.singleOutput.outputVar.ref?.name;
-      useContent += `${outVarName} := ${fbName}(${inputMappings});\n`;
+      const targetOutputVarName =
+        stmt.useOutput.singleOutput.targetOutputVar.ref?.name;
+      useContent += `${targetOutputVarName} := ${fbName}(${inputMappings});\n`;
     } else if (stmt.useOutput.mappingOutputs.length > 0) {
       useContent += `${fbName}(${inputMappings});\n`;
 
       // Map outputs after function block call
       for (const outMapping of stmt.useOutput.mappingOutputs) {
-        const outVarName = outMapping.outputVar.ref?.name;
-        const fbOutName = outMapping.fbOutput.ref?.name;
-        useContent += `${outVarName} := ${fbName}.${fbOutName};\n`;
+        const targetOutputVarName = outMapping.targetOutputVar.ref?.name;
+        const fbOutputVarName = outMapping.fbOutputVar.ref?.name;
+        useContent += `${targetOutputVarName} := ${fbName}.${fbOutputVarName};\n`;
       }
     } else {
       useContent += `${fbName}(${inputMappings});\n`;
@@ -640,25 +641,25 @@ function writeProgramMain(
   const declContent = toString(
     expandToNode`
       PROGRAM MAIN
-      VAR_INPUT
+      VAR
           ${joinToNode(
             inputs,
             (input) => expandToNode`
-              ${input.name}: ${input.type} AT ${input.ioBinding}; (* Input channel from hardware *)
+              ${input.name} AT ${input.ioBinding.substring(0, 2)}*: ${
+              input.type
+            }; (* Input channel from hardware *)
             `,
             { appendNewLineIfNotEmpty: true }
           )}
-      END_VAR
-      VAR_OUTPUT
           ${joinToNode(
             outputs,
             (output) => expandToNode`
-              ${output.name}: ${output.type} AT ${output.ioBinding}; (* Output channel to hardware *)
+              ${output.name} AT ${output.ioBinding.substring(0, 2)}*: ${
+              output.type
+            }; (* Output channel to hardware *)
             `,
             { appendNewLineIfNotEmpty: true }
           )}
-      END_VAR
-      VAR
           ${joinToNode(
             mainVars,
             (varDecl) => expandToNode`

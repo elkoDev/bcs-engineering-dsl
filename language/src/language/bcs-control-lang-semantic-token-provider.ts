@@ -184,19 +184,19 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
     if (isMappingUseResult(node)) {
       acceptor({
         node,
-        property: "outputVar",
+        property: "fbOutputVar",
         type: SemanticTokenTypes.comment,
       });
       acceptor({
         node,
-        property: "fbOutput",
+        property: "targetOutputVar",
         type: SemanticTokenTypes.variable,
       });
     }
     if (isSimpleUseResult(node)) {
       acceptor({
         node,
-        property: "outputVar",
+        property: "targetOutputVar",
         type: SemanticTokenTypes.variable,
       });
     }

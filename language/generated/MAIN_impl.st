@@ -51,7 +51,11 @@ END_IF;
 
 FALSE := TRUE;
 FALSE := FALSE;
-status := FB_Tc3_DALI(iDALIAddress:=FALSE, iDALICommandPriority:=FALSE, iAddressList:=FALSE);
+FB_DALI207QueryFailureStatus(bStart:=TRUE, nAddress:=1, eAddressType:=FALSE, eCommandPriority:=FALSE);
+bBussy := FB_DALI207QueryFailureStatus.status;
+bError := FB_DALI207QueryFailureStatus.status;
+nFailureStatus := FB_DALI207QueryFailureStatus.failureStatus;
+ipResultMessage := FB_DALI207QueryFailureStatus.resultMessage;
 
 // Falling edge detection for FALSE
 F_TRIG_Buttons_instance(CLK := FALSE);

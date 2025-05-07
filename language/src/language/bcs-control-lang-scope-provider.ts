@@ -118,7 +118,7 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
       return this.createScopeForNodes(fbParams);
     }
 
-    if (isMappingUseResult(container) && context.property === "outputVar") {
+    if (isMappingUseResult(container) && context.property === "fbOutputVar") {
       const useStmt = AstUtils.getContainerOfType(container, isUseStmt);
       if (!useStmt?.functionBlockRef?.ref) return EMPTY_SCOPE;
 

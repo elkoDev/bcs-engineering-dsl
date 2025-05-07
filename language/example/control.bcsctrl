@@ -1,4 +1,5 @@
 import library Tc3_DALI;
+import library Tc3_EventLogger;
 
 extern enum E_DALIAddressType { Short, Group, Broadcast, BroadcastUnaddr }
 extern enum E_DALICommandPriority { High, MiddleHigh, Middle, MiddleLow, Low, Unknown }
@@ -8,14 +9,22 @@ extern struct ST_DALIChangeAddressList {
     nRandomAddress: INT,
     nErrors: INT
 }
-extern functionblock FB_Tc3_DALI {
+extern struct I_TcMessage {
+    dummy : BOOL // Placeholder for actual message structure
+}
+
+extern functionblock FB_DALI207QueryFailureStatus {
     inputs {
-        var iDALIAddress: E_DALIAddressType;
-        var iDALICommandPriority: E_DALICommandPriority;
-        var iAddressList: ST_DALIChangeAddressList;
+        var bStart : BOOL;
+        var nAddress : INT;
+        var eAddressType : E_DALIAddressType;
+        var eCommandPriority  : E_DALICommandPriority;
     }
     outputs {
-        var oDALIStatus: BOOL;
+        var bError : BOOL;
+        var ipResultMessage : I_TcMessage;
+        var bBussy : BOOL;
+        var nFailureStatus : INT;
     }
 }
 
@@ -125,11 +134,19 @@ control MainController {
             nErrors: 0
         };
         var status: BOOL;
-        use FB_Tc3_DALI(
-            iDALIAddress: daliAddress,
-            iDALICommandPriority: daliPriority,
-            iAddressList: addressList
-        ) -> status;
+        var resultMessage: I_TcMessage;
+        var failureStatus: INT;
+        use FB_DALI207QueryFailureStatus(
+            bStart: true,
+            nAddress: 1,
+            eAddressType: daliAddress,
+            eCommandPriority: daliPriority
+        ) -> {
+            bBussy: status,
+            bError: status,
+            nFailureStatus: failureStatus,
+            ipResultMessage: resultMessage
+        };
     }
 
     unit ButtonReleaseHandler {
