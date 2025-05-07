@@ -1,0 +1,19 @@
+// A test file for hardware I/O mapping code generation
+control ValidTestController {
+    unit TestHardwareIO {
+        // Variables connected to hardware inputs
+        var inputSwitch1: BOOL;
+        var inputSwitch2: BOOL;
+        var analogInput: REAL;
+        
+        // Variables connected to hardware outputs
+        var outputLight1: BOOL;
+        var outputLight2: BOOL;
+        var analogOutput: REAL;
+        
+        // Simple logic connecting inputs to outputs
+        outputLight1 = inputSwitch1;
+        outputLight2 = inputSwitch2 && inputSwitch1;
+        analogOutput = analogInput * 2.5;
+    }
+}

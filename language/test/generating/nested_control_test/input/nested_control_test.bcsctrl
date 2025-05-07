@@ -1,0 +1,116 @@
+// A test file for nested control structures code generation
+control ValidTestController {
+    enum ProcessState {
+        INIT,
+        PROCESSING,
+        FINALIZING,
+        COMPLETE
+    }
+
+    functionblock NestedControlsFB {
+        inputs {
+            var iState: ProcessState;
+            var iCount: INT;
+            var iThreshold: REAL;
+            var iValues: REAL[10];
+        }
+        outputs {
+            var oResult: REAL;
+            var oStatus: STRING;
+            var oProcessedItems: INT;
+        }
+        locals {
+            var i: INT;
+            var tempSum: REAL = 0.0;
+            var itemsProcessed: INT = 0;
+            var skipCount: INT = 0;
+        }
+        logic {
+            // Reset variables
+            tempSum = 0.0;
+            itemsProcessed = 0;
+            skipCount = 0;
+            
+            // Complex nested control structures
+            if (iState == ProcessState.INIT || iState == ProcessState.PROCESSING) {
+                // Process the array using nested loops and conditions
+                for (var i : INT = 0 to i < iCount && i < 10 by 1) {
+                    // Skip processing if value is below threshold
+                    if (iValues[i] < iThreshold) {
+                        skipCount = skipCount + 1;
+                        continue;
+                    }
+                    
+                    // Different processing based on state
+                    switch (iState) {
+                        case ProcessState.INIT: {
+                            // Initialization processing
+                            tempSum = tempSum + iValues[i] * 0.8;
+                        }
+                        case ProcessState.PROCESSING: {
+                            // Normal processing - with nested if
+                            if (iValues[i] > iThreshold * 2.0) {
+                                tempSum = tempSum + iValues[i] * 1.5;
+                            } else {
+                                tempSum = tempSum + iValues[i];
+                            }
+                        }
+                        default: {
+                            // Should not happen, but handle anyway
+                            tempSum = tempSum + iValues[i] * 0.5;
+                        }
+                    }
+                    
+                    itemsProcessed = itemsProcessed + 1;
+                }
+            } else if (iState == ProcessState.FINALIZING) {
+                // Final processing
+                tempSum = 0.0;
+                i = 0;
+                while (i < iCount && i < 10) {
+                    tempSum = tempSum + iValues[i] * 1.2;
+                    i = i + 1;
+                }
+                itemsProcessed = i;
+            } else {
+                // Complete state
+                tempSum = -1.0;
+                itemsProcessed = 0;
+            }
+            
+            // Set outputs
+            oResult = tempSum;
+            oProcessedItems = itemsProcessed;
+            
+            // Set status message based on processed items
+            if (itemsProcessed == 0) {
+                oStatus = "No items processed";
+            } else if (skipCount > 0) {
+                oStatus = "Processed with skips";
+            } else {
+                oStatus = "All items processed";
+            }
+        }
+    }
+
+    unit TestNestedControls {
+        var state: ProcessState = ProcessState.PROCESSING;
+        var count: INT = 5;
+        var threshold: REAL = 10.0;
+        var values: REAL[10] = [5.0, 15.0, 25.0, 7.5, 30.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        var result: REAL;
+        var status: STRING;
+        var processedItems: INT;
+        
+        use NestedControlsFB(
+            iState: state, 
+            iCount: count, 
+            iThreshold: threshold, 
+            iValues: values
+        ) -> { 
+            oResult: result, 
+            oStatus: status, 
+            oProcessedItems: processedItems 
+        };
+    }
+}

@@ -1,0 +1,7 @@
+FUNCTION_BLOCK SimpleLogicFB
+VAR_INPUT
+	iInput : BOOL;
+END_VAR
+VAR_OUTPUT
+	oOutput : BOOL;
+END_VAR

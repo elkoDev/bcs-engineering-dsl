@@ -1,0 +1,45 @@
+// A test file for loop statements (for and while loops)
+control ValidTestController {
+    functionblock LoopsFB {
+        inputs {
+            var iCount: INT;
+        }
+        outputs {
+            var oSum: INT;
+            var oProduct: INT;
+        }
+        locals {
+            var i: INT;
+            var j: INT;
+            var tempSum: INT = 0;
+            var tempProduct: INT = 1;
+        }
+        logic {
+            // For loop test
+            for (var i: INT = 0 to 5 by 1) {
+                tempSum = tempSum + i;
+            }
+            for (var i: INT = 1 to i <= iCount by 1) {
+                tempSum = tempSum + i;
+            }
+            
+            // While loop test
+            j = 1;
+            while (j <= iCount) {
+                tempProduct = tempProduct * j;
+                j = j + 1;
+            }
+            
+            oSum = tempSum;
+            oProduct = tempProduct;
+        }
+    }
+
+    unit TestLoops {
+        var count: INT = 5;
+        var sum: INT;
+        var product: INT;
+        
+        use LoopsFB(iCount: count) -> { oSum: sum, oProduct: product };
+    }
+}

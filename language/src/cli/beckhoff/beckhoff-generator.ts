@@ -59,7 +59,7 @@ function isPrimitive(expr: Primary): boolean {
 }
 
 /**
- * Helper function to extract the name from a reference
+ * Helper function to extract the name from a reference with improved debugging
  * This function properly handles all types of references in our AST
  */
 function getReferenceText(ref: any): string {
@@ -67,23 +67,24 @@ function getReferenceText(ref: any): string {
   if (ref && "$refText" in ref) {
     return ref.$refText;
   }
-  
+
   // Check if it's a resolved reference with a name on the target
   if (ref?.ref?.name) {
     return ref.ref.name;
   }
-  
+
   // Direct name property
   if (ref && "name" in ref) {
     return ref.name;
   }
-  
+
   // Check for a property name
   if (ref?.property?.name) {
     return ref.property.name;
   }
-  
+
   // Last resort: return a descriptive comment
+  console.warn("Unresolved reference:", JSON.stringify(ref, null, 2));
   return "UNRESOLVED_REF";
 }
 
@@ -111,10 +112,10 @@ function convertExprToST(expr: Expr): string {
       if (expr.ref && expr.properties && expr.properties.length > 0) {
         // This is likely a hardware reference like Buttons.Room1
         // First get the base name (e.g., "Buttons")
-        const baseName = getReferenceText(expr.ref);
+        const baseName = getReferenceName(expr.ref);
 
         // Collect all property names (e.g., "Room1")
-        const propNames = expr.properties.map((prop) => getReferenceText(prop));
+        const propNames = expr.properties.map((prop) => getReferenceName(prop));
 
         // Join them with dots to form the full reference
         return [baseName, ...propNames].join(".");
@@ -125,7 +126,7 @@ function convertExprToST(expr: Expr): string {
 
       // Get the reference name
       if (expr.ref) {
-        result = getReferenceText(expr.ref);
+        result = getReferenceName(expr.ref);
       } else {
         result = "UNKNOWN_REF";
       }
@@ -583,7 +584,7 @@ function writeProgramMain(
   // Look for control units that should be included in MAIN
   for (const item of controlModel.controlBlock.items) {
     if (isControlUnit(item)) {
-      const controlUnit = item as ControlUnit;
+      const controlUnit = item;
 
       // Add statements from this control unit
       mainStatements.push(...controlUnit.stmts);

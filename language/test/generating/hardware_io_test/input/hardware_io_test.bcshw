@@ -1,0 +1,66 @@
+// Hardware configuration for hardware I/O test
+controller ValidTestController for Beckhoff {
+    // Digital input module
+    portgroup DI {
+        moduleType: EL1008
+        ioType: DIGITAL_INPUT
+        startAddress: %IX0.0
+        channels: 8
+    }
+    
+    // Digital output module
+    portgroup DO {
+        moduleType: EL2008
+        ioType: DIGITAL_OUTPUT
+        startAddress: %QX0.0
+        channels: 8
+    }
+    
+    // Analog input module
+    portgroup AI {
+        moduleType: EL3064
+        ioType: ANALOG_INPUT
+        startAddress: %IW0
+        channels: 4
+    }
+    
+    // Analog output module
+    portgroup AO {
+        moduleType: EL4004
+        ioType: ANALOG_OUTPUT
+        startAddress: %QW0
+        channels: 4
+    }
+    
+    // Input datapoints
+    datapoint switches {
+        portgroup: DI
+        channels: {
+            channel inputSwitch1: BOOL at 0
+            channel inputSwitch2: BOOL at 1
+        }
+    }
+    
+    datapoint analog_inputs {
+        portgroup: AI
+        channels: {
+            channel analogInput: REAL at 0
+        }
+    }
+    
+    // Output datapoints
+    datapoint lights {
+        portgroup: DO
+        channels: {
+            channel outputLight1: BOOL at 0
+            channel outputLight2: BOOL at 1
+        }
+    }
+    
+    datapoint analog_outputs {
+        portgroup: AO
+        channels: {
+            channel analogOutput: REAL at 0
+        }
+    }
+}

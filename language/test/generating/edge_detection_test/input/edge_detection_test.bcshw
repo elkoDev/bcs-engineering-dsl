@@ -1,0 +1,35 @@
+// Hardware configuration for edge detection test
+controller ValidTestController for Beckhoff {
+    portgroup DI {
+        moduleType: EL1008
+        ioType: DIGITAL_INPUT
+        startAddress: %IX0.0
+        channels: 8
+    }
+    
+    portgroup DO {
+        moduleType: EL2008
+        ioType: DIGITAL_OUTPUT
+        startAddress: %QX0.0
+        channels: 8
+    }
+    
+    datapoint sensors {
+        portgroup: DI
+        channels: {
+            channel sensor1: BOOL at 0,
+            channel sensor2: BOOL at 1,
+            channel pushButton: BOOL at 2
+        }
+    }
+    
+    datapoint outputs {
+        portgroup: DO
+        channels: {
+            channel startSignal: BOOL at 0,
+            channel stopSignal: BOOL at 1,
+            channel toggleOutput: BOOL at 2,
+            channel pulseOutput: BOOL at 3
+        }
+    }
+}

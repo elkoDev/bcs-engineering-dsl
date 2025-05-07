@@ -1,0 +1,7 @@
+TYPE ProcessState : (
+	INIT := 0,
+	PROCESSING := 1,
+	FINALIZING := 2,
+	COMPLETE := 3
+);
+END_TYPE
