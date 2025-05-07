@@ -1,14 +1,10 @@
 PROGRAM MAIN
 VAR
-    // For struct initialization and field access
-    rect : Rectangle := (x := 5.0, y := 10.0);
-    area : REAL;
-    perimeter : REAL;
-    
-    // For array of structs
-    rects : ARRAY[0..1] OF Rectangle := [(x := 1.0, y := 2.0), (x := 3.0, y := 4.0)];
-    area2 : REAL := 2.0;
-    
-    // Hardware I/O mappings
-    windowContact AT %IX0.0 : BOOL;
+    windowContact_value AT %I*: BOOL; (* Input channel from hardware *)
+    TestStructs_rect: Rectangle := (x:=5, y:=10);
+    TestStructs_area: REAL;
+    TestStructs_perimeter: REAL;
+    TestStructs_rects: ARRAY [0..1] OF Rectangle := [(x:=1, y:=2), (x:=3, y:=4)];
+    TestStructs_area2: REAL := TestStructs_rects[0].x * TestStructs_rects[0].y;
+    bRunOnlyOnce: BOOL := FALSE;
 END_VAR

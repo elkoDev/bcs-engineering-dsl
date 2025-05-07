@@ -1,7 +1,11 @@
-// Implementation for MAIN program
-// Accessing struct fields
-area := rect.x * rect.y;
-perimeter := 2.0 * (rect.x + rect.y);
+// Initialize code - runs only once
+IF NOT bRunOnlyOnce THEN
+    ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_ERROR OR ADSLOG_MSGTYPE_LOG, 
+             msgFmtStr := 'Program started %s', 
+             strArg := 'successfully!');
+    bRunOnlyOnce := TRUE;
+END_IF
 
-// Access struct fields from array
-area2 := rects[0].x * rects[0].y;
+// Main program logic
+TestStructs_area := TestStructs_rect.x * TestStructs_rect.y;
+TestStructs_perimeter := 2 * (TestStructs_rect.x + TestStructs_rect.y);
