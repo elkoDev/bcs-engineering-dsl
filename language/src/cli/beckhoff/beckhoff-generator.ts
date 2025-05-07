@@ -375,87 +375,120 @@ function convertStatementToST(
   if (isAssignmentStmt(stmt)) {
     return `${convertExprToST(stmt.target)} := ${convertExprToST(stmt.value)};`;
   } else if (isIfStmt(stmt)) {
-    let ifContent = `IF ${convertExprToST(stmt.condition)} THEN\n`;
-
-    for (const subStmt of stmt.stmts) {
-      ifContent += `  ${convertStatementToST(subStmt)}\n`;
-    }
-
-    for (const elseIf of stmt.elseIfStmts) {
-      ifContent += `ELSIF ${convertExprToST(elseIf.condition)} THEN\n`;
-      for (const subStmt of elseIf.stmts) {
-        ifContent += `  ${convertStatementToST(subStmt)}\n`;
-      }
-    }
-
-    if (stmt.elseStmt) {
-      ifContent += `ELSE\n`;
-      for (const subStmt of stmt.elseStmt.stmts) {
-        ifContent += `  ${convertStatementToST(subStmt)}\n`;
-      }
-    }
-
-    ifContent += `END_IF;`;
-    return ifContent;
+    return toString(
+      expandToNode`
+        IF ${convertExprToST(stmt.condition)} THEN
+            ${joinToNode(
+              stmt.stmts,
+              (subStmt) => convertStatementToST(subStmt),
+              {
+                appendNewLineIfNotEmpty: true,
+              }
+            )}
+            ${joinToNode(
+              stmt.elseIfStmts,
+              (elseIf) => expandToNode`
+                ELSIF ${convertExprToST(elseIf.condition)} THEN
+                    ${joinToNode(
+                      elseIf.stmts,
+                      (subStmt) => convertStatementToST(subStmt),
+                      {
+                        appendNewLineIfNotEmpty: true,
+                      }
+                    )}
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+            ${joinToNode(
+              stmt.elseStmt?.stmts || [],
+              (subStmt) => convertStatementToST(subStmt),
+              {
+                appendNewLineIfNotEmpty: true,
+              }
+            )}
+        END_IF;
+      `
+    );
   } else if (isWhileStmt(stmt)) {
-    let whileContent = `WHILE ${convertExprToST(stmt.condition)} DO\n`;
-
-    for (const subStmt of stmt.stmts) {
-      whileContent += `  ${convertStatementToST(subStmt)}\n`;
-    }
-
-    whileContent += `END_WHILE;`;
-    return whileContent;
+    return toString(
+      expandToNode`
+        WHILE ${convertExprToST(stmt.condition)} DO
+            ${joinToNode(
+              stmt.stmts,
+              (subStmt) => convertStatementToST(subStmt),
+              {
+                appendNewLineIfNotEmpty: true,
+              }
+            )}
+        END_WHILE;
+      `
+    );
   } else if (isForStmt(stmt)) {
-    let forContent = `FOR ${stmt.loopVar.name} := ${
-      stmt.loopVar.init ? convertExprToST(stmt.loopVar.init) : "0"
-    } TO ${convertExprToST(stmt.end)}`;
-
-    if (stmt.step) {
-      forContent += ` BY ${convertExprToST(stmt.step)}`;
-    }
-
-    forContent += ` DO\n`;
-
-    for (const subStmt of stmt.stmts) {
-      forContent += `  ${convertStatementToST(subStmt)}\n`;
-    }
-
-    forContent += `END_FOR;`;
-    return forContent;
+    return toString(
+      expandToNode`
+        FOR ${stmt.loopVar.name} := ${
+        stmt.loopVar.init ? convertExprToST(stmt.loopVar.init) : "0"
+      } TO ${convertExprToST(stmt.end)}${
+        stmt.step ? ` BY ${convertExprToST(stmt.step)}` : ""
+      } DO
+            ${joinToNode(
+              stmt.stmts,
+              (subStmt) => convertStatementToST(subStmt),
+              {
+                appendNewLineIfNotEmpty: true,
+              }
+            )}
+        END_FOR;
+      `
+    );
   } else if (isSwitchStmt(stmt)) {
-    let switchContent = `CASE ${convertExprToST(stmt.expr)} OF\n`;
-
-    for (const caseOption of stmt.cases) {
-      const literals = caseOption.literals
-        .map((lit) => {
-          if (isEnumMemberLiteral(lit.val)) {
-            return `${lit.val.enumDecl.ref?.name}.${lit.val.member.ref?.name}`;
-          } else {
-            return String(lit.val);
-          }
-        })
-        .join(", ");
-
-      switchContent += `  ${literals}:\n`;
-
-      for (const subStmt of caseOption.stmts) {
-        switchContent += `    ${convertStatementToST(subStmt)}\n`;
-      }
-    }
-
-    if (stmt.default) {
-      switchContent += `  ELSE:\n`;
-
-      for (const subStmt of stmt.default.stmts) {
-        switchContent += `    ${convertStatementToST(subStmt)}\n`;
-      }
-    }
-
-    switchContent += `END_CASE;`;
-    return switchContent;
+    return toString(
+      expandToNode`
+        CASE ${convertExprToST(stmt.expr)} OF
+            ${joinToNode(
+              stmt.cases,
+              (caseOption) => {
+                const literals = caseOption.literals
+                  .map((lit) => {
+                    if (isEnumMemberLiteral(lit.val)) {
+                      return `${lit.val.enumDecl.ref?.name}.${lit.val.member.ref?.name}`;
+                    } else {
+                      return String(lit.val);
+                    }
+                  })
+                  .join(", ");
+                return expandToNode`
+                  ${literals}:
+                      ${joinToNode(
+                        caseOption.stmts,
+                        (subStmt) => convertStatementToST(subStmt),
+                        {
+                          appendNewLineIfNotEmpty: true,
+                        }
+                      )}
+                `;
+              },
+              { appendNewLineIfNotEmpty: true }
+            )}
+            ${
+              stmt.default
+                ? expandToNode`
+                ELSE:
+                    ${joinToNode(
+                      stmt.default.stmts,
+                      (subStmt) => convertStatementToST(subStmt),
+                      {
+                        appendNewLineIfNotEmpty: true,
+                      }
+                    )}
+            `
+                : ""
+            }
+        END_CASE;
+      `
+    );
   } else if (isWaitStmt(stmt)) {
-    return `// Wait statements are not directly supported in ST - using equivalent timer logic\n`;
+    return `// Wait statements are not directly supported in ST - using equivalent timer logic`;
   } else if (isBreakStmt(stmt)) {
     return `EXIT;`;
   } else if (isContinueStmt(stmt)) {
@@ -463,8 +496,6 @@ function convertStatementToST(
   } else if (isExpressionStmt(stmt)) {
     return `${convertExprToST(stmt.expr)};`;
   } else if (isUseStmt(stmt)) {
-    let useContent = "";
-
     // Handle function block instantiation and calling
     const fbType = stmt.functionBlockRef.ref?.name || "UNKNOWN_FB";
 
@@ -488,29 +519,37 @@ function convertStatementToST(
       })
       .join(", ");
 
-    // Handle output mapping
+    // Handle output mapping with consistent formatting
     if (stmt.useOutput.singleOutput) {
       const targetOutputVarName =
         stmt.useOutput.singleOutput.targetOutputVar.ref?.name ?? "output";
       // Using direct access for single output case, which returns directly from FB call
-      useContent += `${fbInstanceName} := ${fbType}(${inputMappings});\n`;
-      useContent += `${targetOutputVarName} := ${fbInstanceName};`;
+      return toString(
+        expandToNode`
+          ${fbInstanceName} := ${fbType}(${inputMappings});
+          ${targetOutputVarName} := ${fbInstanceName};
+        `
+      );
     } else if (stmt.useOutput.mappingOutputs.length > 0) {
-      // First initialize the instance with input values
-      useContent += `${fbInstanceName}(${inputMappings});\n`;
-
-      // Map outputs from instance properties
-      for (const outMapping of stmt.useOutput.mappingOutputs) {
-        const targetOutputVarName =
-          outMapping.targetOutputVar.ref?.name || "output";
-        const fbOutputVarName = outMapping.fbOutputVar.ref?.name || "output";
-        useContent += `${targetOutputVarName} := ${fbInstanceName}.${fbOutputVarName};\n`;
-      }
+      return toString(
+        expandToNode`
+          ${fbInstanceName}(${inputMappings});
+          ${joinToNode(
+            stmt.useOutput.mappingOutputs,
+            (outMapping) => {
+              const targetOutputVarName =
+                outMapping.targetOutputVar.ref?.name ?? "output";
+              const fbOutputVarName =
+                outMapping.fbOutputVar.ref?.name ?? "output";
+              return `${targetOutputVarName} := ${fbInstanceName}.${fbOutputVarName};`;
+            },
+            { appendNewLineIfNotEmpty: true }
+          )}
+        `
+      );
     } else {
-      useContent += `${fbInstanceName}(${inputMappings});\n`;
+      return `${fbInstanceName}(${inputMappings});`;
     }
-
-    return useContent;
   } else if (isOnRisingEdgeStmt(stmt)) {
     // Get the signal name and expression
     const signalExpr = convertExprToST(stmt.signal);
@@ -531,16 +570,21 @@ function convertStatementToST(
     }
 
     // Using Beckhoff's built-in R_TRIG function block for rising edge detection
-    let risingContent = `// Rising edge detection for ${signalExpr}\n`;
-    risingContent += `${instanceName}(CLK := ${signalExpr});\n`;
-    risingContent += `IF ${instanceName}.Q THEN\n`;
-
-    for (const subStmt of stmt.stmts) {
-      risingContent += `  ${convertStatementToST(subStmt)}\n`;
-    }
-
-    risingContent += `END_IF;`;
-    return risingContent;
+    return toString(
+      expandToNode`
+        // Rising edge detection for ${signalExpr}
+        ${instanceName}(CLK := ${signalExpr});
+        IF ${instanceName}.Q THEN
+            ${joinToNode(
+              stmt.stmts,
+              (subStmt) => convertStatementToST(subStmt),
+              {
+                appendNewLineIfNotEmpty: true,
+              }
+            )}
+        END_IF;
+      `
+    );
   } else if (isOnFallingEdgeStmt(stmt)) {
     // Get the signal name and expression
     const signalExpr = convertExprToST(stmt.signal);
@@ -561,16 +605,21 @@ function convertStatementToST(
     }
 
     // Using Beckhoff's built-in F_TRIG function block for falling edge detection
-    let fallingContent = `// Falling edge detection for ${signalExpr}\n`;
-    fallingContent += `${instanceName}(CLK := ${signalExpr});\n`;
-    fallingContent += `IF ${instanceName}.Q THEN\n`;
-
-    for (const subStmt of stmt.stmts) {
-      fallingContent += `  ${convertStatementToST(subStmt)}\n`;
-    }
-
-    fallingContent += `END_IF;`;
-    return fallingContent;
+    return toString(
+      expandToNode`
+        // Falling edge detection for ${signalExpr}
+        ${instanceName}(CLK := ${signalExpr});
+        IF ${instanceName}.Q THEN
+            ${joinToNode(
+              stmt.stmts,
+              (subStmt) => convertStatementToST(subStmt),
+              {
+                appendNewLineIfNotEmpty: true,
+              }
+            )}
+        END_IF;
+      `
+    );
   } else if (isVarDecl(stmt)) {
     return `${stmt.name}: ${convertTypeRefToST(stmt.typeRef)}${
       stmt.init ? ` := ${convertExprToST(stmt.init)}` : ""

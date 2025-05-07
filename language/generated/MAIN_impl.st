@@ -24,38 +24,35 @@ arrayOfLights[2] := TRUE;
 temperaturesArray.Room1 := 20.5;
 temperaturesArray.Room2 := 22;
 WHILE retries < 3 DO
-  heater := TRUE;
-  retries := retries + 1;
-  // Wait statements are not directly supported in ST - using equivalent timer logic
-
-  IF retries = 2 THEN
-  EXIT;
+    heater := TRUE;
+    retries := retries + 1;
+    // Wait statements are not directly supported in ST - using equivalent timer logic
+    IF retries = 2 THEN
+    EXIT;
 END_IF;
 END_WHILE;
 FOR i := 0 TO 5 BY 1 DO
-  lightLevel := i * 20;
-  IF i = 2 THEN
-  CONTINUE;
+    lightLevel := i * 20;
+    IF i = 2 THEN
+    CONTINUE;
 END_IF;
-  // Wait statements are not directly supported in ST - using equivalent timer logic
-
+    // Wait statements are not directly supported in ST - using equivalent timer logic
 END_FOR;
 heatingLogicInstance := HeatingLogic(iTemp:=Temperatures.Room1, iMode:=mode);
 heatingEnabled := heatingLogicInstance;
 heater := heatingEnabled;
 CASE mode OF
-  Mode.COMFORT:
-    lightLevel := 100;
-  Mode.ECO:
-    lightLevel := 50;
-  ELSE:
-    lightLevel := 0;
+    Mode.COMFORT:
+        lightLevel := 100;
+    Mode.ECO:
+        lightLevel := 50;
+    ELSE:
+        lightLevel := 0;
 END_CASE;
 IF FALSE >= 'TOD#07:00:00' THEN
-  Lights.Room2 := TRUE;
+    Lights.Room2 := TRUE;
 END_IF;
 // Wait statements are not directly supported in ST - using equivalent timer logic
-
 heater := TRUE;
 Lights.Room1 := FALSE;
 fB_DALI207QueryFailureStatusInstance(bStart:=TRUE, nAddress:=1, eAddressType:=daliAddress, eCommandPriority:=daliPriority);
@@ -76,5 +73,5 @@ IF f_TRIG_Buttons_Room2_Instance.Q THEN
   Lights.Room2 := FALSE;
 END_IF;
 IF UltrasonicSensor.Valid THEN
-  lightLevel := distance;
+    lightLevel := distance;
 END_IF;
