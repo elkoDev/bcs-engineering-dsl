@@ -490,7 +490,19 @@ function convertStatementToST(stmt: Statement): string {
     let useContent = "";
 
     // Handle function block instantiation and calling
-    const fbName = stmt.functionBlockRef.ref?.name || "UNKNOWN_FB";
+    const fbType = stmt.functionBlockRef.ref?.name || "UNKNOWN_FB";
+    
+    // Create a proper instance name in camelCase, ensuring it's unique if needed
+    let fbInstanceName = fbType.charAt(0).toLowerCase() + fbType.slice(1) + "Instance";
+    
+    // Check if we need to make the instance name unique
+    let instanceCounter = 1;
+    const baseInstanceName = fbInstanceName;
+    while (usedInstanceNames.has(fbInstanceName)) {
+      fbInstanceName = baseInstanceName + instanceCounter;
+      instanceCounter++;
+    }
+    usedInstanceNames.add(fbInstanceName);
 
     // Map inputs
     const inputMappings = stmt.inputArgs
@@ -502,19 +514,21 @@ function convertStatementToST(stmt: Statement): string {
     // Handle output mapping
     if (stmt.useOutput.singleOutput) {
       const targetOutputVarName =
-        stmt.useOutput.singleOutput.targetOutputVar.ref?.name;
-      useContent += `${targetOutputVarName} := ${fbName}(${inputMappings});\n`;
+        stmt.useOutput.singleOutput.targetOutputVar.ref?.name || "output";
+      useContent += `${fbInstanceName} := ${fbType}(${inputMappings});\n`;
+      useContent += `${targetOutputVarName} := ${fbInstanceName}.${stmt.useOutput.singleOutput.fbOutputVar.ref?.name || "output"};\n`;
     } else if (stmt.useOutput.mappingOutputs.length > 0) {
-      useContent += `${fbName}(${inputMappings});\n`;
+      // First initialize the instance with input values
+      useContent += `${fbInstanceName}(${inputMappings});\n`;
 
-      // Map outputs after function block call
+      // Map outputs from instance properties
       for (const outMapping of stmt.useOutput.mappingOutputs) {
-        const targetOutputVarName = outMapping.targetOutputVar.ref?.name;
-        const fbOutputVarName = outMapping.fbOutputVar.ref?.name;
-        useContent += `${targetOutputVarName} := ${fbName}.${fbOutputVarName};\n`;
+        const targetOutputVarName = outMapping.targetOutputVar.ref?.name || "output";
+        const fbOutputVarName = outMapping.fbOutputVar.ref?.name || "output";
+        useContent += `${targetOutputVarName} := ${fbInstanceName}.${fbOutputVarName};\n`;
       }
     } else {
-      useContent += `${fbName}(${inputMappings});\n`;
+      useContent += `${fbInstanceName}(${inputMappings});\n`;
     }
 
     return useContent;
@@ -568,6 +582,9 @@ function convertStatementToST(stmt: Statement): string {
 
   return `// Unsupported statement type: ${(stmt as any).$type}`;
 }
+
+// Track used instance names to ensure uniqueness
+const usedInstanceNames = new Set<string>();
 
 /**
  * Generate ST code for the MAIN program

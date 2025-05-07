@@ -23,7 +23,7 @@ extern functionblock FB_DALI207QueryFailureStatus {
     outputs {
         var bError : BOOL;
         var ipResultMessage : I_TcMessage;
-        var bBussy : BOOL;
+        var bBusy : BOOL;
         var nFailureStatus : INT;
     }
 }
@@ -142,7 +142,18 @@ control MainController {
             eAddressType: daliAddress,
             eCommandPriority: daliPriority
         ) -> {
-            bBussy: status,
+            bBusy: status,
+            bError: status,
+            nFailureStatus: failureStatus,
+            ipResultMessage: resultMessage
+        };
+        use FB_DALI207QueryFailureStatus(
+            bStart: false,
+            nAddress: 2,
+            eAddressType: daliAddress,
+            eCommandPriority: daliPriority
+        ) -> {
+            bBusy: status,
             bError: status,
             nFailureStatus: failureStatus,
             ipResultMessage: resultMessage

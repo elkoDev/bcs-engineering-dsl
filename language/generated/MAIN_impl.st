@@ -30,7 +30,7 @@ END_IF;
   // Wait statements are not directly supported in ST - using equivalent timer logic
 
 END_FOR;
-heatingEnabled := HeatingLogic(iTemp:=FALSE, iMode:=FALSE);
+heatingEnabled := heatingLogicInstance(iTemp:=FALSE, iMode:=FALSE);
 
 FALSE := FALSE;
 CASE FALSE OF
@@ -51,11 +51,17 @@ END_IF;
 
 FALSE := TRUE;
 FALSE := FALSE;
-FB_DALI207QueryFailureStatus(bStart:=TRUE, nAddress:=1, eAddressType:=FALSE, eCommandPriority:=FALSE);
-bBussy := FB_DALI207QueryFailureStatus.status;
-bError := FB_DALI207QueryFailureStatus.status;
-nFailureStatus := FB_DALI207QueryFailureStatus.failureStatus;
-ipResultMessage := FB_DALI207QueryFailureStatus.resultMessage;
+fB_DALI207QueryFailureStatusInstance(bStart:=TRUE, nAddress:=1, eAddressType:=FALSE, eCommandPriority:=FALSE);
+status := fB_DALI207QueryFailureStatusInstance.bBusy;
+status := fB_DALI207QueryFailureStatusInstance.bError;
+failureStatus := fB_DALI207QueryFailureStatusInstance.nFailureStatus;
+resultMessage := fB_DALI207QueryFailureStatusInstance.ipResultMessage;
+
+fB_DALI207QueryFailureStatusInstance1(bStart:=FALSE, nAddress:=2, eAddressType:=FALSE, eCommandPriority:=FALSE);
+status := fB_DALI207QueryFailureStatusInstance1.bBusy;
+status := fB_DALI207QueryFailureStatusInstance1.bError;
+failureStatus := fB_DALI207QueryFailureStatusInstance1.nFailureStatus;
+resultMessage := fB_DALI207QueryFailureStatusInstance1.ipResultMessage;
 
 // Falling edge detection for FALSE
 F_TRIG_Buttons_instance(CLK := FALSE);
