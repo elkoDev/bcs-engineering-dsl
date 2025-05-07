@@ -7,6 +7,6 @@ IF NOT bRunOnlyOnce THEN
 END_IF
 
 // Main program logic
-IF currentMode = Mode.ECO THEN
-    currentMode := Mode.COMFORT;
+IF TestUnit_currentMode = Mode.ECO THEN
+    TestUnit_currentMode := Mode.COMFORT;
 END_IF;
