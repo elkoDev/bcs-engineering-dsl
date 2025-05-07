@@ -3,6 +3,7 @@ control ValidTestController {
     functionblock SimpleLogicFB {
         inputs {
             var iInput: BOOL;
+            var iInput2: INT;
         }
         outputs {
             var oOutput: BOOL;
@@ -14,7 +15,12 @@ control ValidTestController {
 
     unit TestFunctionBlock {
         var input: BOOL = true;
+        var input2: INT = 5;
+        var input3: BOOL = false;
+        var input4: INT = 10;
         var output: BOOL;
-        use SimpleLogicFB(iInput: input) -> { oOutput: output };
+        var output2: BOOL;
+        use SimpleLogicFB(iInput: input, iInput2: input2) -> { oOutput: output };
+        use SimpleLogicFB(iInput: input3, iInput2: input4) -> { oOutput: output2 };
     }
 }
