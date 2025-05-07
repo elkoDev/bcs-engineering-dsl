@@ -136,7 +136,6 @@ Statement:
     | LocalVarDeclStmt
     | WaitStmt
     | EdgeStmt
-    | RampStmt
     | UseStmt
     | ContinueStmt
     | BreakStmt
@@ -239,10 +238,6 @@ OnRisingEdgeStmt:
 
 OnFallingEdgeStmt:
     'on_falling' EdgeStatementCore Block
-;
-
-RampStmt:
-    'ramp' '(' target=Ref ',' fromExpr=Expr ',' toExpr=Expr ',' dur=TimeLiteral ')' ';'
 ;
 
 // --------------------------------------------------------------------------

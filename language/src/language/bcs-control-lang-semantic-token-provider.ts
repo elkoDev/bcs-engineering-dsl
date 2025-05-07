@@ -16,7 +16,6 @@ import {
   isInputMapping,
   isMappingUseResult,
   isPrimary,
-  isRampStmt,
   isRef,
   isSimpleUseResult,
   isStructDecl,
@@ -274,25 +273,6 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
             startChar,
             acceptor,
             "time"
-          );
-        }
-      }
-    }
-    if (isRampStmt(node)) {
-      if (node.dur && node.$cstNode) {
-        const fullText = node.$cstNode.text;
-        const match = RegExp(/T#\d+(ms|s|m|h|d)/).exec(fullText);
-        if (match) {
-          const matchIndex = fullText.indexOf(match[0]);
-          const { line, character } = node.$cstNode.range.start;
-          const startChar = character + matchIndex;
-          this.formatTimeLiteralRaw(
-            node,
-            match[0],
-            line,
-            startChar,
-            acceptor,
-            "dur"
           );
         }
       }

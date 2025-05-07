@@ -26,7 +26,6 @@ import {
   isSwitchStmt,
   isUseStmt,
   isWaitStmt,
-  isRampStmt,
   isExpressionStmt,
   isOnRisingEdgeStmt,
   isOnFallingEdgeStmt,
@@ -478,12 +477,6 @@ function convertStatementToST(stmt: Statement): string {
     return `EXIT;`;
   } else if (isContinueStmt(stmt)) {
     return `CONTINUE;`;
-  } else if (isRampStmt(stmt)) {
-    return `// Ramp statements require custom implementation in TwinCAT\n// Target: ${convertExprToST(
-      stmt.target
-    )}, From: ${convertExprToST(stmt.fromExpr)}, To: ${convertExprToST(
-      stmt.toExpr
-    )}, Duration: ${stmt.dur}\n`;
   } else if (isExpressionStmt(stmt)) {
     return `${convertExprToST(stmt.expr)};`;
   } else if (isUseStmt(stmt)) {
@@ -491,10 +484,11 @@ function convertStatementToST(stmt: Statement): string {
 
     // Handle function block instantiation and calling
     const fbType = stmt.functionBlockRef.ref?.name || "UNKNOWN_FB";
-    
+
     // Create a proper instance name in camelCase, ensuring it's unique if needed
-    let fbInstanceName = fbType.charAt(0).toLowerCase() + fbType.slice(1) + "Instance";
-    
+    let fbInstanceName =
+      fbType.charAt(0).toLowerCase() + fbType.slice(1) + "Instance";
+
     // Check if we need to make the instance name unique
     let instanceCounter = 1;
     const baseInstanceName = fbInstanceName;
@@ -515,15 +509,17 @@ function convertStatementToST(stmt: Statement): string {
     if (stmt.useOutput.singleOutput) {
       const targetOutputVarName =
         stmt.useOutput.singleOutput.targetOutputVar.ref?.name || "output";
+      // Using direct access for single output case, which returns directly from FB call
       useContent += `${fbInstanceName} := ${fbType}(${inputMappings});\n`;
-      useContent += `${targetOutputVarName} := ${fbInstanceName}.${stmt.useOutput.singleOutput.fbOutputVar.ref?.name || "output"};\n`;
+      useContent += `${targetOutputVarName} := ${fbInstanceName};`;
     } else if (stmt.useOutput.mappingOutputs.length > 0) {
       // First initialize the instance with input values
       useContent += `${fbInstanceName}(${inputMappings});\n`;
 
       // Map outputs from instance properties
       for (const outMapping of stmt.useOutput.mappingOutputs) {
-        const targetOutputVarName = outMapping.targetOutputVar.ref?.name || "output";
+        const targetOutputVarName =
+          outMapping.targetOutputVar.ref?.name || "output";
         const fbOutputVarName = outMapping.fbOutputVar.ref?.name || "output";
         useContent += `${targetOutputVarName} := ${fbInstanceName}.${fbOutputVarName};\n`;
       }
@@ -597,10 +593,14 @@ function writeProgramMain(
   hardwareModel: HardwareModel,
   destination: string
 ): string {
+  // Reset the used instance names to ensure clean tracking for this program
+  usedInstanceNames.clear();
+
   // Collect all variables that need to be declared in the MAIN program
   const mainVars: VarDecl[] = [];
   // Collect all FB instances that need to be created
-  const fbInstances: FunctionBlockDecl[] = [];
+  // Use Map to store instance name -> FB type
+  const fbInstancesMap = new Map<string, string>();
   // Collect all statements for the main logic
   const mainStatements: Statement[] = [];
 
@@ -619,10 +619,23 @@ function writeProgramMain(
       // Find all function block references to create instances
       const useStmts = controlUnit.stmts.filter(isUseStmt);
       for (const useStmt of useStmts) {
-        const fbRef = useStmt.functionBlockRef.ref;
-        if (fbRef && !fbInstances.includes(fbRef)) {
-          fbInstances.push(fbRef);
+        const fbType = useStmt.functionBlockRef.ref?.name || "UNKNOWN_FB";
+
+        // Create a proper instance name in camelCase, ensuring it's unique
+        let fbInstanceName =
+          fbType.charAt(0).toLowerCase() + fbType.slice(1) + "Instance";
+
+        // Check if we need to make the instance name unique
+        let instanceCounter = 1;
+        const baseInstanceName = fbInstanceName;
+        while (usedInstanceNames.has(fbInstanceName)) {
+          fbInstanceName = baseInstanceName + instanceCounter;
+          instanceCounter++;
         }
+        usedInstanceNames.add(fbInstanceName);
+
+        // Add to instance map for declaration section
+        fbInstancesMap.set(fbInstanceName, fbType);
       }
     }
   }
@@ -686,15 +699,9 @@ function writeProgramMain(
             `,
             { appendNewLineIfNotEmpty: true }
           )}
-          ${joinToNode(
-            fbInstances,
-            (fb) => expandToNode`
-              ${fb.name.charAt(0).toLowerCase() + fb.name.slice(1)}Instance: ${
-              fb.name
-            };
-            `,
-            { appendNewLineIfNotEmpty: true }
-          )}
+          ${Array.from(fbInstancesMap.entries())
+            .map(([instanceName, fbType]) => `${instanceName}: ${fbType};`)
+            .join("\n          ")}
           ${edgeDetectionFBs.join("\n          ")}
           bRunOnlyOnce: BOOL := FALSE;
       END_VAR

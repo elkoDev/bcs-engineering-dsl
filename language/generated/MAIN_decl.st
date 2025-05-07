@@ -19,7 +19,8 @@ VAR
     failureStatus: INT;
     distance: INT := FALSE;
     heatingLogicInstance: HeatingLogic;
-    fB_DALI207QueryFailureStatusInstance: FB_DALI207QueryFailureStatus;
+          fB_DALI207QueryFailureStatusInstance: FB_DALI207QueryFailureStatus;
+          fB_DALI207QueryFailureStatusInstance1: FB_DALI207QueryFailureStatus;
     R_TRIG_Buttons_instance: R_TRIG;
           F_TRIG_Buttons_instance: F_TRIG;
     bRunOnlyOnce: BOOL := FALSE;
