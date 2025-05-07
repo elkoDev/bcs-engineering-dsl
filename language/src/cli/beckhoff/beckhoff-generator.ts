@@ -38,6 +38,7 @@ import {
   isVarDecl,
   isBreakStmt,
   isContinueStmt,
+  UseStmt,
 } from "../../language/generated/ast.js";
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
@@ -386,9 +387,13 @@ function writeFunctionBlock(
 /**
  * Convert a statement to ST code
  * @param stmt Statement to convert
+ * @param edgeMetadata Optional metadata for edge detection statements [type, counter]
  * @returns ST code representation of the statement
  */
-function convertStatementToST(stmt: Statement): string {
+function convertStatementToST(
+  stmt: Statement,
+  edgeMetadata?: [string, number]
+): string {
   if (isAssignmentStmt(stmt)) {
     return `${convertExprToST(stmt.target)} := ${convertExprToST(stmt.value)};`;
   } else if (isIfStmt(stmt)) {
@@ -531,12 +536,21 @@ function convertStatementToST(stmt: Statement): string {
   } else if (isOnRisingEdgeStmt(stmt)) {
     // Get the signal name and expression
     const signalExpr = convertExprToST(stmt.signal);
-    // Generate a unique instance name for the R_TRIG based on the signal
-    const signalRefText =
-      stmt.signal.ref && "$refText" in stmt.signal.ref
-        ? (stmt.signal.ref as any).$refText
-        : "signal";
-    const instanceName = `R_TRIG_${signalRefText}_instance`;
+
+    // Look up the proper instance name from our pre-processed map
+    let instanceName;
+    if (
+      edgeMetadata &&
+      edgeDetectionInstanceMap.has(`${signalExpr}_rising_${edgeMetadata[1]}`)
+    ) {
+      instanceName = edgeDetectionInstanceMap.get(
+        `${signalExpr}_rising_${edgeMetadata[1]}`
+      );
+    } else {
+      // Fallback to existing logic if needed
+      const signalPath = signalExpr.replace(/\./g, "_");
+      instanceName = `R_TRIG_${signalPath}_Instance`;
+    }
 
     // Using Beckhoff's built-in R_TRIG function block for rising edge detection
     let risingContent = `// Rising edge detection for ${signalExpr}\n`;
@@ -552,12 +566,21 @@ function convertStatementToST(stmt: Statement): string {
   } else if (isOnFallingEdgeStmt(stmt)) {
     // Get the signal name and expression
     const signalExpr = convertExprToST(stmt.signal);
-    // Generate a unique instance name for the F_TRIG based on the signal
-    const signalRefText =
-      stmt.signal.ref && "$refText" in stmt.signal.ref
-        ? (stmt.signal.ref as any).$refText
-        : "signal";
-    const instanceName = `F_TRIG_${signalRefText}_instance`;
+
+    // Look up the proper instance name from our pre-processed map
+    let instanceName;
+    if (
+      edgeMetadata &&
+      edgeDetectionInstanceMap.has(`${signalExpr}_falling_${edgeMetadata[1]}`)
+    ) {
+      instanceName = edgeDetectionInstanceMap.get(
+        `${signalExpr}_falling_${edgeMetadata[1]}`
+      );
+    } else {
+      // Fallback to existing logic if needed
+      const signalPath = signalExpr.replace(/\./g, "_");
+      instanceName = `F_TRIG_${signalPath}_Instance`;
+    }
 
     // Using Beckhoff's built-in F_TRIG function block for falling edge detection
     let fallingContent = `// Falling edge detection for ${signalExpr}\n`;
@@ -582,6 +605,9 @@ function convertStatementToST(stmt: Statement): string {
 // Track used instance names to ensure uniqueness
 const usedInstanceNames = new Set<string>();
 
+// Map to track edge detection instances (signal expression -> instance name)
+const edgeDetectionInstanceMap = new Map<string, string>();
+
 /**
  * Generate ST code for the MAIN program
  * @param controlModel Control model from the DSL
@@ -593,14 +619,17 @@ function writeProgramMain(
   hardwareModel: HardwareModel,
   destination: string
 ): string {
-  // Reset the used instance names to ensure clean tracking for this program
+  // Reset the used instance names and edge detection maps to ensure clean tracking for this program
   usedInstanceNames.clear();
+  edgeDetectionInstanceMap.clear();
 
   // Collect all variables that need to be declared in the MAIN program
   const mainVars: VarDecl[] = [];
   // Collect all FB instances that need to be created
   // Use Map to store instance name -> FB type
   const fbInstancesMap = new Map<string, string>();
+  // Map to track FB instances by FB type and index (similar to edge detection)
+  const fbInstanceTracker = new Map<string, Map<number, string>>();
   // Collect all statements for the main logic
   const mainStatements: Statement[] = [];
 
@@ -618,24 +647,44 @@ function writeProgramMain(
 
       // Find all function block references to create instances
       const useStmts = controlUnit.stmts.filter(isUseStmt);
+
+      // Group use statements by FB type to assign consistent indices
+      const fbTypeToUseStmts = new Map<string, UseStmt[]>();
       for (const useStmt of useStmts) {
-        const fbType = useStmt.functionBlockRef.ref?.name || "UNKNOWN_FB";
-
-        // Create a proper instance name in camelCase, ensuring it's unique
-        let fbInstanceName =
-          fbType.charAt(0).toLowerCase() + fbType.slice(1) + "Instance";
-
-        // Check if we need to make the instance name unique
-        let instanceCounter = 1;
-        const baseInstanceName = fbInstanceName;
-        while (usedInstanceNames.has(fbInstanceName)) {
-          fbInstanceName = baseInstanceName + instanceCounter;
-          instanceCounter++;
+        const fbType = useStmt.functionBlockRef.ref?.name ?? "UNKNOWN_FB";
+        if (!fbTypeToUseStmts.has(fbType)) {
+          fbTypeToUseStmts.set(fbType, []);
         }
-        usedInstanceNames.add(fbInstanceName);
+        fbTypeToUseStmts.get(fbType)?.push(useStmt);
+      }
 
-        // Add to instance map for declaration section
-        fbInstancesMap.set(fbInstanceName, fbType);
+      // Now process all FB types and assign instances with consistent indices
+      for (const [fbType, stmts] of fbTypeToUseStmts.entries()) {
+        // For each FB type, create a map to track instances by index
+        if (!fbInstanceTracker.has(fbType)) {
+          fbInstanceTracker.set(fbType, new Map());
+        }
+
+        // Process each use statement of this type
+        stmts.forEach((useStmt, index) => {
+          // Create a proper instance name in camelCase
+          let baseInstanceName =
+            fbType.charAt(0).toLowerCase() + fbType.slice(1) + "Instance";
+          let instanceName = baseInstanceName;
+
+          // If not the first instance of this type, add a numeric suffix
+          if (index > 0) {
+            // Start from 1 for the suffix (reserve base name for first instance)
+            instanceName = `${baseInstanceName}${index + 1}`;
+          }
+
+          // Add to instance maps and track used names
+          fbInstancesMap.set(instanceName, fbType);
+          usedInstanceNames.add(instanceName);
+
+          // Store for later reference in statement conversion
+          fbInstanceTracker.get(fbType)?.set(index, instanceName);
+        });
       }
     }
   }
@@ -643,28 +692,73 @@ function writeProgramMain(
   // Extract hardware datapoints
   const { inputs, outputs } = extractHardwareDatapoints(hardwareModel);
 
-  // Include R_TRIG and F_TRIG instances for edge detection
-  const edgeDetectionFBs: string[] = [];
+  // Handle edge detection trigger instances (R_TRIG and F_TRIG)
+  // Use a Map to ensure unique instance names
+  const edgeDetectionFBMap = new Map<string, string>();
 
-  // Look for edge detection statements and create FB instances for them
-  mainStatements.forEach((stmt) => {
-    if (isOnRisingEdgeStmt(stmt)) {
-      const signal = stmt.signal;
-      // Use $refText to get the signal name
-      const signalRefText =
-        signal.ref && "$refText" in signal.ref
-          ? (signal.ref as any).$refText
-          : "signal";
-      edgeDetectionFBs.push(`R_TRIG_${signalRefText}_instance: R_TRIG;`);
-    } else if (isOnFallingEdgeStmt(stmt)) {
-      const signal = stmt.signal;
-      // Use $refText to get the signal name
-      const signalRefText =
-        signal.ref && "$refText" in signal.ref
-          ? (signal.ref as any).$refText
-          : "signal";
-      edgeDetectionFBs.push(`F_TRIG_${signalRefText}_instance: F_TRIG;`);
+  // First pass: Pre-process all edge detection statements to assign unique instance names
+  // This ensures consistent naming when we actually process the statements in convertStatementToST
+  const risingEdgeStatements = mainStatements.filter(isOnRisingEdgeStmt);
+  const fallingEdgeStatements = mainStatements.filter(isOnFallingEdgeStmt);
+
+  // Process rising edge statements first
+  risingEdgeStatements.forEach((stmt, index) => {
+    // Get the signal expression string
+    const signalExpr = convertExprToST(stmt.signal);
+
+    // Create a more specific instance name based on the full signal path
+    const signalPath = signalExpr.replace(/\./g, "_");
+    let baseInstanceName = `R_TRIG_${signalPath}_Instance`;
+    let instanceName = baseInstanceName;
+
+    // If not the first instance with this base name, add a numeric suffix
+    if (
+      index > 0 ||
+      Array.from(edgeDetectionFBMap.keys()).some(
+        (key) => key === baseInstanceName
+      )
+    ) {
+      instanceName = `${baseInstanceName}${index + 1}`;
     }
+
+    // Add to maps and track used names
+    edgeDetectionFBMap.set(instanceName, "R_TRIG");
+    usedInstanceNames.add(instanceName);
+
+    // Store this specific instance name for this statement
+    // Use a unique key combining statement type, signal, and index
+    const key = `rising_${signalExpr}_${index}`;
+    edgeDetectionInstanceMap.set(key, instanceName);
+  });
+
+  // Process falling edge statements next
+  fallingEdgeStatements.forEach((stmt, index) => {
+    // Get the signal expression string
+    const signalExpr = convertExprToST(stmt.signal);
+
+    // Create a more specific instance name based on the full signal path
+    const signalPath = signalExpr.replace(/\./g, "_");
+    let baseInstanceName = `F_TRIG_${signalPath}_Instance`;
+    let instanceName = baseInstanceName;
+
+    // If not the first instance with this base name, add a numeric suffix
+    if (
+      index > 0 ||
+      Array.from(edgeDetectionFBMap.keys()).some(
+        (key) => key === baseInstanceName
+      )
+    ) {
+      instanceName = `${baseInstanceName}${index + 1}`;
+    }
+
+    // Add to maps and track used names
+    edgeDetectionFBMap.set(instanceName, "F_TRIG");
+    usedInstanceNames.add(instanceName);
+
+    // Store this specific instance name for this statement
+    // Use a unique key combining statement type, signal, and index
+    const key = `falling_${signalExpr}_${index}`;
+    edgeDetectionInstanceMap.set(key, instanceName);
   });
 
   // Generate declaration part
@@ -702,7 +796,9 @@ function writeProgramMain(
           ${Array.from(fbInstancesMap.entries())
             .map(([instanceName, fbType]) => `${instanceName}: ${fbType};`)
             .join("\n          ")}
-          ${edgeDetectionFBs.join("\n          ")}
+          ${Array.from(edgeDetectionFBMap.entries())
+            .map(([instanceName, fbType]) => `${instanceName}: ${fbType};`)
+            .join("\n          ")}
           bRunOnlyOnce: BOOL := FALSE;
       END_VAR
     `
@@ -722,7 +818,25 @@ function writeProgramMain(
       // Main program logic
       ${joinToNode(
         mainStatements.filter((stmt) => !isVarDecl(stmt)),
-        (stmt) => convertStatementToST(stmt),
+        (stmt, index) => {
+          if (isOnRisingEdgeStmt(stmt)) {
+            // Find this statement's index in the risingEdgeStatements array
+            const statementIndex = risingEdgeStatements.indexOf(stmt);
+            if (statementIndex !== -1) {
+              return convertEdgeDetectionToST(stmt, statementIndex, "rising");
+            }
+          } else if (isOnFallingEdgeStmt(stmt)) {
+            // Find this statement's index in the fallingEdgeStatements array
+            const statementIndex = fallingEdgeStatements.indexOf(stmt);
+            if (statementIndex !== -1) {
+              return convertEdgeDetectionToST(stmt, statementIndex, "falling");
+            }
+          } else if (isUseStmt(stmt)) {
+            // Handle function block use statements with consistent instance tracking
+            return convertUseStmtToST(stmt, fbInstanceTracker);
+          }
+          return convertStatementToST(stmt);
+        },
         { appendNewLineIfNotEmpty: true }
       )}
     `
@@ -737,6 +851,154 @@ function writeProgramMain(
   fs.writeFileSync(implFilePath, implContent);
 
   return implFilePath;
+}
+
+/**
+ * Convert an edge detection statement (rising or falling) to ST code
+ * @param stmt The edge detection statement
+ * @param index The index of this statement among others of the same type
+ * @param type The type of edge detection ("rising" or "falling")
+ * @returns ST code for the edge detection
+ */
+function convertEdgeDetectionToST(
+  stmt: Statement,
+  index: number,
+  type: "rising" | "falling"
+): string {
+  if (type === "rising" && isOnRisingEdgeStmt(stmt)) {
+    // Get the signal name and expression
+    const signalExpr = convertExprToST(stmt.signal);
+
+    // Get the instance name from our mapping using the unique key
+    const key = `${type}_${signalExpr}_${index}`;
+    const instanceName = edgeDetectionInstanceMap.get(key);
+
+    if (!instanceName) {
+      console.warn(`Could not find instance name for rising edge: ${key}`);
+      return "// ERROR: Missing edge detection instance";
+    }
+
+    // Using Beckhoff's built-in R_TRIG function block for rising edge detection
+    let risingContent = `// Rising edge detection for ${signalExpr}\n`;
+    risingContent += `${instanceName}(CLK := ${signalExpr});\n`;
+    risingContent += `IF ${instanceName}.Q THEN\n`;
+
+    for (const subStmt of stmt.stmts) {
+      risingContent += `  ${convertStatementToST(subStmt)}\n`;
+    }
+
+    risingContent += `END_IF;`;
+    return risingContent;
+  } else if (type === "falling" && isOnFallingEdgeStmt(stmt)) {
+    // Get the signal name and expression
+    const signalExpr = convertExprToST(stmt.signal);
+
+    // Get the instance name from our mapping using the unique key
+    const key = `${type}_${signalExpr}_${index}`;
+    const instanceName = edgeDetectionInstanceMap.get(key);
+
+    if (!instanceName) {
+      console.warn(`Could not find instance name for falling edge: ${key}`);
+      return "// ERROR: Missing edge detection instance";
+    }
+
+    // Using Beckhoff's built-in F_TRIG function block for falling edge detection
+    let fallingContent = `// Falling edge detection for ${signalExpr}\n`;
+    fallingContent += `${instanceName}(CLK := ${signalExpr});\n`;
+    fallingContent += `IF ${instanceName}.Q THEN\n`;
+
+    for (const subStmt of stmt.stmts) {
+      fallingContent += `  ${convertStatementToST(subStmt)}\n`;
+    }
+
+    fallingContent += `END_IF;`;
+    return fallingContent;
+  }
+
+  return "// Error: Invalid edge detection statement";
+}
+
+/**
+ * Convert a UseStmt to ST code using the consistent instance tracking system
+ * @param stmt The UseStmt to convert
+ * @param fbInstanceTracker The map tracking function block instances
+ * @returns ST code for the function block use
+ */
+function convertUseStmtToST(
+  stmt: UseStmt,
+  fbInstanceTracker: Map<string, Map<number, string>>
+): string {
+  let useContent = "";
+
+  // Get the function block type
+  const fbType = stmt.functionBlockRef.ref?.name ?? "UNKNOWN_FB";
+
+  // Find the instances map for this FB type
+  const instanceMap = fbInstanceTracker.get(fbType);
+
+  if (!instanceMap) {
+    console.warn(`No instance map found for FB type: ${fbType}`);
+    return "// ERROR: Missing function block instance tracking";
+  }
+
+  // Find all existing use statements of this type to determine the index
+  const fbTypeInstances = Array.from(instanceMap.entries());
+
+  // Find the appropriate instance - use the pre-assigned instance name
+  // We're finding the first instance that hasn't been used yet
+  let fbInstanceName = "";
+  for (const [_, name] of fbTypeInstances) {
+    if (!usedInstanceNames.has(`used_${fbType}_${name}`)) {
+      fbInstanceName = name;
+      // Mark this specific instance as used
+      usedInstanceNames.add(`used_${fbType}_${name}`);
+      break;
+    }
+  }
+
+  // If no unused instance found, use the first one (fallback)
+  if (!fbInstanceName && fbTypeInstances.length > 0) {
+    fbInstanceName = fbTypeInstances[0][1];
+  }
+
+  // If still no instance, create a new one (emergency fallback)
+  if (!fbInstanceName) {
+    fbInstanceName = `${fbType.charAt(0).toLowerCase()}${fbType.slice(
+      1
+    )}Instance`;
+    console.warn(`Using emergency fallback instance: ${fbInstanceName}`);
+  }
+
+  // Map inputs
+  const inputMappings = stmt.inputArgs
+    .map((arg) => {
+      return `${arg.inputVar.ref?.name}:=${convertExprToST(arg.value)}`;
+    })
+    .join(", ");
+
+  // Handle output mapping
+  if (stmt.useOutput.singleOutput) {
+    const targetOutputVarName =
+      stmt.useOutput.singleOutput.targetOutputVar.ref?.name || "output";
+    // Using direct access for single output case, which returns directly from FB call
+    useContent += `${fbInstanceName} := ${fbType}(${inputMappings});\n`;
+    useContent += `${targetOutputVarName} := ${fbInstanceName};`;
+  } else if (stmt.useOutput.mappingOutputs.length > 0) {
+    // First initialize the instance with input values
+    useContent += `${fbInstanceName}(${inputMappings});\n`;
+
+    // Map outputs from instance properties
+    for (const outMapping of stmt.useOutput.mappingOutputs) {
+      const targetOutputVarName =
+        outMapping.targetOutputVar.ref?.name || "output";
+      const fbOutputVarName = outMapping.fbOutputVar.ref?.name || "output";
+      useContent += `${targetOutputVarName} := ${fbInstanceName}.${fbOutputVarName};\n`;
+    }
+  } else {
+    useContent += `${fbInstanceName}(${inputMappings});\n`;
+  }
+
+  return useContent;
 }
 
 /**

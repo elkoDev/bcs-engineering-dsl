@@ -61,6 +61,9 @@ control MainController {
         on_rising(Buttons.Room1) {
             Lights.Room1 = !Lights.Room1;
         }
+        on_rising(Buttons.Room2) {
+            Lights.Room2 = !Lights.Room2;
+        }
     }
 
     unit TurnOnLightsScheduled at TOD#06:30:00 {
@@ -106,10 +109,6 @@ control MainController {
                 lightLevel = 0;
             }
         }
-    }
-
-    unit FadeOutLights at TOD#22:00:00 {
-        ramp(lightLevel, 100, 0, T#10s);
     }
 
     unit MorningPresenceCheck {
