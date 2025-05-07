@@ -32,9 +32,6 @@ import {
   Expr,
   isParenExpr,
   isControlUnit,
-  NegExpr,
-  NotExpr,
-  ParenExpr,
   isVarDecl,
   isBreakStmt,
   isContinueStmt,
@@ -151,14 +148,11 @@ function convertExprToST(expr: Expr): string {
       }
       return "UNKNOWN_REF";
     } else if (isParenExpr(expr)) {
-      const parenExpr = expr as ParenExpr;
-      return `(${convertExprToST(parenExpr.expr)})`;
+      return `(${convertExprToST(expr.expr)})`;
     } else if (isNegExpr(expr)) {
-      const negExpr = expr as NegExpr;
-      return `-${convertExprToST(negExpr.expr)}`;
+      return `-${convertExprToST(expr.expr)}`;
     } else if (isNotExpr(expr)) {
-      const notExpr = expr as NotExpr;
-      return `NOT ${convertExprToST(notExpr.expr)}`;
+      return `NOT ${convertExprToST(expr.expr)}`;
     } else if (isArrayLiteral(expr.val)) {
       return `[${expr.val.elements.map((e) => convertExprToST(e)).join(", ")}]`;
     } else if (isStructLiteral(expr.val)) {
@@ -167,7 +161,7 @@ function convertExprToST(expr: Expr): string {
         .join(", ")})`;
     } else if (isPrimitive(expr)) {
       if (typeof expr.val === "string") {
-        return `'${expr.val}'`; // String literals use single quotes in ST
+        return `'${expr.val.replaceAll('"', "")}'`; // String literals use single quotes in ST
       } else if (typeof expr.val === "boolean") {
         return expr.val ? "TRUE" : "FALSE"; // Booleans are uppercase in ST
       } else if (expr.val !== undefined) {
@@ -444,28 +438,31 @@ function convertStatementToST(
               {
                 appendNewLineIfNotEmpty: true,
               }
-            )}
+            )}${joinToNode(
+        stmt.elseIfStmts,
+        (elseIf) => expandToNode`
+        ELSIF ${convertExprToST(elseIf.condition)} THEN
             ${joinToNode(
-              stmt.elseIfStmts,
-              (elseIf) => expandToNode`
-                ELSIF ${convertExprToST(elseIf.condition)} THEN
-                    ${joinToNode(
-                      elseIf.stmts,
-                      (subStmt) => convertStatementToST(subStmt),
-                      {
-                        appendNewLineIfNotEmpty: true,
-                      }
-                    )}
-              `,
-              { appendNewLineIfNotEmpty: true }
-            )}
-            ${joinToNode(
-              stmt.elseStmt?.stmts || [],
+              elseIf.stmts,
               (subStmt) => convertStatementToST(subStmt),
               {
                 appendNewLineIfNotEmpty: true,
               }
-            )}
+            )}`,
+        { appendNewLineIfNotEmpty: true }
+      )}${
+        stmt.elseStmt
+          ? expandToNode`
+        ELSE
+            ${joinToNode(
+              stmt.elseStmt.stmts,
+              (subStmt) => convertStatementToST(subStmt),
+              {
+                appendNewLineIfNotEmpty: true,
+              }
+            )}`
+          : ""
+      }
         END_IF;
       `
     );
@@ -1089,8 +1086,9 @@ function convertUseStmtToST(
 
   // Handle output mapping
   if (stmt.useOutput.singleOutput) {
-    const targetOutputVarName =
-      stmt.useOutput.singleOutput.targetOutputVar.ref?.name ?? "output";
+    const targetOutputVarRef = stmt.useOutput.singleOutput.targetOutputVar;
+    const targetOutputVarName = getQualifiedReferenceName(targetOutputVarRef);
+
     // Using direct access for single output case, which returns directly from FB call
     useContent += `${fbInstanceName} := ${fbType}(${inputMappings});\n`;
     useContent += `${targetOutputVarName} := ${fbInstanceName};`;
@@ -1100,8 +1098,9 @@ function convertUseStmtToST(
 
     // Map outputs from instance properties
     for (const outMapping of stmt.useOutput.mappingOutputs) {
-      const targetOutputVarName =
-        outMapping.targetOutputVar.ref?.name ?? "output";
+      const targetOutputVarRef = outMapping.targetOutputVar;
+      const targetOutputVarName = getQualifiedReferenceName(targetOutputVarRef);
+
       const fbOutputVarName = outMapping.fbOutputVar.ref?.name ?? "output";
       useContent += `${targetOutputVarName} := ${fbInstanceName}.${fbOutputVarName};\n`;
     }

@@ -1,11 +1,13 @@
-// Implementation of MAIN
-// Auto-generated from BCS Engineering DSL
+// Initialize code - runs only once
+IF NOT bRunOnlyOnce THEN
+    ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_ERROR OR ADSLOG_MSGTYPE_LOG, 
+             msgFmtStr := 'Program started %s', 
+             strArg := 'successfully!');
+    bRunOnlyOnce := TRUE;
+END_IF
 
-// Connection of IfLogicFB_inst
-IfLogicFB_inst(
-	iValue1 := value1,
-	iValue2 := value2,
-	iCondition := condition,
-	oResult => result,
-	oStatus => status
-);
+// Main program logic
+ifLogicFBInstance(iValue1:=TestIfLogic_value1, iValue2:=TestIfLogic_value2, iCondition:=TestIfLogic_condition);
+TestIfLogic_result := ifLogicFBInstance.oResult;
+TestIfLogic_status := ifLogicFBInstance.oStatus;
+

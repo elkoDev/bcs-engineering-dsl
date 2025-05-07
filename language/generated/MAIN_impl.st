@@ -29,12 +29,14 @@ WHILE RetryHeaterStartup_retries < 3 DO
     // Wait statements are not directly supported in ST - using equivalent timer logic
     IF RetryHeaterStartup_retries = 2 THEN
     EXIT;
+    
 END_IF;
 END_WHILE;
 FOR i := 0 TO 5 BY 1 DO
     lightLevel := i * 20;
     IF i = 2 THEN
     CONTINUE;
+    
 END_IF;
     // Wait statements are not directly supported in ST - using equivalent timer logic
 END_FOR;
@@ -51,21 +53,22 @@ CASE mode OF
 END_CASE;
 IF FALSE >= 'TOD#07:00:00' THEN
     Lights.Room2 := TRUE;
+    
 END_IF;
 // Wait statements are not directly supported in ST - using equivalent timer logic
 heater := TRUE;
 Lights.Room1 := FALSE;
 fB_DALI207QueryFailureStatusInstance(bStart:=TRUE, nAddress:=1, eAddressType:=UseDaliLibrary_daliAddress, eCommandPriority:=UseDaliLibrary_daliPriority);
-status := fB_DALI207QueryFailureStatusInstance.bBusy;
-status := fB_DALI207QueryFailureStatusInstance.bError;
-failureStatus := fB_DALI207QueryFailureStatusInstance.nFailureStatus;
-resultMessage := fB_DALI207QueryFailureStatusInstance.ipResultMessage;
+UseDaliLibrary_status := fB_DALI207QueryFailureStatusInstance.bBusy;
+UseDaliLibrary_status := fB_DALI207QueryFailureStatusInstance.bError;
+UseDaliLibrary_failureStatus := fB_DALI207QueryFailureStatusInstance.nFailureStatus;
+UseDaliLibrary_resultMessage := fB_DALI207QueryFailureStatusInstance.ipResultMessage;
 
 fB_DALI207QueryFailureStatusInstance2(bStart:=FALSE, nAddress:=2, eAddressType:=UseDaliLibrary_daliAddress, eCommandPriority:=UseDaliLibrary_daliPriority);
-status := fB_DALI207QueryFailureStatusInstance2.bBusy;
-status := fB_DALI207QueryFailureStatusInstance2.bError;
-failureStatus := fB_DALI207QueryFailureStatusInstance2.nFailureStatus;
-resultMessage := fB_DALI207QueryFailureStatusInstance2.ipResultMessage;
+UseDaliLibrary_status := fB_DALI207QueryFailureStatusInstance2.bBusy;
+UseDaliLibrary_status := fB_DALI207QueryFailureStatusInstance2.bError;
+UseDaliLibrary_failureStatus := fB_DALI207QueryFailureStatusInstance2.nFailureStatus;
+UseDaliLibrary_resultMessage := fB_DALI207QueryFailureStatusInstance2.ipResultMessage;
 
 // Falling edge detection for Buttons.Room2
 f_TRIG_Buttons_Room2_Instance(CLK := Buttons.Room2);
@@ -74,4 +77,5 @@ IF f_TRIG_Buttons_Room2_Instance.Q THEN
 END_IF;
 IF UltrasonicSensor.Valid THEN
     lightLevel := ValidateSensorDistance_distance;
+    
 END_IF;

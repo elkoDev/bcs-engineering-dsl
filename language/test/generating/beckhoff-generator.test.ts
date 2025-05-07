@@ -241,10 +241,27 @@ describe("Beckhoff Generator Tests", () => {
       outputDir
     );
 
-    // Check implementation file
+    expect(Object.keys(result.csharpStrings).length).toBe(2);
+
+    // Compare each expected file with the generated file
+    compareGeneratedWithExpected({
+      generatedFilePath: path.join(outputDir, "IfLogicFB_decl.st"),
+      expectedFilePath: path.join(expectedDir, "IfLogicFB_decl.st"),
+    });
+
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "IfLogicFB_impl.st"),
       expectedFilePath: path.join(expectedDir, "IfLogicFB_impl.st"),
+    });
+
+    compareGeneratedWithExpected({
+      generatedFilePath: path.join(outputDir, "MAIN_decl.st"),
+      expectedFilePath: path.join(expectedDir, "MAIN_decl.st"),
+    });
+
+    compareGeneratedWithExpected({
+      generatedFilePath: path.join(outputDir, "MAIN_impl.st"),
+      expectedFilePath: path.join(expectedDir, "MAIN_impl.st"),
     });
   });
 

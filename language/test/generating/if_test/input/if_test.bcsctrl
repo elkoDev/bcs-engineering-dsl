@@ -23,7 +23,11 @@ control ValidTestController {
             
             // Nested if statements
             if (tempValue > 100) {
-                oResult = 100;
+                if (iValue1 > 50) {
+                    oResult = 100;
+                } else {
+                    tempValue = -100;
+                }
                 oStatus = "Value clamped to maximum";
             } else if (tempValue < 0) {
                 oResult = 0;

@@ -8,8 +8,8 @@ END_IF
 
 // Main program logic
 simpleLogicFBInstance(iInput:=TestFunctionBlock_input, iInput2:=TestFunctionBlock_input2);
-output := simpleLogicFBInstance.oOutput;
+TestFunctionBlock_output := simpleLogicFBInstance.oOutput;
 
 simpleLogicFBInstance2(iInput:=TestFunctionBlock_input3, iInput2:=TestFunctionBlock_input4);
-output2 := simpleLogicFBInstance2.oOutput;
+TestFunctionBlock_output2 := simpleLogicFBInstance2.oOutput;
 

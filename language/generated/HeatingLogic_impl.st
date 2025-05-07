@@ -2,5 +2,6 @@ IF iMode = Mode.COMFORT AND iTemp < 21 THEN
     oHeating := TRUE;
     ELSIF iMode = Mode.ECO AND iTemp < 18 THEN
         oHeating := TRUE;
-    oHeating := FALSE;
+    ELSE
+        oHeating := FALSE;
 END_IF;
