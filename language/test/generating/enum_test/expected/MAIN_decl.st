@@ -1,6 +1,6 @@
 PROGRAM MAIN
 VAR
+    windowContact_value AT %I*: BOOL; (* Input channel from hardware *)
     currentMode : Mode := Mode.OFF;
-    // Hardware I/O mappings
-    windowContact AT %IX0.0 : BOOL;
+    bRunOnlyOnce: BOOL := FALSE;
 END_VAR

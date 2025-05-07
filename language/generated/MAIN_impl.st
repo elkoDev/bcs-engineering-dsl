@@ -8,13 +8,13 @@ END_IF
 
 // Main program logic
 // Rising edge detection for FALSE
-R_TRIG_FALSE_Instance(CLK := FALSE);
-IF R_TRIG_FALSE_Instance.Q THEN
+r_TRIG_FALSE_Instance(CLK := FALSE);
+IF r_TRIG_FALSE_Instance.Q THEN
   FALSE := FALSE;
 END_IF;
 // Rising edge detection for FALSE
-R_TRIG_FALSE_Instance2(CLK := FALSE);
-IF R_TRIG_FALSE_Instance2.Q THEN
+r_TRIG_FALSE_Instance2(CLK := FALSE);
+IF r_TRIG_FALSE_Instance2.Q THEN
   FALSE := FALSE;
 END_IF;
 FALSE := TRUE;
@@ -66,8 +66,8 @@ failureStatus := fB_DALI207QueryFailureStatusInstance2.nFailureStatus;
 resultMessage := fB_DALI207QueryFailureStatusInstance2.ipResultMessage;
 
 // Falling edge detection for FALSE
-F_TRIG_FALSE_Instance(CLK := FALSE);
-IF F_TRIG_FALSE_Instance.Q THEN
+f_TRIG_FALSE_Instance(CLK := FALSE);
+IF f_TRIG_FALSE_Instance.Q THEN
   FALSE := FALSE;
 END_IF;
 IF FALSE THEN

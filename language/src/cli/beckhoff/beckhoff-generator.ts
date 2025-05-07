@@ -708,7 +708,7 @@ function writeProgramMain(
 
     // Create a more specific instance name based on the full signal path
     const signalPath = signalExpr.replace(/\./g, "_");
-    let baseInstanceName = `R_TRIG_${signalPath}_Instance`;
+    let baseInstanceName = `r_TRIG_${signalPath}_Instance`;
     let instanceName = baseInstanceName;
 
     // If not the first instance with this base name, add a numeric suffix
@@ -738,7 +738,7 @@ function writeProgramMain(
 
     // Create a more specific instance name based on the full signal path
     const signalPath = signalExpr.replace(/\./g, "_");
-    let baseInstanceName = `F_TRIG_${signalPath}_Instance`;
+    let baseInstanceName = `f_TRIG_${signalPath}_Instance`;
     let instanceName = baseInstanceName;
 
     // If not the first instance with this base name, add a numeric suffix
@@ -793,12 +793,20 @@ function writeProgramMain(
             `,
             { appendNewLineIfNotEmpty: true }
           )}
-          ${Array.from(fbInstancesMap.entries())
-            .map(([instanceName, fbType]) => `${instanceName}: ${fbType};`)
-            .join("\n          ")}
-          ${Array.from(edgeDetectionFBMap.entries())
-            .map(([instanceName, fbType]) => `${instanceName}: ${fbType};`)
-            .join("\n          ")}
+          ${joinToNode(
+            Array.from(fbInstancesMap.entries()),
+            ([instanceName, fbType]) => expandToNode`
+              ${instanceName}: ${fbType}; (* Function block instance *)
+            `,
+            { appendNewLineIfNotEmpty: true }
+          )}
+          ${joinToNode(
+            Array.from(edgeDetectionFBMap.entries()),
+            ([instanceName, fbType]) => expandToNode`
+              ${instanceName}: ${fbType}; (* Edge detection instance *)
+            `,
+            { appendNewLineIfNotEmpty: true }
+          )}
           bRunOnlyOnce: BOOL := FALSE;
       END_VAR
     `
@@ -1016,12 +1024,15 @@ export function generateBeckhoffCode(
     { declaration: string; implementation?: string }
   >;
 } {
-  // Generate individual ST files
   const files = generateBeckhoffArtifacts(
     controlModel,
     hardwareModel,
     destination
   );
+
+  function createCSharpString(filePath: string): string {
+    return fs.readFileSync(filePath, "utf8").replace(/\r\n/g, "\\r\\n");
+  }
 
   // Create C#-compatible strings for each POU
   const csharpStrings: Record<
@@ -1068,12 +1079,8 @@ export function generateBeckhoffCode(
   const mainImplFilePath = path.join(destination, `MAIN_impl.st`);
 
   csharpStrings["MAIN"] = {
-    declaration: fs
-      .readFileSync(mainDeclFilePath, "utf8")
-      .replace(/\r\n/g, "\\r\\n"),
-    implementation: fs
-      .readFileSync(mainImplFilePath, "utf8")
-      .replace(/\r\n/g, "\\r\\n"),
+    declaration: createCSharpString(mainDeclFilePath),
+    implementation: createCSharpString(mainImplFilePath),
   };
 
   return { files, csharpStrings };

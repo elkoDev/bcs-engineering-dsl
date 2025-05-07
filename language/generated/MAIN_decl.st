@@ -18,11 +18,11 @@ VAR
     resultMessage: I_TcMessage;
     failureStatus: INT;
     distance: INT := FALSE;
-    heatingLogicInstance: HeatingLogic;
-          fB_DALI207QueryFailureStatusInstance: FB_DALI207QueryFailureStatus;
-          fB_DALI207QueryFailureStatusInstance2: FB_DALI207QueryFailureStatus;
-    R_TRIG_FALSE_Instance: R_TRIG;
-          R_TRIG_FALSE_Instance2: R_TRIG;
-          F_TRIG_FALSE_Instance: F_TRIG;
+    heatingLogicInstance: HeatingLogic; (* Function block instance *)
+    fB_DALI207QueryFailureStatusInstance: FB_DALI207QueryFailureStatus; (* Function block instance *)
+    fB_DALI207QueryFailureStatusInstance2: FB_DALI207QueryFailureStatus; (* Function block instance *)
+    r_TRIG_FALSE_Instance: R_TRIG; (* Edge detection instance *)
+    r_TRIG_FALSE_Instance2: R_TRIG; (* Edge detection instance *)
+    f_TRIG_FALSE_Instance: F_TRIG; (* Edge detection instance *)
     bRunOnlyOnce: BOOL := FALSE;
 END_VAR

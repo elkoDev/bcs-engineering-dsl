@@ -1,4 +1,12 @@
-// Implementation for MAIN program
+// Initialize code - runs only once
+IF NOT bRunOnlyOnce THEN
+    ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_ERROR OR ADSLOG_MSGTYPE_LOG, 
+             msgFmtStr := 'Program started %s', 
+             strArg := 'successfully!');
+    bRunOnlyOnce := TRUE;
+END_IF
+
+// Main program logic
 IF currentMode = Mode.ECO THEN
     currentMode := Mode.COMFORT;
 END_IF;
