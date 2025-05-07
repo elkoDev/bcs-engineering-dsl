@@ -97,30 +97,59 @@ function isControlUnitVariable(
 function convertExprToST(expr: Expr): string {
   if (isPrimary(expr)) {
     if (isRef(expr)) {
-      if (expr.ref && expr.properties && expr.properties.length > 0) {
-        const baseName = getQualifiedReferenceName(expr.ref);
-        const propNames = expr.properties.map((prop) => getReferenceName(prop));
-        return [baseName, ...propNames].join(".");
-      }
-
-      // Standard reference without properties
-      let result = "";
-
-      // Get the reference name with potential control unit qualification
+      // Handle references with both indices and properties in correct order
       if (expr.ref) {
-        result = getQualifiedReferenceName(expr.ref);
-      } else {
-        result = "UNKNOWN_REF";
-      }
+        // Start with the base name
+        let result = getQualifiedReferenceName(expr.ref);
 
-      // Add indices if any
-      if (expr.indices && expr.indices.length > 0) {
-        result += `[${expr.indices
-          .map((idx) => convertExprToST(idx))
-          .join(", ")}]`;
-      }
+        // Track properties and indices in the order they appear in the source
+        const propIndices = [];
 
-      return result;
+        // Collect properties
+        if (expr.properties && expr.properties.length > 0) {
+          for (let i = 0; i < expr.properties.length; i++) {
+            propIndices.push({
+              type: "property",
+              index: i,
+              value: getReferenceName(expr.properties[i]),
+            });
+          }
+        }
+
+        // Collect indices
+        if (expr.indices && expr.indices.length > 0) {
+          for (let i = 0; i < expr.indices.length; i++) {
+            propIndices.push({
+              type: "index",
+              index: i,
+              value: convertExprToST(expr.indices[i]),
+            });
+          }
+        }
+
+        // Sort by the order of appearance and append to result
+        // For now, assume indices come before properties (array[idx].member)
+        // This is the standard way in most languages
+        if (propIndices.length > 0) {
+          // First handle all array indices
+          if (expr.indices && expr.indices.length > 0) {
+            result += `[${expr.indices
+              .map((idx) => convertExprToST(idx))
+              .join(", ")}]`;
+          }
+
+          // Then handle all properties
+          if (expr.properties && expr.properties.length > 0) {
+            const propNames = expr.properties.map((prop) =>
+              getReferenceName(prop)
+            );
+            result += `.${propNames.join(".")}`;
+          }
+        }
+
+        return result;
+      }
+      return "UNKNOWN_REF";
     } else if (isParenExpr(expr)) {
       const parenExpr = expr as ParenExpr;
       return `(${convertExprToST(parenExpr.expr)})`;

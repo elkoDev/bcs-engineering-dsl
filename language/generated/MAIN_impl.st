@@ -21,8 +21,8 @@ Lights.Room1 := TRUE;
 arrayOfLights[0] := TRUE;
 arrayOfLights[1] := TRUE;
 arrayOfLights[2] := TRUE;
-temperaturesArray.Room1 := 20.5;
-temperaturesArray.Room2 := 22;
+temperaturesArray[0].Room1 := 20.5;
+temperaturesArray[1].Room2 := 22;
 WHILE RetryHeaterStartup_retries < 3 DO
     heater := TRUE;
     RetryHeaterStartup_retries := RetryHeaterStartup_retries + 1;
