@@ -39,6 +39,7 @@ import {
   isBreakStmt,
   isContinueStmt,
   UseStmt,
+  NamedElement,
 } from "../../language/generated/ast.js";
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
@@ -49,6 +50,7 @@ import {
   getLocals,
   getLogic,
 } from "../../language/utils/function-block-utils.js";
+import { Reference } from "langium";
 
 // Helper function to check if a node is a primitive value
 function isPrimitive(expr: Primary): boolean {
@@ -63,28 +65,11 @@ function isPrimitive(expr: Primary): boolean {
  * Helper function to extract the name from a reference with improved debugging
  * This function properly handles all types of references in our AST
  */
-function getReferenceName(ref: any): string {
-  // First try to check if the reference has a $refText property which contains original source text
+function getReferenceName(ref: Reference<NamedElement>): string {
   if (ref && "$refText" in ref) {
     return ref.$refText;
   }
 
-  // Check if it's a resolved reference with a name on the target
-  if (ref?.ref?.name) {
-    return ref.ref.name;
-  }
-
-  // Direct name property
-  if (ref && "name" in ref) {
-    return ref.name;
-  }
-
-  // Check for a property name
-  if (ref?.property?.name) {
-    return ref.property.name;
-  }
-
-  // Last resort: return a descriptive comment
   console.warn("Unresolved reference:", JSON.stringify(ref, null, 2));
   return "UNRESOLVED_REF";
 }
@@ -95,16 +80,9 @@ function getReferenceName(ref: any): string {
 function convertExprToST(expr: Expr): string {
   if (isPrimary(expr)) {
     if (isRef(expr)) {
-      // Special handling for hardware references and dot notation
       if (expr.ref && expr.properties && expr.properties.length > 0) {
-        // This is likely a hardware reference like Buttons.Room1
-        // First get the base name (e.g., "Buttons")
         const baseName = getReferenceName(expr.ref);
-
-        // Collect all property names (e.g., "Room1")
         const propNames = expr.properties.map((prop) => getReferenceName(prop));
-
-        // Join them with dots to form the full reference
         return [baseName, ...propNames].join(".");
       }
 
@@ -513,7 +491,7 @@ function convertStatementToST(
     // Handle output mapping
     if (stmt.useOutput.singleOutput) {
       const targetOutputVarName =
-        stmt.useOutput.singleOutput.targetOutputVar.ref?.name || "output";
+        stmt.useOutput.singleOutput.targetOutputVar.ref?.name ?? "output";
       // Using direct access for single output case, which returns directly from FB call
       useContent += `${fbInstanceName} := ${fbType}(${inputMappings});\n`;
       useContent += `${targetOutputVarName} := ${fbInstanceName};`;
@@ -987,7 +965,7 @@ function convertUseStmtToST(
   // Handle output mapping
   if (stmt.useOutput.singleOutput) {
     const targetOutputVarName =
-      stmt.useOutput.singleOutput.targetOutputVar.ref?.name || "output";
+      stmt.useOutput.singleOutput.targetOutputVar.ref?.name ?? "output";
     // Using direct access for single output case, which returns directly from FB call
     useContent += `${fbInstanceName} := ${fbType}(${inputMappings});\n`;
     useContent += `${targetOutputVarName} := ${fbInstanceName};`;
@@ -998,8 +976,8 @@ function convertUseStmtToST(
     // Map outputs from instance properties
     for (const outMapping of stmt.useOutput.mappingOutputs) {
       const targetOutputVarName =
-        outMapping.targetOutputVar.ref?.name || "output";
-      const fbOutputVarName = outMapping.fbOutputVar.ref?.name || "output";
+        outMapping.targetOutputVar.ref?.name ?? "output";
+      const fbOutputVarName = outMapping.fbOutputVar.ref?.name ?? "output";
       useContent += `${targetOutputVarName} := ${fbInstanceName}.${fbOutputVarName};\n`;
     }
   } else {
@@ -1042,7 +1020,6 @@ export function generateBeckhoffCode(
 
   // Process each item in the control model to create C# ready strings
   for (const item of controlModel.controlBlock.items) {
-    // Skip items marked as extern
     if ("isExtern" in item && item.isExtern) continue;
 
     if (isEnumDecl(item)) {
@@ -1055,21 +1032,15 @@ export function generateBeckhoffCode(
     } else if (isStructDecl(item)) {
       const filePath = path.join(destination, `${item.name}.st`);
       csharpStrings[item.name] = {
-        declaration: fs
-          .readFileSync(filePath, "utf8")
-          .replace(/\r\n/g, "\\r\\n"),
+        declaration: createCSharpString(filePath),
       };
     } else if (isFunctionBlockDecl(item)) {
       const declFilePath = path.join(destination, `${item.name}_decl.st`);
       const implFilePath = path.join(destination, `${item.name}_impl.st`);
 
       csharpStrings[item.name] = {
-        declaration: fs
-          .readFileSync(declFilePath, "utf8")
-          .replace(/\r\n/g, "\\r\\n"),
-        implementation: fs
-          .readFileSync(implFilePath, "utf8")
-          .replace(/\r\n/g, "\\r\\n"),
+        declaration: createCSharpString(declFilePath),
+        implementation: createCSharpString(implFilePath),
       };
     }
   }
