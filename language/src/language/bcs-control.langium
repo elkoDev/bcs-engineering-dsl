@@ -138,6 +138,8 @@ Statement:
     | EdgeStmt
     | RampStmt
     | UseStmt
+    | ContinueStmt
+    | BreakStmt
 ;
 
 AssignmentStmt:
@@ -242,6 +244,22 @@ OnFallingEdgeStmt:
 RampStmt:
     'ramp' '(' target=Ref ',' fromExpr=Expr ',' toExpr=Expr ',' dur=TimeLiteral ')' ';'
 ;
+
+// --------------------------------------------------------------------------
+// Loop Control Statements
+// --------------------------------------------------------------------------
+type LoopControlStmt = ContinueStmt | BreakStmt;
+
+ContinueStmt returns LoopControlStmt:
+    {infer ContinueStmt}
+    'continue' ';'
+;
+
+BreakStmt returns LoopControlStmt:
+    {infer BreakStmt}
+    'break' ';'
+;
+
 
 // ==========================================================================
 // 6) Expressions and Literals

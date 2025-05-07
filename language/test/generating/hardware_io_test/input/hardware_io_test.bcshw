@@ -36,7 +36,7 @@ controller ValidTestController for Beckhoff {
     datapoint switches {
         portgroup: DI
         channels: {
-            channel inputSwitch1: BOOL at 0
+            channel inputSwitch1: BOOL at 0,
             channel inputSwitch2: BOOL at 1
         }
     }
@@ -52,7 +52,7 @@ controller ValidTestController for Beckhoff {
     datapoint lights {
         portgroup: DO
         channels: {
-            channel outputLight1: BOOL at 0
+            channel outputLight1: BOOL at 0,
             channel outputLight2: BOOL at 1
         }
     }

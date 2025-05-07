@@ -32,12 +32,13 @@ import {
   isOnFallingEdgeStmt,
   Expr,
   isParenExpr,
-  ControlUnit,
   isControlUnit,
   NegExpr,
   NotExpr,
   ParenExpr,
   isVarDecl,
+  isBreakStmt,
+  isContinueStmt,
 } from "../../language/generated/ast.js";
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
@@ -62,7 +63,7 @@ function isPrimitive(expr: Primary): boolean {
  * Helper function to extract the name from a reference with improved debugging
  * This function properly handles all types of references in our AST
  */
-function getReferenceText(ref: any): string {
+function getReferenceName(ref: any): string {
   // First try to check if the reference has a $refText property which contains original source text
   if (ref && "$refText" in ref) {
     return ref.$refText;
@@ -473,6 +474,10 @@ function convertStatementToST(stmt: Statement): string {
     return switchContent;
   } else if (isWaitStmt(stmt)) {
     return `// Wait statements are not directly supported in ST - using equivalent timer logic\n`;
+  } else if (isBreakStmt(stmt)) {
+    return `EXIT;`;
+  } else if (isContinueStmt(stmt)) {
+    return `CONTINUE;`;
   } else if (isRampStmt(stmt)) {
     return `// Ramp statements require custom implementation in TwinCAT\n// Target: ${convertExprToST(
       stmt.target

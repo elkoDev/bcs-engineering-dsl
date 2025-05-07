@@ -18,9 +18,15 @@ WHILE FALSE < 3 DO
   FALSE := FALSE + 1;
   // Wait statements are not directly supported in ST - using equivalent timer logic
 
+  IF FALSE = 2 THEN
+  EXIT;
+END_IF;
 END_WHILE;
 FOR i := 0 TO 5 BY 1 DO
   FALSE := FALSE * 20;
+  IF FALSE = 2 THEN
+  CONTINUE;
+END_IF;
   // Wait statements are not directly supported in ST - using equivalent timer logic
 
 END_FOR;

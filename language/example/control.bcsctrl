@@ -64,12 +64,18 @@ control MainController {
             heater = true;
             retries = retries + 1;
             wait T#1s;
+            if (retries == 2) {
+                break;
+            }
         }
     }
 
     unit DimLightsGradually {
         for (var i: INT = 0 to 5 by 1) {
             lightLevel = i * 20;
+            if (i == 2) {
+                continue;
+            }
             wait T#1s;
         }
     }
