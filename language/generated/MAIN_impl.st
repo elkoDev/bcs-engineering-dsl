@@ -7,69 +7,74 @@ IF NOT bRunOnlyOnce THEN
 END_IF
 
 // Main program logic
-// Rising edge detection for FALSE
-r_TRIG_FALSE_Instance(CLK := FALSE);
-IF r_TRIG_FALSE_Instance.Q THEN
-  FALSE := FALSE;
+// Rising edge detection for Buttons.Room1
+r_TRIG_Buttons_Room1_Instance(CLK := Buttons.Room1);
+IF r_TRIG_Buttons_Room1_Instance.Q THEN
+  Lights.Room1 := FALSE;
 END_IF;
-// Rising edge detection for FALSE
-r_TRIG_FALSE_Instance2(CLK := FALSE);
-IF r_TRIG_FALSE_Instance2.Q THEN
-  FALSE := FALSE;
+// Rising edge detection for Buttons.Room2
+r_TRIG_Buttons_Room2_Instance2(CLK := Buttons.Room2);
+IF r_TRIG_Buttons_Room2_Instance2.Q THEN
+  Lights.Room2 := FALSE;
 END_IF;
-FALSE := TRUE;
-WHILE FALSE < 3 DO
-  FALSE := TRUE;
-  FALSE := FALSE + 1;
+Lights.Room1 := TRUE;
+arrayOfLights[0] := TRUE;
+arrayOfLights[1] := TRUE;
+arrayOfLights[2] := TRUE;
+temperaturesArray.Room1 := 20.5;
+temperaturesArray.Room2 := 22;
+WHILE retries < 3 DO
+  heater := TRUE;
+  retries := retries + 1;
   // Wait statements are not directly supported in ST - using equivalent timer logic
 
-  IF FALSE = 2 THEN
+  IF retries = 2 THEN
   EXIT;
 END_IF;
 END_WHILE;
 FOR i := 0 TO 5 BY 1 DO
-  FALSE := FALSE * 20;
-  IF FALSE = 2 THEN
+  lightLevel := i * 20;
+  IF i = 2 THEN
   CONTINUE;
 END_IF;
   // Wait statements are not directly supported in ST - using equivalent timer logic
 
 END_FOR;
-heatingLogicInstance := HeatingLogic(iTemp:=FALSE, iMode:=FALSE);
+heatingLogicInstance := HeatingLogic(iTemp:=Temperatures.Room1, iMode:=mode);
 heatingEnabled := heatingLogicInstance;
-FALSE := FALSE;
-CASE FALSE OF
+heater := heatingEnabled;
+CASE mode OF
   Mode.COMFORT:
-    FALSE := 100;
+    lightLevel := 100;
   Mode.ECO:
-    FALSE := 50;
+    lightLevel := 50;
   ELSE:
-    FALSE := 0;
+    lightLevel := 0;
 END_CASE;
 IF FALSE >= 'TOD#07:00:00' THEN
-  FALSE := TRUE;
+  Lights.Room2 := TRUE;
 END_IF;
 // Wait statements are not directly supported in ST - using equivalent timer logic
 
-FALSE := TRUE;
-FALSE := FALSE;
-fB_DALI207QueryFailureStatusInstance(bStart:=TRUE, nAddress:=1, eAddressType:=FALSE, eCommandPriority:=FALSE);
+heater := TRUE;
+Lights.Room1 := FALSE;
+fB_DALI207QueryFailureStatusInstance(bStart:=TRUE, nAddress:=1, eAddressType:=daliAddress, eCommandPriority:=daliPriority);
 status := fB_DALI207QueryFailureStatusInstance.bBusy;
 status := fB_DALI207QueryFailureStatusInstance.bError;
 failureStatus := fB_DALI207QueryFailureStatusInstance.nFailureStatus;
 resultMessage := fB_DALI207QueryFailureStatusInstance.ipResultMessage;
 
-fB_DALI207QueryFailureStatusInstance2(bStart:=FALSE, nAddress:=2, eAddressType:=FALSE, eCommandPriority:=FALSE);
+fB_DALI207QueryFailureStatusInstance2(bStart:=FALSE, nAddress:=2, eAddressType:=daliAddress, eCommandPriority:=daliPriority);
 status := fB_DALI207QueryFailureStatusInstance2.bBusy;
 status := fB_DALI207QueryFailureStatusInstance2.bError;
 failureStatus := fB_DALI207QueryFailureStatusInstance2.nFailureStatus;
 resultMessage := fB_DALI207QueryFailureStatusInstance2.ipResultMessage;
 
-// Falling edge detection for FALSE
-f_TRIG_FALSE_Instance(CLK := FALSE);
-IF f_TRIG_FALSE_Instance.Q THEN
-  FALSE := FALSE;
+// Falling edge detection for Buttons.Room2
+f_TRIG_Buttons_Room2_Instance(CLK := Buttons.Room2);
+IF f_TRIG_Buttons_Room2_Instance.Q THEN
+  Lights.Room2 := FALSE;
 END_IF;
-IF FALSE THEN
-  FALSE := FALSE;
+IF UltrasonicSensor.Valid THEN
+  lightLevel := distance;
 END_IF;

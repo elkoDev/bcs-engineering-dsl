@@ -31,12 +31,18 @@ extern functionblock FB_DALI207QueryFailureStatus {
 control MainController {
 
     enum Mode { OFF, ECO, COMFORT }
+    struct Temperatures {
+        Room1: REAL,
+        Room2: REAL
+    }
 
     var mode: Mode = Mode.OFF;
     var lightLevel: INT = 0;
     var heater: BOOL;
     var lightsOn: BOOL;
     var heatingEnabled: BOOL;
+    var arrayOfLights: BOOL[10];
+    var temperaturesArray: Temperatures[10];
 
     functionblock HeatingLogic {
         inputs {
@@ -68,6 +74,11 @@ control MainController {
 
     unit TurnOnLightsScheduled at TOD#06:30:00 {
         Lights.Room1 = true;
+        arrayOfLights[0] = true;
+        arrayOfLights[1] = true;
+        arrayOfLights[2] = true;
+        temperaturesArray[0].Room1 = 20.5;
+        temperaturesArray[1].Room2 = 22.0;
     }
 
     unit RetryHeaterStartup when (mode != Mode.OFF) {

@@ -12,17 +12,17 @@ VAR
     Lights_Room2 AT %Q*: BOOL; (* Output channel to hardware *)
     retries: INT := 0;
     daliAddress: E_DALIAddressType;
-    daliPriority: E_DALICommandPriority := FALSE;
+    daliPriority: E_DALICommandPriority := E_DALICommandPriority.High;
     addressList: ST_DALIChangeAddressList := (nOldAddress:=1, nNewAddress:=2, nRandomAddress:=3, nErrors:=0);
     status: BOOL;
     resultMessage: I_TcMessage;
     failureStatus: INT;
-    distance: INT := FALSE;
+    distance: INT := UltrasonicSensor.Distance;
     heatingLogicInstance: HeatingLogic; (* Function block instance *)
     fB_DALI207QueryFailureStatusInstance: FB_DALI207QueryFailureStatus; (* Function block instance *)
     fB_DALI207QueryFailureStatusInstance2: FB_DALI207QueryFailureStatus; (* Function block instance *)
-    r_TRIG_FALSE_Instance: R_TRIG; (* Edge detection instance *)
-    r_TRIG_FALSE_Instance2: R_TRIG; (* Edge detection instance *)
-    f_TRIG_FALSE_Instance: F_TRIG; (* Edge detection instance *)
+    r_TRIG_Buttons_Room1_Instance: R_TRIG; (* Edge detection instance *)
+    r_TRIG_Buttons_Room2_Instance2: R_TRIG; (* Edge detection instance *)
+    f_TRIG_Buttons_Room2_Instance: F_TRIG; (* Edge detection instance *)
     bRunOnlyOnce: BOOL := FALSE;
 END_VAR

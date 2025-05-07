@@ -76,7 +76,7 @@ describe("Beckhoff Generator Tests", () => {
   // Clean up output directory after tests
   afterAll(() => {
     if (fs.existsSync(TEST_OUTPUT_DIR)) {
-      fs.rmSync(TEST_OUTPUT_DIR, { recursive: true, force: true });
+      //fs.rmSync(TEST_OUTPUT_DIR, { recursive: true, force: true });
     }
   });
 

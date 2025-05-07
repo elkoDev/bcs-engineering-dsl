@@ -1,7 +1,7 @@
-IF FALSE = FALSE AND FALSE < 21 THEN
-  FALSE := TRUE;
-ELSIF FALSE = FALSE AND FALSE < 18 THEN
-  FALSE := TRUE;
+IF iMode = Mode.COMFORT AND iTemp < 21 THEN
+  oHeating := TRUE;
+ELSIF iMode = Mode.ECO AND iTemp < 18 THEN
+  oHeating := TRUE;
 ELSE
-  FALSE := FALSE;
+  oHeating := FALSE;
 END_IF;

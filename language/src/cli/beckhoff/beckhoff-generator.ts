@@ -94,21 +94,7 @@ function getReferenceName(ref: any): string {
  */
 function convertExprToST(expr: Expr): string {
   if (isPrimary(expr)) {
-    if (isPrimitive(expr)) {
-      if (typeof expr.val === "string") {
-        return `'${expr.val}'`; // String literals use single quotes in ST
-      } else if (typeof expr.val === "boolean") {
-        return expr.val ? "TRUE" : "FALSE"; // Booleans are uppercase in ST
-      } else if (expr.val !== undefined) {
-        return expr.val.toString(); // Numbers as strings
-      }
-    } else if (isArrayLiteral(expr.val)) {
-      return `[${expr.val.elements.map((e) => convertExprToST(e)).join(", ")}]`;
-    } else if (isStructLiteral(expr.val)) {
-      return `(${expr.val.fields
-        .map((f) => `${f.name}:=${convertExprToST(f.value)}`)
-        .join(", ")})`;
-    } else if (isRef(expr)) {
+    if (isRef(expr)) {
       // Special handling for hardware references and dot notation
       if (expr.ref && expr.properties && expr.properties.length > 0) {
         // This is likely a hardware reference like Buttons.Room1
@@ -140,6 +126,20 @@ function convertExprToST(expr: Expr): string {
       }
 
       return result;
+    } else if (isPrimitive(expr)) {
+      if (typeof expr.val === "string") {
+        return `'${expr.val}'`; // String literals use single quotes in ST
+      } else if (typeof expr.val === "boolean") {
+        return expr.val ? "TRUE" : "FALSE"; // Booleans are uppercase in ST
+      } else if (expr.val !== undefined) {
+        return expr.val.toString(); // Numbers as strings
+      }
+    } else if (isArrayLiteral(expr.val)) {
+      return `[${expr.val.elements.map((e) => convertExprToST(e)).join(", ")}]`;
+    } else if (isStructLiteral(expr.val)) {
+      return `(${expr.val.fields
+        .map((f) => `${f.name}:=${convertExprToST(f.value)}`)
+        .join(", ")})`;
     }
   } else if (isBinExpr(expr)) {
     // Special handling for operators that are different in ST
