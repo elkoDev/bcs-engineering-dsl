@@ -236,11 +236,14 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
       if (typeof node.val === "string") {
         if (node.val.startsWith("TOD#")) {
           this.formatTodLiteral(node, acceptor);
-        }
-      }
-      if (typeof node.val === "string") {
-        if (node.val.startsWith("T#")) {
+        } else if (node.val.startsWith("T#")) {
           this.formatTimeLiteral(node, acceptor);
+        } else {
+          acceptor({
+            node,
+            property: "val",
+            type: SemanticTokenTypes.string,
+          });
         }
       }
       if (typeof node.val === "boolean") {
