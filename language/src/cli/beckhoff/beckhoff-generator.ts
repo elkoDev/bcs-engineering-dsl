@@ -40,6 +40,7 @@ import {
   isContinueStmt,
   UseStmt,
   NamedElement,
+  ControlUnit,
 } from "../../language/generated/ast.js";
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
@@ -75,13 +76,27 @@ function getReferenceName(ref: Reference<NamedElement>): string {
 }
 
 /**
+ * Check if a referenced element belongs to a control unit
+ * This helps us determine if we need to qualify the variable name
+ */
+function isControlUnitVariable(ref: Reference<NamedElement>): [boolean, string | null] {
+  if (ref && ref.ref) {
+    const container = ref.ref.$container;
+    if (container && isControlUnit(container)) {
+      return [true, (container as ControlUnit).name];
+    }
+  }
+  return [false, null];
+}
+
+/**
  * Convert an expression to a valid ST expression
  */
 function convertExprToST(expr: Expr): string {
   if (isPrimary(expr)) {
     if (isRef(expr)) {
       if (expr.ref && expr.properties && expr.properties.length > 0) {
-        const baseName = getReferenceName(expr.ref);
+        const baseName = getQualifiedReferenceName(expr.ref);
         const propNames = expr.properties.map((prop) => getReferenceName(prop));
         return [baseName, ...propNames].join(".");
       }
@@ -89,9 +104,9 @@ function convertExprToST(expr: Expr): string {
       // Standard reference without properties
       let result = "";
 
-      // Get the reference name
+      // Get the reference name with potential control unit qualification
       if (expr.ref) {
-        result = getReferenceName(expr.ref);
+        result = getQualifiedReferenceName(expr.ref);
       } else {
         result = "UNKNOWN_REF";
       }
@@ -135,6 +150,21 @@ function convertExprToST(expr: Expr): string {
   }
 
   return "UNKNOWN_EXPR";
+}
+
+/**
+ * Get a qualified reference name, adding control unit prefix if needed
+ */
+function getQualifiedReferenceName(ref: Reference<NamedElement>): string {
+  const [isInControlUnit, unitName] = isControlUnitVariable(ref);
+  
+  if (isInControlUnit && unitName && isVarDecl(ref.ref)) {
+    // This is a variable from a control unit, so we need to qualify it
+    return `${unitName}_${getReferenceName(ref)}`;
+  }
+  
+  // For all other references, use the standard name
+  return getReferenceName(ref);
 }
 
 /**
@@ -635,6 +665,20 @@ const usedInstanceNames = new Set<string>();
 // Map to track edge detection instances (signal expression -> instance name)
 const edgeDetectionInstanceMap = new Map<string, string>();
 
+class EmittedVarDecl {
+  controlUnit: ControlUnit;
+  varDecl: VarDecl;
+
+  constructor(controlUnit: ControlUnit, varDecl: VarDecl) {
+    this.controlUnit = controlUnit;
+    this.varDecl = varDecl;
+  }
+
+  get name(): string {
+    return `${this.controlUnit.name}_${this.varDecl.name}`;
+  }
+}
+
 /**
  * Generate ST code for the MAIN program
  * @param controlModel Control model from the DSL
@@ -651,7 +695,7 @@ function writeProgramMain(
   edgeDetectionInstanceMap.clear();
 
   // Collect all variables that need to be declared in the MAIN program
-  const mainVars: VarDecl[] = [];
+  const mainVars: EmittedVarDecl[] = [];
   // Collect all FB instances that need to be created
   // Use Map to store instance name -> FB type
   const fbInstancesMap = new Map<string, string>();
@@ -670,7 +714,9 @@ function writeProgramMain(
 
       // Process control unit local variables
       const varDecls = controlUnit.stmts.filter(isVarDecl);
-      mainVars.push(...varDecls);
+      mainVars.push(
+        ...varDecls.map((varDecl) => new EmittedVarDecl(controlUnit, varDecl))
+      );
 
       // Find all function block references to create instances
       const useStmts = controlUnit.stmts.filter(isUseStmt);
@@ -813,9 +859,9 @@ function writeProgramMain(
           )}
           ${joinToNode(
             mainVars,
-            (varDecl) => expandToNode`
-              ${varDecl.name}: ${convertTypeRefToST(varDecl.typeRef)}${
-              varDecl.init ? ` := ${convertExprToST(varDecl.init)}` : ""
+            (v) => expandToNode`
+              ${v.name}: ${convertTypeRefToST(v.varDecl.typeRef)}${
+              v.varDecl.init ? ` := ${convertExprToST(v.varDecl.init)}` : ""
             };
             `,
             { appendNewLineIfNotEmpty: true }
@@ -1128,7 +1174,6 @@ function extractHardwareDatapoints(hardwareModel: HardwareModel): {
     // First pass: collect all port groups
     for (const component of controller.components) {
       if ("moduleType" in component) {
-        // PortGroup
         portGroups.set(component.name, component);
       }
     }
@@ -1136,7 +1181,6 @@ function extractHardwareDatapoints(hardwareModel: HardwareModel): {
     // Second pass: process all datapoints
     for (const component of controller.components) {
       if ("portgroup" in component) {
-        // Datapoint
         const datapoint = component;
         const portgroup = portGroups.get(datapoint.portgroup.ref?.name);
 

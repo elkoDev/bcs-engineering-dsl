@@ -23,11 +23,11 @@ arrayOfLights[1] := TRUE;
 arrayOfLights[2] := TRUE;
 temperaturesArray.Room1 := 20.5;
 temperaturesArray.Room2 := 22;
-WHILE retries < 3 DO
+WHILE RetryHeaterStartup_retries < 3 DO
     heater := TRUE;
-    retries := retries + 1;
+    RetryHeaterStartup_retries := RetryHeaterStartup_retries + 1;
     // Wait statements are not directly supported in ST - using equivalent timer logic
-    IF retries = 2 THEN
+    IF RetryHeaterStartup_retries = 2 THEN
     EXIT;
 END_IF;
 END_WHILE;
@@ -55,13 +55,13 @@ END_IF;
 // Wait statements are not directly supported in ST - using equivalent timer logic
 heater := TRUE;
 Lights.Room1 := FALSE;
-fB_DALI207QueryFailureStatusInstance(bStart:=TRUE, nAddress:=1, eAddressType:=daliAddress, eCommandPriority:=daliPriority);
+fB_DALI207QueryFailureStatusInstance(bStart:=TRUE, nAddress:=1, eAddressType:=UseDaliLibrary_daliAddress, eCommandPriority:=UseDaliLibrary_daliPriority);
 status := fB_DALI207QueryFailureStatusInstance.bBusy;
 status := fB_DALI207QueryFailureStatusInstance.bError;
 failureStatus := fB_DALI207QueryFailureStatusInstance.nFailureStatus;
 resultMessage := fB_DALI207QueryFailureStatusInstance.ipResultMessage;
 
-fB_DALI207QueryFailureStatusInstance2(bStart:=FALSE, nAddress:=2, eAddressType:=daliAddress, eCommandPriority:=daliPriority);
+fB_DALI207QueryFailureStatusInstance2(bStart:=FALSE, nAddress:=2, eAddressType:=UseDaliLibrary_daliAddress, eCommandPriority:=UseDaliLibrary_daliPriority);
 status := fB_DALI207QueryFailureStatusInstance2.bBusy;
 status := fB_DALI207QueryFailureStatusInstance2.bError;
 failureStatus := fB_DALI207QueryFailureStatusInstance2.nFailureStatus;
@@ -73,5 +73,5 @@ IF f_TRIG_Buttons_Room2_Instance.Q THEN
   Lights.Room2 := FALSE;
 END_IF;
 IF UltrasonicSensor.Valid THEN
-    lightLevel := distance;
+    lightLevel := ValidateSensorDistance_distance;
 END_IF;

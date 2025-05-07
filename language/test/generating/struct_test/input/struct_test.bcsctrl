@@ -22,9 +22,6 @@ control ValidTestController {
         var area: REAL;
         var perimeter: REAL;
 
-        area = rect.x * rect.y;
-        perimeter = 2 * (rect.x + rect.y);
-
         // 3. Struct array correctly initialized
         var rects: Rectangle[2] = [
             { x: 1.0, y: 2.0 },
@@ -33,5 +30,8 @@ control ValidTestController {
 
         // 4. Access struct fields from array
         var area2: REAL = rects[0].x * rects[0].y;
+
+        area = rect.x * rect.y;
+        perimeter = 2 * (rect.x + rect.y);
     }
 }
