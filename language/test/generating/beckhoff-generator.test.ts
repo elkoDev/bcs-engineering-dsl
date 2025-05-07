@@ -1,9 +1,6 @@
 import { describe, expect, test, beforeAll, afterAll } from "vitest";
 import { createBcsEngineeringServices } from "../../src/language/bcs-engineering-module.js";
-import {
-  extractControlModelWithHardwareModels,
-  extractDocuments,
-} from "../../src/cli/cli-util.js";
+import { extractControlModelWithHardwareModels } from "../../src/cli/cli-util.js";
 import * as path from "node:path";
 import { NodeFileSystem } from "langium/node";
 import * as fs from "node:fs";
@@ -353,10 +350,11 @@ describe("Beckhoff Generator Tests", () => {
       setupTestDirectories(testCaseName);
 
     // Parse the test files
-    const [controlModel, hardwareModels] = await extractControlModelWithHardwareModels(
-      path.join(inputDir, "loop_test.bcsctrl"),
-      services.bcsControl
-    );
+    const [controlModel, hardwareModels] =
+      await extractControlModelWithHardwareModels(
+        path.join(inputDir, "loop_test.bcsctrl"),
+        services.bcsControl
+      );
 
     // Generate code
     const result = generateBeckhoffCode(
@@ -397,10 +395,11 @@ describe("Beckhoff Generator Tests", () => {
       setupTestDirectories(testCaseName);
 
     // Parse the test files
-    const [controlModel, hardwareModels] = await extractControlModelWithHardwareModels(
-      path.join(inputDir, "switch_test.bcsctrl"),
-      services.bcsControl
-    );
+    const [controlModel, hardwareModels] =
+      await extractControlModelWithHardwareModels(
+        path.join(inputDir, "switch_test.bcsctrl"),
+        services.bcsControl
+      );
 
     // Generate code
     const result = generateBeckhoffCode(
@@ -447,10 +446,11 @@ describe("Beckhoff Generator Tests", () => {
       setupTestDirectories(testCaseName);
 
     // Parse the test files
-    const [controlModel, hardwareModels] = await extractControlModelWithHardwareModels(
-      path.join(inputDir, "nested_control_test.bcsctrl"),
-      services.bcsControl
-    );
+    const [controlModel, hardwareModels] =
+      await extractControlModelWithHardwareModels(
+        path.join(inputDir, "nested_control_test.bcsctrl"),
+        services.bcsControl
+      );
 
     // Generate code
     const result = generateBeckhoffCode(

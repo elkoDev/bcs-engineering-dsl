@@ -57,7 +57,6 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
 
       const scopeNodes: AstNode[] = [
         ...localVars,
-        ...datapoints,
         ...enumDecls,
         ...structDecls,
         ...externalTypeDecls,
@@ -70,6 +69,7 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
         const globalVars =
           controlModel?.controlBlock?.items.filter(isVarDecl) ?? [];
         scopeNodes.push(...globalVars);
+        scopeNodes.push(...datapoints);
       }
 
       return this.createScopeForNodes(scopeNodes);
