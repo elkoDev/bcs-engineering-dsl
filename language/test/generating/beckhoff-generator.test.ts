@@ -76,7 +76,7 @@ describe("Beckhoff Generator Tests", () => {
   // Clean up output directory after tests
   afterAll(() => {
     if (fs.existsSync(TEST_OUTPUT_DIR)) {
-      fs.rmSync(TEST_OUTPUT_DIR, { recursive: true, force: true });
+      //fs.rmSync(TEST_OUTPUT_DIR, { recursive: true, force: true });
     }
   });
 
@@ -509,6 +509,41 @@ describe("Beckhoff Generator Tests", () => {
       expectedFilePath: path.join(expectedDir, "MAIN_decl.st"),
     });
 
+    compareGeneratedWithExpected({
+      generatedFilePath: path.join(outputDir, "MAIN_impl.st"),
+      expectedFilePath: path.join(expectedDir, "MAIN_impl.st"),
+    });
+  });
+
+  test("Generate IO test logic correctly", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    // Test case directories
+    const testCaseName = "io_test";
+    const { inputDir, expectedDir, outputDir } =
+      setupTestDirectories(testCaseName);
+
+    // Parse the test files
+    const [controlModel, hardwareModels] =
+      await extractControlModelWithHardwareModels(
+        path.join(inputDir, "io_test.bcsctrl"),
+        services.bcsControl
+      );
+
+    // Generate code
+    const result = generateBeckhoffCode(
+      controlModel,
+      hardwareModels[0],
+      outputDir
+    );
+
+    // Check MAIN declaration
+    compareGeneratedWithExpected({
+      generatedFilePath: path.join(outputDir, "MAIN_decl.st"),
+      expectedFilePath: path.join(expectedDir, "MAIN_decl.st"),
+    });
+
+    // Check MAIN implementation
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "MAIN_impl.st"),
       expectedFilePath: path.join(expectedDir, "MAIN_impl.st"),
