@@ -85,7 +85,7 @@ function isControlUnitVariable(
 ): [boolean, string | null] {
   const container = ref?.ref?.$container;
   return container && isControlUnit(container)
-    ? [true, (container as ControlUnit).name]
+    ? [true, container.name]
     : [false, null];
 }
 
@@ -1033,13 +1033,7 @@ class BeckhoffGeneratorContext {
     // Process each item in the control model to create C# ready strings
     for (const item of this.controlModel.controlBlock.items) {
       if ("isExtern" in item && item.isExtern) continue;
-
-      if (isEnumDecl(item)) {
-        const filePath = path.join(this.destination, `${item.name}.st`);
-        csharpStrings[item.name] = {
-          declaration: createCSharpString(filePath),
-        };
-      } else if (isStructDecl(item)) {
+      if (isEnumDecl(item) || isStructDecl(item)) {
         const filePath = path.join(this.destination, `${item.name}.st`);
         csharpStrings[item.name] = {
           declaration: createCSharpString(filePath),
