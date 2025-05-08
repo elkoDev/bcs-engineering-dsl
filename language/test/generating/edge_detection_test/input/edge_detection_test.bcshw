@@ -1,5 +1,5 @@
 // Hardware configuration for edge detection test
-controller ValidTestController for Beckhoff {
+controller EdgeDetectionTestController for Beckhoff {
     portgroup DI {
         moduleType: EL1008
         ioType: DIGITAL_INPUT

@@ -1,5 +1,5 @@
 // A simple enum test file to verify enum code generation
-control ValidTestController {
+control EnumTestController {
     enum Mode {
         OFF, ECO, COMFORT
     }

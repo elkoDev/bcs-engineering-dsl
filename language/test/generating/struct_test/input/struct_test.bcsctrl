@@ -1,5 +1,5 @@
 // A test file for struct code generation
-control ValidTestController {
+control StructTestController {
     struct Rectangle {
         x: REAL,
         y: REAL

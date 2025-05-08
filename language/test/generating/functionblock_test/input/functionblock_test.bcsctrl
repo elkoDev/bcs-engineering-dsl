@@ -1,5 +1,5 @@
 // A test file for function block code generation
-control ValidTestController {
+control FunctionBlockTestController {
     functionblock SimpleLogicFB {
         inputs {
             var iInput: BOOL;

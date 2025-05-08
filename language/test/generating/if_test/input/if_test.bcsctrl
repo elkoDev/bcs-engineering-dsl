@@ -1,5 +1,5 @@
 // A test file for if statement code generation
-control ValidTestController {
+control IfTestController {
     functionblock IfLogicFB {
         inputs {
             var iValue1: INT;

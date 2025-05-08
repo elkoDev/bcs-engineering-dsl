@@ -1,5 +1,5 @@
 // A minimal hardware definition to accompany switch_test.bcsctrl
-controller ValidTestController for Beckhoff {
+controller SwitchTestController for Beckhoff {
     portgroup DI {
         moduleType: EL1008
         ioType: DIGITAL_INPUT

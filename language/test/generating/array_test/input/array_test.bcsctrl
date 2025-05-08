@@ -1,5 +1,5 @@
 // A test file for array code generation
-control ValidTestController {
+control ArrayTestController {
     functionblock ArrayTestFB {
         inputs {
             var iValues: INT[10];

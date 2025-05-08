@@ -1,5 +1,5 @@
 // A test file for loop statements (for and while loops)
-control ValidTestController {
+control LoopTestController {
     functionblock LoopsFB {
         inputs {
             var iCount: INT;

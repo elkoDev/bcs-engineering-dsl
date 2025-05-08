@@ -1,5 +1,5 @@
 // A test file for switch statement code generation
-control ValidTestController {
+control SwitchTestController {
     enum OperationMode {
         IDLE,
         HEATING,

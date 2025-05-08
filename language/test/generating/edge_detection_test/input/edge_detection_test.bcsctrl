@@ -1,5 +1,5 @@
 // A test file for edge detection code generation
-control ValidTestController {
+control EdgeDetectionTestController {
     unit TestEdgeDetection {
         var sensor1: BOOL;
         var sensor2: BOOL;

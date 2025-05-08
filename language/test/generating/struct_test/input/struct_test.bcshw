@@ -1,5 +1,5 @@
 // A minimal hardware definition to accompany struct_test.bcsctrl
-controller ValidTestController for Beckhoff {
+controller StructTestController for Beckhoff {
     portgroup DI {
         moduleType: EL1008
         ioType: DIGITAL_INPUT

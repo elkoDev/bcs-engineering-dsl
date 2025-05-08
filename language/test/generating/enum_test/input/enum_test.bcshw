@@ -1,5 +1,5 @@
 // A minimal hardware definition to accompany enum_test.bcsctrl
-controller ValidTestController for Beckhoff {
+controller EnumTestController for Beckhoff {
     portgroup DI {
         moduleType: EL1008
         ioType: DIGITAL_INPUT

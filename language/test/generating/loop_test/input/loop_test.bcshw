@@ -1,16 +1,9 @@
 // A minimal hardware definition to accompany loop_test.bcsctrl
-controller ValidTestController for Beckhoff {
+controller LoopTestController for Beckhoff {
     portgroup DI {
         moduleType: EL1008
         ioType: DIGITAL_INPUT
         startAddress: %IX0.0
         channels: 8
-    }
-
-    datapoint triggerInput {
-        portgroup: DI
-        channels: {
-            channel value: BOOL at 0
-        }
     }
 }
