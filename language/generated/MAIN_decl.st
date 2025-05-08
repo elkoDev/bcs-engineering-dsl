@@ -17,7 +17,7 @@ VAR
     UseDaliLibrary_status: BOOL;
     UseDaliLibrary_resultMessage: I_TcMessage;
     UseDaliLibrary_failureStatus: INT;
-    ValidateSensorDistance_distance: INT := UltrasonicSensor.Distance;
+    ValidateSensorDistance_distance: INT := UltrasonicSensor_Distance;
     heatingLogicInstance: HeatingLogic; (* Function block instance *)
     fB_DALI207QueryFailureStatusInstance: FB_DALI207QueryFailureStatus; (* Function block instance *)
     fB_DALI207QueryFailureStatusInstance2: FB_DALI207QueryFailureStatus; (* Function block instance *)
