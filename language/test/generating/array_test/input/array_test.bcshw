@@ -6,11 +6,4 @@ controller ValidTestController for Beckhoff {
         startAddress: %IX0.0
         channels: 8
     }
-
-    datapoint triggerInput {
-        portgroup: DI
-        channels: {
-            channel value: BOOL at 0
-        }
-    }
 }

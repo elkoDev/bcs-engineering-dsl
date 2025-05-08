@@ -1,12 +1,15 @@
-// Implementation of MAIN
-// Auto-generated from BCS Engineering DSL
+// Initialize code - runs only once
+IF NOT bRunOnlyOnce THEN
+    ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_LOG,  
+             msgFmtStr := 'Program started %s', 
+             strArg := 'successfully!');
+    bRunOnlyOnce := TRUE;
+END_IF
 
-// Connection of ArrayTestFB_inst
-ArrayTestFB_inst(
-	iValues := values,
-	iCount := count,
-	oSum => sum,
-	oAverage => average,
-	oMaxValue => maxValue,
-	oProcessedValues => processedValues
-);
+// Main program logic
+arrayTestFBInstance(iValues:=TestArrays_values, iCount:=TestArrays_count);
+TestArrays_sum := arrayTestFBInstance.oSum;
+TestArrays_average := arrayTestFBInstance.oAverage;
+TestArrays_maxValue := arrayTestFBInstance.oMaxValue;
+TestArrays_processedValues := arrayTestFBInstance.oProcessedValues;
+

@@ -403,13 +403,9 @@ function writeFunctionBlock(
 
   // Write implementation file
   const implFilePath = path.join(destination, `${fbDecl.name}_impl.st`);
-  const implContent = toString(
-    expandToNode`
-      ${joinToNode(logic?.stmts || [], (stmt) => convertStatementToST(stmt), {
-        appendNewLineIfNotEmpty: true,
-      })}
-    `
-  );
+  const implContent = (logic?.stmts || [])
+    .map((stmt) => convertStatementToST(stmt, undefined, 0).trimEnd())
+    .join("\n");
   fs.writeFileSync(implFilePath, implContent);
   files.push(implFilePath);
 
@@ -470,23 +466,16 @@ function convertStatementToST(
       `
     );
   } else if (isForStmt(stmt)) {
-    return toString(
-      expandToNode`
-        ${pad(indent)}FOR ${stmt.loopVar.name} := ${
-        stmt.loopVar.init ? convertExprToST(stmt.loopVar.init) : "0"
-      } TO ${convertExprToST(stmt.end)}${
-        stmt.step ? ` BY ${convertExprToST(stmt.step)}` : ""
-      } DO
-            ${joinToNode(
-              stmt.stmts,
-              (subStmt) => convertStatementToST(subStmt, undefined, indent + 1),
-              {
-                appendNewLineIfNotEmpty: true,
-              }
-            )}
-        ${pad(indent)}END_FOR;
-      `
-    );
+    let result = `${pad(indent)}FOR ${stmt.loopVar.name} := ${
+      stmt.loopVar.init ? convertExprToST(stmt.loopVar.init) : "0"
+    } TO ${convertExprToST(stmt.end)}${
+      stmt.step ? ` BY ${convertExprToST(stmt.step)}` : ""
+    } DO\n`;
+    for (const subStmt of stmt.stmts) {
+      result += convertStatementToST(subStmt, undefined, indent + 1) + "\n";
+    }
+    result += `${pad(indent)}END_FOR;`;
+    return result;
   } else if (isSwitchStmt(stmt)) {
     return toString(
       expandToNode`
@@ -965,63 +954,55 @@ function writeProgramMain(
  * @param stmt The edge detection statement
  * @param index The index of this statement among others of the same type
  * @param type The type of edge detection ("rising" or "falling")
+ * @param indent Optional indentation level for nested statements
  * @returns ST code for the edge detection
  */
 function convertEdgeDetectionToST(
   stmt: Statement,
   index: number,
-  type: "rising" | "falling"
+  type: "rising" | "falling",
+  indent: number = 0
 ): string {
+  const pad = (level: number) => "    ".repeat(level);
   if (type === "rising" && isOnRisingEdgeStmt(stmt)) {
-    // Get the signal name and expression
     const signalExpr = convertExprToST(stmt.signal);
-
-    // Get the instance name from our mapping using the unique key
     const key = `${type}_${signalExpr}_${index}`;
     const instanceName = edgeDetectionInstanceMap.get(key);
-
     if (!instanceName) {
       console.warn(`Could not find instance name for rising edge: ${key}`);
       return "// ERROR: Missing edge detection instance";
     }
-
-    // Using Beckhoff's built-in R_TRIG function block for rising edge detection
-    let risingContent = `// Rising edge detection for ${signalExpr}\n`;
-    risingContent += `${instanceName}(CLK := ${signalExpr});\n`;
-    risingContent += `IF ${instanceName}.Q THEN\n`;
-
+    let risingContent = `${pad(
+      indent
+    )}// Rising edge detection for ${signalExpr}\n`;
+    risingContent += `${pad(indent)}${instanceName}(CLK := ${signalExpr});\n`;
+    risingContent += `${pad(indent)}IF ${instanceName}.Q THEN\n`;
     for (const subStmt of stmt.stmts) {
-      risingContent += `  ${convertStatementToST(subStmt)}\n`;
+      risingContent +=
+        convertStatementToST(subStmt, undefined, indent + 1) + "\n";
     }
-
-    risingContent += `END_IF;`;
+    risingContent += `${pad(indent)}END_IF;`;
     return risingContent;
   } else if (type === "falling" && isOnFallingEdgeStmt(stmt)) {
-    // Get the signal name and expression
     const signalExpr = convertExprToST(stmt.signal);
-
-    // Get the instance name from our mapping using the unique key
     const key = `${type}_${signalExpr}_${index}`;
     const instanceName = edgeDetectionInstanceMap.get(key);
-
     if (!instanceName) {
       console.warn(`Could not find instance name for falling edge: ${key}`);
       return "// ERROR: Missing edge detection instance";
     }
-
-    // Using Beckhoff's built-in F_TRIG function block for falling edge detection
-    let fallingContent = `// Falling edge detection for ${signalExpr}\n`;
-    fallingContent += `${instanceName}(CLK := ${signalExpr});\n`;
-    fallingContent += `IF ${instanceName}.Q THEN\n`;
-
+    let fallingContent = `${pad(
+      indent
+    )}// Falling edge detection for ${signalExpr}\n`;
+    fallingContent += `${pad(indent)}${instanceName}(CLK := ${signalExpr});\n`;
+    fallingContent += `${pad(indent)}IF ${instanceName}.Q THEN\n`;
     for (const subStmt of stmt.stmts) {
-      fallingContent += `  ${convertStatementToST(subStmt)}\n`;
+      fallingContent +=
+        convertStatementToST(subStmt, undefined, indent + 1) + "\n";
     }
-
-    fallingContent += `END_IF;`;
+    fallingContent += `${pad(indent)}END_IF;`;
     return fallingContent;
   }
-
   return "// Error: Invalid edge detection statement";
 }
 

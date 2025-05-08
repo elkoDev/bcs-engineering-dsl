@@ -323,6 +323,8 @@ describe("Beckhoff Generator Tests", () => {
       outputDir
     );
 
+    expect(Object.keys(result.csharpStrings).length).toBe(2);
+
     // Check declaration and implementation files
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "ArrayTestFB_decl.st"),
@@ -332,6 +334,16 @@ describe("Beckhoff Generator Tests", () => {
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "ArrayTestFB_impl.st"),
       expectedFilePath: path.join(expectedDir, "ArrayTestFB_impl.st"),
+    });
+
+    compareGeneratedWithExpected({
+      generatedFilePath: path.join(outputDir, "MAIN_decl.st"),
+      expectedFilePath: path.join(expectedDir, "MAIN_decl.st"),
+    });
+
+    compareGeneratedWithExpected({
+      generatedFilePath: path.join(outputDir, "MAIN_impl.st"),
+      expectedFilePath: path.join(expectedDir, "MAIN_impl.st"),
     });
   });
 
