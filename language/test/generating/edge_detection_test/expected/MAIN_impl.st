@@ -1,34 +1,34 @@
-// Implementation of MAIN
-// Auto-generated from BCS Engineering DSL
+// Initialize code - runs only once
+IF NOT bRunOnlyOnce THEN
+    ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_LOG,  
+             msgFmtStr := 'Program started %s', 
+             strArg := 'successfully!');
+    bRunOnlyOnce := TRUE;
+END_IF
 
-// Rising edge detection for sensor1
-R_TRIG_sensor1_instance(CLK := sensor1);
-IF R_TRIG_sensor1_instance.Q THEN
-    startSignal := TRUE;
+// Main program logic
+// Rising edge detection for TestEdgeDetection_sensor1
+r_TRIG_TestEdgeDetection_sensor1_Instance(CLK := TestEdgeDetection_sensor1);
+IF r_TRIG_TestEdgeDetection_sensor1_Instance.Q THEN
+  TestEdgeDetection_startSignal := TRUE;
 END_IF;
-
-// Falling edge detection for sensor2
-F_TRIG_sensor2_instance(CLK := sensor2);
-IF F_TRIG_sensor2_instance.Q THEN
-    stopSignal := TRUE;
+// Falling edge detection for TestEdgeDetection_sensor2
+f_TRIG_TestEdgeDetection_sensor2_Instance(CLK := TestEdgeDetection_sensor2);
+IF f_TRIG_TestEdgeDetection_sensor2_Instance.Q THEN
+  TestEdgeDetection_stopSignal := TRUE;
 END_IF;
-
-// Edge detection with toggle logic
-R_TRIG_pushButton_instance(CLK := pushButton);
-IF R_TRIG_pushButton_instance.Q THEN
-    toggleOutput := NOT toggleOutput;
+// Rising edge detection for TestEdgeDetection_pushButton
+r_TRIG_TestEdgeDetection_pushButton_Instance2(CLK := TestEdgeDetection_pushButton);
+IF r_TRIG_TestEdgeDetection_pushButton_Instance2.Q THEN
+  TestEdgeDetection_toggleOutput := NOT TestEdgeDetection_toggleOutput;
 END_IF;
-
-// Second rising edge detection for sensor1
-R_TRIG_sensor1_instance(CLK := sensor1);
-IF R_TRIG_sensor1_instance.Q THEN
-    pulseOutput := TRUE;
-    // Additional statements can go here
+// Rising edge detection for TestEdgeDetection_sensor1
+r_TRIG_TestEdgeDetection_sensor1_Instance3(CLK := TestEdgeDetection_sensor1);
+IF r_TRIG_TestEdgeDetection_sensor1_Instance3.Q THEN
+  TestEdgeDetection_pulseOutput := TRUE;
 END_IF;
-
-// Second falling edge detection for sensor2
-F_TRIG_sensor2_instance(CLK := sensor2);
-IF F_TRIG_sensor2_instance.Q THEN
-    pulseOutput := FALSE;
-    // Additional statements can go here
+// Falling edge detection for TestEdgeDetection_sensor2
+f_TRIG_TestEdgeDetection_sensor2_Instance2(CLK := TestEdgeDetection_sensor2);
+IF f_TRIG_TestEdgeDetection_sensor2_Instance2.Q THEN
+  TestEdgeDetection_pulseOutput := TRUE;
 END_IF;

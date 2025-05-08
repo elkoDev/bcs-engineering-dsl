@@ -287,6 +287,8 @@ describe("Beckhoff Generator Tests", () => {
       outputDir
     );
 
+    expect(Object.keys(result.csharpStrings).length).toBe(1);
+
     // Check declaration and implementation files
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "MAIN_decl.st"),
@@ -321,7 +323,7 @@ describe("Beckhoff Generator Tests", () => {
       outputDir
     );
 
-    // Check array declaration and implementation
+    // Check declaration and implementation files
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "ArrayTestFB_decl.st"),
       expectedFilePath: path.join(expectedDir, "ArrayTestFB_decl.st"),
@@ -355,13 +357,12 @@ describe("Beckhoff Generator Tests", () => {
       outputDir
     );
 
-    // Check MAIN declaration
+    // Check declaration and implementation files
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "MAIN_decl.st"),
       expectedFilePath: path.join(expectedDir, "MAIN_decl.st"),
     });
 
-    // Check MAIN implementation
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "MAIN_impl.st"),
       expectedFilePath: path.join(expectedDir, "MAIN_impl.st"),
@@ -390,7 +391,7 @@ describe("Beckhoff Generator Tests", () => {
       outputDir
     );
 
-    // Verify the FB declaration and implementation files
+    // Check declaration and implementation files
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "LoopsFB_decl.st"),
       expectedFilePath: path.join(expectedDir, "LoopsFB_decl.st"),
@@ -401,7 +402,6 @@ describe("Beckhoff Generator Tests", () => {
       expectedFilePath: path.join(expectedDir, "LoopsFB_impl.st"),
     });
 
-    // Verify MAIN declaration and implementation
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "MAIN_decl.st"),
       expectedFilePath: path.join(expectedDir, "MAIN_decl.st"),
@@ -435,13 +435,12 @@ describe("Beckhoff Generator Tests", () => {
       outputDir
     );
 
-    // Verify the enum file
+    // Check declaration and implementation files
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "OperationMode.st"),
       expectedFilePath: path.join(expectedDir, "OperationMode.st"),
     });
 
-    // Verify the FB declaration and implementation files
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "SwitchFB_decl.st"),
       expectedFilePath: path.join(expectedDir, "SwitchFB_decl.st"),
@@ -452,7 +451,6 @@ describe("Beckhoff Generator Tests", () => {
       expectedFilePath: path.join(expectedDir, "SwitchFB_impl.st"),
     });
 
-    // Verify MAIN declaration and implementation
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "MAIN_decl.st"),
       expectedFilePath: path.join(expectedDir, "MAIN_decl.st"),
@@ -486,13 +484,12 @@ describe("Beckhoff Generator Tests", () => {
       outputDir
     );
 
-    // Verify the enum file
+    // Check declaration and implementation files
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "ProcessState.st"),
       expectedFilePath: path.join(expectedDir, "ProcessState.st"),
     });
 
-    // Verify the FB declaration and implementation files
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "NestedControlsFB_decl.st"),
       expectedFilePath: path.join(expectedDir, "NestedControlsFB_decl.st"),
@@ -503,7 +500,6 @@ describe("Beckhoff Generator Tests", () => {
       expectedFilePath: path.join(expectedDir, "NestedControlsFB_impl.st"),
     });
 
-    // Verify MAIN declaration and implementation
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "MAIN_decl.st"),
       expectedFilePath: path.join(expectedDir, "MAIN_decl.st"),
@@ -537,13 +533,12 @@ describe("Beckhoff Generator Tests", () => {
       outputDir
     );
 
-    // Check MAIN declaration
+    // Check declaration and implementation files
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "MAIN_decl.st"),
       expectedFilePath: path.join(expectedDir, "MAIN_decl.st"),
     });
 
-    // Check MAIN implementation
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "MAIN_impl.st"),
       expectedFilePath: path.join(expectedDir, "MAIN_impl.st"),
