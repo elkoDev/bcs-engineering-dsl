@@ -38,6 +38,11 @@ import {
   NamedElement,
   ControlUnit,
   TypeRef,
+  Ref,
+  SwitchStmt,
+  ForStmt,
+  IfStmt,
+  WhileStmt,
 } from "../../language/generated/ast.js";
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
@@ -64,12 +69,11 @@ function isPrimitive(expr: Primary): boolean {
  * This function properly handles all types of references in our AST
  */
 function getReferenceName(ref: Reference<NamedElement>): string {
-  if (ref && "$refText" in ref) {
-    return ref.$refText;
-  }
-
-  console.warn("Unresolved reference:", JSON.stringify(ref, null, 2));
-  return "UNRESOLVED_REF";
+  return (
+    ref?.$refText ??
+    (console.warn("Unresolved reference:", JSON.stringify(ref, null, 2)),
+    "UNRESOLVED_REF")
+  );
 }
 
 /**
@@ -79,13 +83,10 @@ function getReferenceName(ref: Reference<NamedElement>): string {
 function isControlUnitVariable(
   ref: Reference<NamedElement>
 ): [boolean, string | null] {
-  if (ref && ref.ref) {
-    const container = ref.ref.$container;
-    if (container && isControlUnit(container)) {
-      return [true, container.name];
-    }
-  }
-  return [false, null];
+  const container = ref?.ref?.$container;
+  return container && isControlUnit(container)
+    ? [true, (container as ControlUnit).name]
+    : [false, null];
 }
 
 /**
@@ -137,73 +138,19 @@ class BeckhoffGeneratorContext {
 
   convertExprToST(expr: Expr): string {
     if (isPrimary(expr)) {
-      if (isRef(expr)) {
-        if (expr.ref && expr.properties && expr.properties.length === 1) {
-          const base = getReferenceName(expr.ref);
-          const prop = getReferenceName(expr.properties[0]);
-          const flat = `${base}_${prop}`;
-          if (this.hardwareChannelFlatNames.has(flat)) return flat;
-        }
-        if (expr.ref) {
-          let result = this.getQualifiedReferenceName(expr.ref);
-          const propIndices = [];
-          if (expr.properties && expr.properties.length > 0) {
-            for (let i = 0; i < expr.properties.length; i++) {
-              propIndices.push({
-                type: "property",
-                index: i,
-                value: getReferenceName(expr.properties[i]),
-              });
-            }
-          }
-          if (expr.indices && expr.indices.length > 0) {
-            for (let i = 0; i < expr.indices.length; i++) {
-              propIndices.push({
-                type: "index",
-                index: i,
-                value: this.convertExprToST(expr.indices[i]),
-              });
-            }
-          }
-          if (propIndices.length > 0) {
-            if (expr.indices && expr.indices.length > 0) {
-              result += `[${expr.indices
-                .map((idx) => this.convertExprToST(idx))
-                .join(", ")}]`;
-            }
-            if (expr.properties && expr.properties.length > 0) {
-              const propNames = expr.properties.map((prop) =>
-                getReferenceName(prop)
-              );
-              result += `.${propNames.join(".")}`;
-            }
-          }
-          return result;
-        }
-        return "UNKNOWN_REF";
-      } else if (isParenExpr(expr)) {
-        return `(${this.convertExprToST(expr.expr)})`;
-      } else if (isNegExpr(expr)) {
-        return `-${this.convertExprToST(expr.expr)}`;
-      } else if (isNotExpr(expr)) {
-        return `NOT ${this.convertExprToST(expr.expr)}`;
-      } else if (isArrayLiteral(expr.val)) {
+      if (isRef(expr)) return this.handleRefExpr(expr);
+      if (isParenExpr(expr)) return `(${this.convertExprToST(expr.expr)})`;
+      if (isNegExpr(expr)) return `-${this.convertExprToST(expr.expr)}`;
+      if (isNotExpr(expr)) return `NOT ${this.convertExprToST(expr.expr)}`;
+      if (isArrayLiteral(expr.val))
         return `[${expr.val.elements
           .map((e) => this.convertExprToST(e))
           .join(", ")}]`;
-      } else if (isStructLiteral(expr.val)) {
+      if (isStructLiteral(expr.val))
         return `(${expr.val.fields
           .map((f) => `${f.name}:=${this.convertExprToST(f.value)}`)
           .join(", ")})`;
-      } else if (isPrimitive(expr)) {
-        if (typeof expr.val === "string") {
-          return `'${expr.val.replaceAll('"', "")}'`;
-        } else if (typeof expr.val === "boolean") {
-          return expr.val ? "TRUE" : "FALSE";
-        } else if (expr.val !== undefined) {
-          return expr.val.toString();
-        }
-      }
+      if (isPrimitive(expr)) return this.primitiveToST(expr.val);
     } else if (isBinExpr(expr)) {
       const op = translateOperator(expr.op);
       return `${this.convertExprToST(expr.e1)} ${op} ${this.convertExprToST(
@@ -213,286 +160,213 @@ class BeckhoffGeneratorContext {
     return "UNKNOWN_EXPR";
   }
 
+  handleRefExpr(expr: Ref): string {
+    if (expr.ref && expr.properties?.length === 1) {
+      const flat = `${getReferenceName(expr.ref)}_${getReferenceName(
+        expr.properties[0]
+      )}`;
+      if (this.hardwareChannelFlatNames.has(flat)) return flat;
+    }
+    if (expr.ref) {
+      let result = this.getQualifiedReferenceName(expr.ref);
+      if (expr.indices?.length)
+        result += `[${expr.indices
+          .map((idx) => this.convertExprToST(idx))
+          .join(", ")}]`;
+      if (expr.properties?.length)
+        result += `.${expr.properties.map(getReferenceName).join(".")}`;
+      return result;
+    }
+    return "UNKNOWN_REF";
+  }
+
+  primitiveToST(val: any): string {
+    if (typeof val === "string") return `'${val.replaceAll('"', "")}'`;
+    if (typeof val === "boolean") return val ? "TRUE" : "FALSE";
+    if (val !== undefined) return val.toString();
+    return "";
+  }
+
   convertStatementToST(
     stmt: Statement,
     edgeMetadata?: [string, number],
-    indent: number = 0
+    indent: number = 0,
+    fbInstanceTracker?: Map<string, Map<number, string>>,
+    mainStatements?: Statement[]
   ): string {
     const pad = (level: number) => "    ".repeat(level);
-
-    if (isAssignmentStmt(stmt)) {
+    if (isAssignmentStmt(stmt))
       return (
         pad(indent) +
         `${this.convertExprToST(stmt.target)} := ${this.convertExprToST(
           stmt.value
         )};`
       );
-    } else if (isIfStmt(stmt)) {
-      let result =
-        pad(indent) + `IF ${this.convertExprToST(stmt.condition)} THEN\n`;
-      for (const subStmt of stmt.stmts) {
-        result +=
-          this.convertStatementToST(subStmt, undefined, indent + 1) + "\n";
-      }
-      for (const elseIfStmt of stmt.elseIfStmts) {
-        result +=
-          pad(indent) +
-          `ELSIF ${this.convertExprToST(elseIfStmt.condition)} THEN\n`;
-        for (const subStmt of elseIfStmt.stmts) {
-          result +=
-            this.convertStatementToST(subStmt, undefined, indent + 1) + "\n";
-        }
-      }
-      if (stmt.elseStmt) {
-        result += pad(indent) + `ELSE\n`;
-        for (const subStmt of stmt.elseStmt.stmts || []) {
-          result +=
-            this.convertStatementToST(subStmt, undefined, indent + 1) + "\n";
-        }
-      }
-      result += pad(indent) + `END_IF;`;
-      return result;
-    } else if (isWhileStmt(stmt)) {
-      return toString(
-        expandToNode`
-          ${pad(indent)}WHILE ${this.convertExprToST(stmt.condition)} DO
-              ${joinToNode(
-                stmt.stmts,
-                (subStmt) =>
-                  this.convertStatementToST(subStmt, undefined, indent + 1),
-                {
-                  appendNewLineIfNotEmpty: true,
-                }
-              )}
-          ${pad(indent)}END_WHILE;
-        `
-      );
-    } else if (isForStmt(stmt)) {
-      let result = `${pad(indent)}FOR ${stmt.loopVar.name} := ${
-        stmt.loopVar.init ? this.convertExprToST(stmt.loopVar.init) : "0"
-      } TO ${this.convertExprToST(stmt.end)}${
-        stmt.step ? ` BY ${this.convertExprToST(stmt.step)}` : ""
-      } DO\n`;
-      for (const subStmt of stmt.stmts) {
-        result +=
-          this.convertStatementToST(subStmt, undefined, indent + 1) + "\n";
-      }
-      result += `${pad(indent)}END_FOR;`;
-      return result;
-    } else if (isSwitchStmt(stmt)) {
-      return toString(
-        expandToNode`
-          ${pad(indent)}CASE ${this.convertExprToST(stmt.expr)} OF
-              ${joinToNode(
-                stmt.cases,
-                (caseOption) => {
-                  const literals = caseOption.literals
-                    .map((lit) => {
-                      if (isEnumMemberLiteral(lit.val)) {
-                        return `${lit.val.enumDecl.ref?.name}.${lit.val.member.ref?.name}`;
-                      } else {
-                        return String(lit.val);
-                      }
-                    })
-                    .join(", ");
-                  return expandToNode`
-                    ${pad(indent + 1)}${literals}:
-                        ${joinToNode(
-                          caseOption.stmts,
-                          (subStmt) =>
-                            this.convertStatementToST(
-                              subStmt,
-                              undefined,
-                              indent + 2
-                            ),
-                          {
-                            appendNewLineIfNotEmpty: true,
-                          }
-                        )}
-                  `;
-                },
-                { appendNewLineIfNotEmpty: true }
-              )}
-              ${
-                stmt.default
-                  ? expandToNode`
-                  ${pad(indent + 1)}ELSE:
-                      ${joinToNode(
-                        stmt.default.stmts,
-                        (subStmt) =>
-                          this.convertStatementToST(
-                            subStmt,
-                            undefined,
-                            indent + 2
-                          ),
-                        {
-                          appendNewLineIfNotEmpty: true,
-                        }
-                      )}
-              `
-                  : ""
-              }
-          ${pad(indent)}END_CASE;
-        `
-      );
-    } else if (isWaitStmt(stmt)) {
+    if (isIfStmt(stmt)) return this.stIf(stmt, indent);
+    if (isWhileStmt(stmt)) return this.stWhile(stmt, indent);
+    if (isForStmt(stmt)) return this.stFor(stmt, indent);
+    if (isSwitchStmt(stmt)) return this.stSwitch(stmt, indent);
+    if (isWaitStmt(stmt))
       return (
         pad(indent) +
         `// Wait statements are not directly supported in ST - using equivalent timer logic`
       );
-    } else if (isBreakStmt(stmt)) {
-      return pad(indent) + `EXIT;`;
-    } else if (isContinueStmt(stmt)) {
-      return pad(indent) + `CONTINUE;`;
-    } else if (isExpressionStmt(stmt)) {
+    if (isBreakStmt(stmt)) return pad(indent) + `EXIT;`;
+    if (isContinueStmt(stmt)) return pad(indent) + `CONTINUE;`;
+    if (isExpressionStmt(stmt))
       return pad(indent) + `${this.convertExprToST(stmt.expr)};`;
-    } else if (isUseStmt(stmt)) {
-      // Handle function block instantiation and calling
-      const fbType = stmt.functionBlockRef.ref?.name || "UNKNOWN_FB";
-
-      // Create a proper instance name in camelCase, ensuring it's unique if needed
-      let fbInstanceName =
-        fbType.charAt(0).toLowerCase() + fbType.slice(1) + "Instance";
-
-      // Check if we need to make the instance name unique
-      let instanceCounter = 1;
-      const baseInstanceName = fbInstanceName;
-      while (this.usedInstanceNames.has(fbInstanceName)) {
-        fbInstanceName = baseInstanceName + instanceCounter;
-        instanceCounter++;
-      }
-      this.usedInstanceNames.add(fbInstanceName);
-
-      // Map inputs
-      const inputMappings = stmt.inputArgs
-        .map((arg) => {
-          return `${arg.inputVar.ref?.name}:=${this.convertExprToST(
-            arg.value
-          )}`;
-        })
-        .join(", ");
-
-      // Handle output mapping with consistent formatting
-      if (stmt.useOutput.singleOutput) {
-        const targetOutputVarName =
-          stmt.useOutput.singleOutput.targetOutputVar.ref?.name ?? "output";
-        // Using direct access for single output case, which returns directly from FB call
-        return toString(
-          expandToNode`
-            ${pad(indent)}${fbInstanceName} := ${fbType}(${inputMappings});
-            ${pad(indent)}${targetOutputVarName} := ${fbInstanceName};
-          `
-        );
-      } else if (stmt.useOutput.mappingOutputs.length > 0) {
-        return toString(
-          expandToNode`
-            ${pad(indent)}${fbInstanceName}(${inputMappings});
-            ${joinToNode(
-              stmt.useOutput.mappingOutputs,
-              (outMapping) => {
-                const targetOutputVarName =
-                  outMapping.targetOutputVar.ref?.name ?? "output";
-                const fbOutputVarName =
-                  outMapping.fbOutputVar.ref?.name ?? "output";
-                return `${pad(
-                  indent
-                )}${targetOutputVarName} := ${fbInstanceName}.${fbOutputVarName};`;
-              },
-              { appendNewLineIfNotEmpty: true }
-            )}
-          `
-        );
-      } else {
-        return pad(indent) + `${fbInstanceName}(${inputMappings});`;
-      }
-    } else if (isOnRisingEdgeStmt(stmt)) {
-      // Get the signal name and expression
-      const signalExpr = this.convertExprToST(stmt.signal);
-
-      // Look up the proper instance name from our pre-processed map
-      let instanceName;
-      if (
-        edgeMetadata &&
-        this.edgeDetectionInstanceMap.has(
-          `${signalExpr}_rising_${edgeMetadata[1]}`
-        )
-      ) {
-        instanceName = this.edgeDetectionInstanceMap.get(
-          `${signalExpr}_rising_${edgeMetadata[1]}`
-        );
-      } else {
-        // Fallback to existing logic if needed
-        const signalPath = signalExpr.replace(/\./g, "_");
-        instanceName = `R_TRIG_${signalPath}_Instance`;
-      }
-
-      // Using Beckhoff's built-in R_TRIG function block for rising edge detection
-      return toString(
-        expandToNode`
-          ${pad(indent)}// Rising edge detection for ${signalExpr}
-          ${pad(indent)}${instanceName}(CLK := ${signalExpr});
-          ${pad(indent)}IF ${instanceName}.Q THEN
-              ${joinToNode(
-                stmt.stmts,
-                (subStmt) =>
-                  this.convertStatementToST(subStmt, undefined, indent + 1),
-                {
-                  appendNewLineIfNotEmpty: true,
-                }
-              )}
-          ${pad(indent)}END_IF;
-        `
-      );
-    } else if (isOnFallingEdgeStmt(stmt)) {
-      // Get the signal name and expression
-      const signalExpr = this.convertExprToST(stmt.signal);
-
-      // Look up the proper instance name from our pre-processed map
-      let instanceName;
-      if (
-        edgeMetadata &&
-        this.edgeDetectionInstanceMap.has(
-          `${signalExpr}_falling_${edgeMetadata[1]}`
-        )
-      ) {
-        instanceName = this.edgeDetectionInstanceMap.get(
-          `${signalExpr}_falling_${edgeMetadata[1]}`
-        );
-      } else {
-        // Fallback to existing logic if needed
-        const signalPath = signalExpr.replace(/\./g, "_");
-        instanceName = `F_TRIG_${signalPath}_Instance`;
-      }
-
-      // Using Beckhoff's built-in F_TRIG function block for falling edge detection
-      return toString(
-        expandToNode`
-          ${pad(indent)}// Falling edge detection for ${signalExpr}
-          ${pad(indent)}${instanceName}(CLK := ${signalExpr});
-          ${pad(indent)}IF ${instanceName}.Q THEN
-              ${joinToNode(
-                stmt.stmts,
-                (subStmt) =>
-                  this.convertStatementToST(subStmt, undefined, indent + 1),
-                {
-                  appendNewLineIfNotEmpty: true,
-                }
-              )}
-          ${pad(indent)}END_IF;
-        `
-      );
-    } else if (isVarDecl(stmt)) {
+    if (isUseStmt(stmt)) return this.stUse(stmt, indent, fbInstanceTracker);
+    if (isOnRisingEdgeStmt(stmt))
+      return this.stEdge(stmt, edgeMetadata, indent, true, mainStatements);
+    if (isOnFallingEdgeStmt(stmt))
+      return this.stEdge(stmt, edgeMetadata, indent, false, mainStatements);
+    if (isVarDecl(stmt))
       return (
         pad(indent) +
         `${stmt.name}: ${convertTypeRefToST(stmt.typeRef)}${
           stmt.init ? ` := ${this.convertExprToST(stmt.init)}` : ""
         };`
       );
-    }
-
     return (
       pad(indent) + `// Unsupported statement type: ${(stmt as any).$type}`
     );
+  }
+
+  stIf(stmt: IfStmt, indent: number): string {
+    const pad = (level: number) => "    ".repeat(level);
+    let result =
+      pad(indent) + `IF ${this.convertExprToST(stmt.condition)} THEN\n`;
+    result +=
+      stmt.stmts
+        .map((s: any) => this.convertStatementToST(s, undefined, indent + 1))
+        .join("\n") + "\n";
+    for (const elseIfStmt of stmt.elseIfStmts) {
+      result +=
+        pad(indent) +
+        `ELSIF ${this.convertExprToST(elseIfStmt.condition)} THEN\n`;
+      result +=
+        elseIfStmt.stmts
+          .map((s: any) => this.convertStatementToST(s, undefined, indent + 1))
+          .join("\n") + "\n";
+    }
+    if (stmt.elseStmt) {
+      result += pad(indent) + `ELSE\n`;
+      result +=
+        (stmt.elseStmt.stmts || [])
+          .map((s: any) => this.convertStatementToST(s, undefined, indent + 1))
+          .join("\n") + "\n";
+    }
+    result += pad(indent) + `END_IF;`;
+    return result;
+  }
+
+  stWhile(stmt: WhileStmt, indent: number): string {
+    const pad = (level: number) => "    ".repeat(level);
+    return toString(
+      expandToNode`
+        ${pad(indent)}WHILE ${this.convertExprToST(stmt.condition)} DO
+            ${joinToNode(
+              stmt.stmts,
+              (subStmt) =>
+                this.convertStatementToST(subStmt, undefined, indent + 1),
+              { appendNewLineIfNotEmpty: true }
+            )}
+        ${pad(indent)}END_WHILE;
+      `
+    );
+  }
+
+  stFor(stmt: ForStmt, indent: number): string {
+    const pad = (level: number) => "    ".repeat(level);
+    let result = `${pad(indent)}FOR ${stmt.loopVar.name} := ${
+      stmt.loopVar.init ? this.convertExprToST(stmt.loopVar.init) : "0"
+    } TO ${this.convertExprToST(stmt.end)}${
+      stmt.step ? ` BY ${this.convertExprToST(stmt.step)}` : ""
+    } DO\n`;
+    result +=
+      stmt.stmts
+        .map((s: any) => this.convertStatementToST(s, undefined, indent + 1))
+        .join("\n") + "\n";
+    result += `${pad(indent)}END_FOR;`;
+    return result;
+  }
+
+  stSwitch(stmt: SwitchStmt, indent: number): string {
+    const pad = (level: number) => "    ".repeat(level);
+    return toString(
+      expandToNode`
+        ${pad(indent)}CASE ${this.convertExprToST(stmt.expr)} OF
+            ${joinToNode(
+              stmt.cases,
+              (caseOption) => {
+                const literals = caseOption.literals
+                  .map((lit: any) =>
+                    isEnumMemberLiteral(lit.val)
+                      ? `${lit.val.enumDecl.ref?.name}.${lit.val.member.ref?.name}`
+                      : String(lit.val)
+                  )
+                  .join(", ");
+                return expandToNode`
+                  ${pad(indent + 1)}${literals}:
+                      ${joinToNode(
+                        caseOption.stmts,
+                        (subStmt) =>
+                          this.convertStatementToST(
+                            subStmt,
+                            undefined,
+                            indent + 2
+                          ),
+                        { appendNewLineIfNotEmpty: true }
+                      )}
+                `;
+              },
+              { appendNewLineIfNotEmpty: true }
+            )}
+            ${
+              stmt.default
+                ? expandToNode`
+            ${pad(indent + 1)}ELSE:
+                ${joinToNode(
+                  stmt.default.stmts,
+                  (subStmt) =>
+                    this.convertStatementToST(subStmt, undefined, indent + 2),
+                  { appendNewLineIfNotEmpty: true }
+                )}
+        `
+                : ""
+            }
+        ${pad(indent)}END_CASE;
+      `
+    );
+  }
+
+  stUse(
+    stmt: any,
+    indent: number,
+    fbInstanceTracker?: Map<string, Map<number, string>>
+  ): string {
+    if (fbInstanceTracker) {
+      return this.convertUseStmtToST(stmt, fbInstanceTracker);
+    }
+    return this.convertStatementToST(stmt, undefined, indent);
+  }
+
+  stEdge(
+    stmt: any,
+    edgeMetadata: [string, number] | undefined,
+    indent: number,
+    rising: boolean,
+    mainStatements?: Statement[]
+  ): string {
+    const type = rising ? "rising" : "falling";
+    const edgeStatements = (mainStatements ?? []).filter(
+      rising ? isOnRisingEdgeStmt : isOnFallingEdgeStmt
+    );
+    const statementIndex = edgeStatements.indexOf(stmt);
+    if (statementIndex !== -1) {
+      return this.convertEdgeDetectionToST(stmt, statementIndex, type, indent);
+    }
+    return this.convertStatementToST(stmt, edgeMetadata, indent);
   }
 
   convertEdgeDetectionToST(
@@ -983,7 +857,6 @@ class BeckhoffGeneratorContext {
           mainStatements.filter((stmt) => !isVarDecl(stmt)),
           (stmt, index) => {
             if (isOnRisingEdgeStmt(stmt)) {
-              // Find this statement's index in the risingEdgeStatements array
               const statementIndex = risingEdgeStatements.indexOf(stmt);
               if (statementIndex !== -1) {
                 return this.convertEdgeDetectionToST(
@@ -993,7 +866,6 @@ class BeckhoffGeneratorContext {
                 );
               }
             } else if (isOnFallingEdgeStmt(stmt)) {
-              // Find this statement's index in the fallingEdgeStatements array
               const statementIndex = fallingEdgeStatements.indexOf(stmt);
               if (statementIndex !== -1) {
                 return this.convertEdgeDetectionToST(
@@ -1003,10 +875,15 @@ class BeckhoffGeneratorContext {
                 );
               }
             } else if (isUseStmt(stmt)) {
-              // Handle function block use statements with consistent instance tracking
               return this.convertUseStmtToST(stmt, fbInstanceTracker);
             }
-            return this.convertStatementToST(stmt);
+            return this.convertStatementToST(
+              stmt,
+              undefined,
+              0,
+              fbInstanceTracker,
+              mainStatements
+            );
           },
           { appendNewLineIfNotEmpty: true }
         )}
@@ -1084,12 +961,12 @@ class BeckhoffGeneratorContext {
             // Calculate the IO binding address
             // Parse the start address from the IOBinding format: %I* or %Q*
             const addrMatch = portgroup.startAddress?.match(
-              /%([IQ])([XBWDL])?([0-9]+(\.[0-9]+)?)?/
+              /([IQ])([XBWDL])?(\d+(\.\d+)?)?/
             );
             if (!addrMatch) continue;
 
             const ioPrefix = addrMatch[1]; // I or Q
-            const ioType = addrMatch[2] || this.getDefaultIOType(plcType); // X, B, W, D, L if specified
+            const ioType = addrMatch[2] ?? this.getDefaultIOType(plcType); // X, B, W, D, L if specified
             const ioBaseAddr = addrMatch[3] ? parseInt(addrMatch[3]) : 0;
 
             // Calculate the offset based on channel index
