@@ -88,12 +88,24 @@ function isControlUnitVariable(
   return [false, null];
 }
 
+// This set will be filled in writeProgramMain and used in convertExprToST
+let hardwareChannelFlatNames: Set<string> = new Set();
+
 /**
  * Convert an expression to a valid ST expression
  */
 function convertExprToST(expr: Expr): string {
   if (isPrimary(expr)) {
     if (isRef(expr)) {
+      // Handle hardware datapoint channel: e.g., UltrasonicSensor.Distance
+      if (expr.ref && expr.properties && expr.properties.length === 1) {
+        const base = getReferenceName(expr.ref);
+        const prop = getReferenceName(expr.properties[0]);
+        const flat = `${base}_${prop}`;
+        if (hardwareChannelFlatNames.has(flat)) {
+          return flat;
+        }
+      }
       // Handle references with both indices and properties in correct order
       if (expr.ref) {
         // Start with the base name
@@ -779,6 +791,12 @@ function writeProgramMain(
 
   // Extract hardware datapoints
   const { inputs, outputs } = extractHardwareDatapoints(hardwareModel);
+
+  // Fill the set of flat hardware channel names
+  hardwareChannelFlatNames = new Set([
+    ...inputs.map((i) => i.name),
+    ...outputs.map((o) => o.name),
+  ]);
 
   // Handle edge detection trigger instances (R_TRIG and F_TRIG)
   // Use a Map to ensure unique instance names

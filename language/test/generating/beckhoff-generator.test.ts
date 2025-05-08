@@ -369,6 +369,8 @@ describe("Beckhoff Generator Tests", () => {
       outputDir
     );
 
+    expect(Object.keys(result.csharpStrings).length).toBe(1);
+
     // Check declaration and implementation files
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "MAIN_decl.st"),

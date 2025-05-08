@@ -1,9 +1,22 @@
 PROGRAM MAIN
 VAR
-	inputSwitch1 AT %IX0.0 : BOOL;
-	inputSwitch2 AT %IX0.1 : BOOL;
-	analogInput AT %IW0 : REAL;
-	outputLight1 AT %QX0.0 : BOOL;
-	outputLight2 AT %QX0.1 : BOOL;
-	analogOutput AT %QW0 : REAL;
+    UltrasonicSensor_Distance AT %I*: INT; (* Input channel from hardware *)
+    UltrasonicSensor_Valid AT %I*: BOOL; (* Input channel from hardware *)
+    Temperatures_Room1 AT %I*: REAL; (* Input channel from hardware *)
+    Temperatures_Room2 AT %I*: REAL; (* Input channel from hardware *)
+    Temperatures_Room3 AT %I*: REAL; (* Input channel from hardware *)
+    Temperatures_Room4 AT %I*: REAL; (* Input channel from hardware *)
+    Buttons_Room1 AT %I*: BOOL; (* Input channel from hardware *)
+    Buttons_Room2 AT %I*: BOOL; (* Input channel from hardware *)
+    Lights_Room1 AT %Q*: BOOL; (* Output channel to hardware *)
+    Lights_Room2 AT %Q*: BOOL; (* Output channel to hardware *)
+    TestHardwareIOLogic_distance: INT;
+    TestHardwareIOLogic_valid: BOOL;
+    TestHardwareIOLogic_temp1: REAL;
+    TestHardwareIOLogic_temp2: REAL;
+    TestHardwareIOLogic_temp3: REAL;
+    TestHardwareIOLogic_temp4: REAL;
+    TestHardwareIOLogic_btn1: BOOL;
+    TestHardwareIOLogic_btn2: BOOL;
+    bRunOnlyOnce: BOOL := FALSE;
 END_VAR
