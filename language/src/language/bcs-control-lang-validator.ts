@@ -8,6 +8,7 @@ import {
   Channel,
   ControlModel,
   ControlUnit,
+  ForStmt,
   FunctionBlockDecl,
   isArrayLiteral,
   isAssignmentStmt,
@@ -74,11 +75,26 @@ export function registerBCSControlValidationChecks(
     VarDecl: [validator.checkVarDeclTypes],
     UseStmt: [validator.checkUseStmtTypes],
     SwitchStmt: [validator.checkSwitchCaseTypes],
+    ForStmt: [validator.checkToExprType],
   };
   registry.register(checks, validator);
 }
 
 export class BCSControlLangValidator {
+  checkToExprType(stmt: ForStmt, accept: ValidationAcceptor) {
+    const toExpr = stmt.toExpr;
+    if (!toExpr) return;
+
+    const type = this.inferType(toExpr, accept);
+    if (type && type !== "INT") {
+      accept(
+        "error",
+        `For loop 'to' expression must be of type INT, but got '${type}'.`,
+        { node: toExpr }
+      );
+    }
+  }
+
   checkNoWriteToInputDatapoints(
     stmt: AssignmentStmt,
     accept: ValidationAcceptor

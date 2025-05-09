@@ -162,7 +162,7 @@ WhileStmt:
 ;
 
 ForStmt:
-    'for' '(' loopVar=LoopVarDecl 'to' end=Expr ( 'by' step=Expr )? ')' Block
+    'for' '(' loopVar=LoopVarDecl 'to' toExpr=Expr ( 'by' step=Expr )? ')' Block
 ;
 
 LoopVarDecl infers VarDecl:

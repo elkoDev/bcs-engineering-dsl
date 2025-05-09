@@ -289,7 +289,7 @@ class BeckhoffGeneratorContext {
     const pad = (level: number) => "    ".repeat(level);
     let result = `${pad(indent)}FOR ${stmt.loopVar.name} := ${
       stmt.loopVar.init ? this.convertExprToST(stmt.loopVar.init) : "0"
-    } TO ${this.convertExprToST(stmt.end)}${
+    } TO ${this.convertExprToST(stmt.toExpr)}${
       stmt.step ? ` BY ${this.convertExprToST(stmt.step)}` : ""
     } DO\n`;
     result +=
