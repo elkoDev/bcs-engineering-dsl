@@ -12,7 +12,7 @@ CASE iMode OF
         oHeatingValue := 0;
         oCoolingValue := adjustedTemp;
         oStatusMessage := 'Cooling active';
-    ELSE:
+    ELSE
         oHeatingValue := 0;
         oCoolingValue := 0;
         oStatusMessage := 'Error state';

@@ -316,15 +316,11 @@ class BeckhoffGeneratorContext {
                   )
                   .join(", ");
                 return expandToNode`
-                  ${pad(indent + 1)}${literals}:
+                  ${pad(indent)}${literals}:
                       ${joinToNode(
                         caseOption.stmts,
                         (subStmt) =>
-                          this.convertStatementToST(
-                            subStmt,
-                            undefined,
-                            indent + 2
-                          ),
+                          this.convertStatementToST(subStmt, undefined, indent),
                         { appendNewLineIfNotEmpty: true }
                       )}
                 `;
@@ -334,11 +330,11 @@ class BeckhoffGeneratorContext {
             ${
               stmt.default
                 ? expandToNode`
-            ${pad(indent + 1)}ELSE
+            ${pad(indent)}ELSE
                 ${joinToNode(
                   stmt.default.stmts,
                   (subStmt) =>
-                    this.convertStatementToST(subStmt, undefined, indent + 2),
+                    this.convertStatementToST(subStmt, undefined, indent),
                   { appendNewLineIfNotEmpty: true }
                 )}
         `
