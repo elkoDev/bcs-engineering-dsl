@@ -405,6 +405,8 @@ describe("Beckhoff Generator Tests", () => {
       outputDir
     );
 
+    expect(Object.keys(result.csharpStrings).length).toBe(2);
+
     // Check declaration and implementation files
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "LoopsFB_decl.st"),
@@ -448,6 +450,8 @@ describe("Beckhoff Generator Tests", () => {
       hardwareModels[0],
       outputDir
     );
+
+    expect(Object.keys(result.csharpStrings).length).toBe(3);
 
     // Check declaration and implementation files
     compareGeneratedWithExpected({

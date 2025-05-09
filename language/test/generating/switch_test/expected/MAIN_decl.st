@@ -1,9 +1,10 @@
 PROGRAM MAIN
 VAR
-	mode : OperationMode := OperationMode.HEATING;
-	temperature : REAL := 22.5;
-	heatingValue : REAL;
-	coolingValue : REAL;
-	statusMsg : STRING;
-	SwitchFB_inst : SwitchFB;
+    TestSwitch_mode: OperationMode := OperationMode.HEATING;
+    TestSwitch_temperature: REAL := 22.5;
+    TestSwitch_heatingValue: REAL;
+    TestSwitch_coolingValue: REAL;
+    TestSwitch_statusMsg: STRING;
+    switchFBInstance: SwitchFB; (* Function block instance *)
+    bRunOnlyOnce: BOOL := FALSE;
 END_VAR

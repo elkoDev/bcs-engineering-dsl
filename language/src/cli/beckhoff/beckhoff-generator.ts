@@ -334,7 +334,7 @@ class BeckhoffGeneratorContext {
             ${
               stmt.default
                 ? expandToNode`
-            ${pad(indent + 1)}ELSE:
+            ${pad(indent + 1)}ELSE
                 ${joinToNode(
                   stmt.default.stmts,
                   (subStmt) =>
@@ -596,9 +596,10 @@ class BeckhoffGeneratorContext {
     const loopVars = new Map<string, { type: string; init?: Expr }>();
     this.collectLoopVars(logic?.stmts ?? [], loopVars);
     // Filter out loop vars already declared as locals
-    const localNames = new Set(locals.map(l => l.name));
-    const loopVarsToDeclare = Array.from(loopVars.entries())
-      .filter(([name]) => !localNames.has(name));
+    const localNames = new Set(locals.map((l) => l.name));
+    const loopVarsToDeclare = Array.from(loopVars.entries()).filter(
+      ([name]) => !localNames.has(name)
+    );
 
     // Write declaration file
     const declFilePath = path.join(this.destination, `${fbDecl.name}_decl.st`);
@@ -640,7 +641,9 @@ class BeckhoffGeneratorContext {
             ${joinToNode(
               loopVarsToDeclare,
               ([name, { type, init }]) => expandToNode`
-                ${name}: ${type}${init ? ` := ${this.convertExprToST(init)}` : ""};
+                ${name}: ${type}${
+                init ? ` := ${this.convertExprToST(init)}` : ""
+              };
               `,
               { appendNewLineIfNotEmpty: true }
             )}
