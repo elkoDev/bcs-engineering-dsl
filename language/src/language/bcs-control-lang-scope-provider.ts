@@ -132,23 +132,29 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
   }
 
   private collectVars(container: AstNode): VarDecl[] {
-    const unit = AstUtils.getContainerOfType(container, isControlUnit);
-    const fb = AstUtils.getContainerOfType(container, isFunctionBlockDecl);
     const vars: VarDecl[] = [];
 
+    // Collect all enclosing for-loop variables (from innermost to outermost)
+    let current: AstNode | undefined = container;
+    while (current) {
+      if (isForStmt(current) && current.loopVar) {
+        vars.push(current.loopVar);
+      }
+      current = current.$container;
+    }
+
+    // Collect variables from the enclosing control unit (top-level vars)
+    const unit = AstUtils.getContainerOfType(container, isControlUnit);
     if (unit) {
       for (const stmt of unit.stmts) {
         if (isVarDecl(stmt)) {
           vars.push(stmt);
         }
-        if (isForStmt(stmt)) {
-          if (stmt.loopVar) {
-            vars.push(stmt.loopVar);
-          }
-        }
       }
     }
 
+    // Collect variables from the enclosing function block (inputs, outputs, locals)
+    const fb = AstUtils.getContainerOfType(container, isFunctionBlockDecl);
     if (fb) {
       vars.push(...getInputs(fb), ...getOutputs(fb), ...getLocals(fb));
     }

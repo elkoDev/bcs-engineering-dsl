@@ -60,6 +60,7 @@ control ArrayTestController {
         var average: REAL;
         var maxValue: INT;
         var processedValues: INT[10];
+        var twoDimensionalArray: INT[2][3] = [[1, 2, 3], [4, 5, 6]];
         
         use ArrayTestFB(
             iValues: values,
@@ -70,5 +71,17 @@ control ArrayTestController {
             oMaxValue: maxValue,
             oProcessedValues: processedValues
         };
+
+        // Test the two-dimensional array
+        var rowCount: INT = 2;
+        var colCount: INT = 3;
+        var rowSum: INT[2] = [0, 0];
+        var colSum: INT[3] = [0, 0, 0];
+        for (var i: INT = 0 to rowCount - 1) {
+            for (var j: INT = 0 to colCount - 1) {
+                rowSum[i] = rowSum[i] + twoDimensionalArray[i][j];
+                colSum[j] = colSum[j] + twoDimensionalArray[i][j];
+            }
+        }
     }
 }
