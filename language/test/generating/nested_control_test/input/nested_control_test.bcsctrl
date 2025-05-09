@@ -34,7 +34,7 @@ control NestedControlTestController {
             // Complex nested control structures
             if (iState == ProcessState.INIT || iState == ProcessState.PROCESSING) {
                 // Process the array using nested loops and conditions
-                for (var i : INT = 0 to i < iCount && i < 10 by 1) {
+                for (var i : INT = 0 to 9 by 1) {
                     // Skip processing if value is below threshold
                     if (iValues[i] < iThreshold) {
                         skipCount = skipCount + 1;

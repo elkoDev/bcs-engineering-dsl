@@ -502,6 +502,8 @@ describe("Beckhoff Generator Tests", () => {
       outputDir
     );
 
+    expect(Object.keys(result.csharpStrings).length).toBe(3);
+
     // Check declaration and implementation files
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "ProcessState.st"),

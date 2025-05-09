@@ -1,13 +1,14 @@
-// Implementation of MAIN
-// Auto-generated from BCS Engineering DSL
+// Initialize code - runs only once
+IF NOT bRunOnlyOnce THEN
+    ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_LOG,  
+             msgFmtStr := 'Program started %s', 
+             strArg := 'successfully!');
+    bRunOnlyOnce := TRUE;
+END_IF
 
-// Connection of NestedControlsFB_inst
-NestedControlsFB_inst(
-	iState := state,
-	iCount := count,
-	iThreshold := threshold,
-	iValues := values,
-	oResult => result,
-	oStatus => status,
-	oProcessedItems => processedItems
-);
+// Main program logic
+nestedControlsFBInstance(iState:=TestNestedControls_state, iCount:=TestNestedControls_count, iThreshold:=TestNestedControls_threshold, iValues:=TestNestedControls_values);
+TestNestedControls_result := nestedControlsFBInstance.oResult;
+TestNestedControls_status := nestedControlsFBInstance.oStatus;
+TestNestedControls_processedItems := nestedControlsFBInstance.oProcessedItems;
+

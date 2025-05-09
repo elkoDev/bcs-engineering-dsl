@@ -8,8 +8,8 @@ FOR i := 1 TO iCount BY 1 DO
 END_FOR;
 j := 1;
 WHILE j <= iCount DO
-        tempProduct := tempProduct * j;
-        j := j + 1;
+    tempProduct := tempProduct * j;
+    j := j + 1;
 END_WHILE;
 oSum := tempSum;
 oProduct := tempProduct;

@@ -271,18 +271,12 @@ class BeckhoffGeneratorContext {
 
   stWhile(stmt: WhileStmt, indent: number): string {
     const pad = (level: number) => "    ".repeat(level);
-    return toString(
-      expandToNode`
-        ${pad(indent)}WHILE ${this.convertExprToST(stmt.condition)} DO
-            ${joinToNode(
-              stmt.stmts,
-              (subStmt) =>
-                this.convertStatementToST(subStmt, undefined, indent + 1),
-              { appendNewLineIfNotEmpty: true }
-            )}
-        ${pad(indent)}END_WHILE;
-      `
-    );
+    let result = `${pad(indent)}WHILE ${this.convertExprToST(stmt.condition)} DO\n`;
+    result += stmt.stmts
+      .map((subStmt: any) => this.convertStatementToST(subStmt, undefined, indent + 1))
+      .join("\n") + "\n";
+    result += `${pad(indent)}END_WHILE;`;
+    return result;
   }
 
   stFor(stmt: ForStmt, indent: number): string {
@@ -302,47 +296,28 @@ class BeckhoffGeneratorContext {
 
   stSwitch(stmt: SwitchStmt, indent: number): string {
     const pad = (level: number) => "    ".repeat(level);
-    return toString(
-      expandToNode`
-        ${pad(indent)}CASE ${this.convertExprToST(stmt.expr)} OF
-            ${joinToNode(
-              stmt.cases,
-              (caseOption) => {
-                const literals = caseOption.literals
-                  .map((lit: any) =>
-                    isEnumMemberLiteral(lit.val)
-                      ? `${lit.val.enumDecl.ref?.name}.${lit.val.member.ref?.name}`
-                      : String(lit.val)
-                  )
-                  .join(", ");
-                return expandToNode`
-                  ${pad(indent)}${literals}:
-                      ${joinToNode(
-                        caseOption.stmts,
-                        (subStmt) =>
-                          this.convertStatementToST(subStmt, undefined, indent),
-                        { appendNewLineIfNotEmpty: true }
-                      )}
-                `;
-              },
-              { appendNewLineIfNotEmpty: true }
-            )}
-            ${
-              stmt.default
-                ? expandToNode`
-            ${pad(indent)}ELSE
-                ${joinToNode(
-                  stmt.default.stmts,
-                  (subStmt) =>
-                    this.convertStatementToST(subStmt, undefined, indent),
-                  { appendNewLineIfNotEmpty: true }
-                )}
-        `
-                : ""
-            }
-        ${pad(indent)}END_CASE;
-      `
-    );
+    let result = `${pad(indent)}CASE ${this.convertExprToST(stmt.expr)} OF\n`;
+    for (const caseOption of stmt.cases) {
+      const literals = caseOption.literals
+        .map((lit: any) =>
+          isEnumMemberLiteral(lit.val)
+            ? `${lit.val.enumDecl.ref?.name}.${lit.val.member.ref?.name}`
+            : String(lit.val)
+        )
+        .join(", ");
+      result += `${pad(indent + 1)}${literals}:\n`;
+      result += caseOption.stmts
+        .map((subStmt: any) => this.convertStatementToST(subStmt, undefined, indent + 2))
+        .join("\n") + "\n";
+    }
+    if (stmt.default) {
+      result += `${pad(indent + 1)}ELSE\n`;
+      result += stmt.default.stmts
+        .map((subStmt: any) => this.convertStatementToST(subStmt, undefined, indent + 2))
+        .join("\n") + "\n";
+    }
+    result += `${pad(indent)}END_CASE;`;
+    return result;
   }
 
   stUse(
