@@ -592,6 +592,14 @@ class BeckhoffGeneratorContext {
     const locals = getLocals(fbDecl);
     const logic = getLogic(fbDecl);
 
+    // Collect all loop variables from the logic block
+    const loopVars = new Map<string, { type: string; init?: Expr }>();
+    this.collectLoopVars(logic?.stmts ?? [], loopVars);
+    // Filter out loop vars already declared as locals
+    const localNames = new Set(locals.map(l => l.name));
+    const loopVarsToDeclare = Array.from(loopVars.entries())
+      .filter(([name]) => !localNames.has(name));
+
     // Write declaration file
     const declFilePath = path.join(this.destination, `${fbDecl.name}_decl.st`);
     const declContent = toString(
@@ -626,6 +634,13 @@ class BeckhoffGeneratorContext {
                 ${local.name}: ${convertTypeRefToST(local.typeRef)}${
                 local.init ? ` := ${this.convertExprToST(local.init)}` : ""
               };
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+            ${joinToNode(
+              loopVarsToDeclare,
+              ([name, { type, init }]) => expandToNode`
+                ${name}: ${type}${init ? ` := ${this.convertExprToST(init)}` : ""};
               `,
               { appendNewLineIfNotEmpty: true }
             )}

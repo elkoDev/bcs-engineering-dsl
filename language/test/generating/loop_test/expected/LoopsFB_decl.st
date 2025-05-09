@@ -1,14 +1,14 @@
 FUNCTION_BLOCK LoopsFB
 VAR_INPUT
-	iCount : INT;
+    iCount: INT;
 END_VAR
 VAR_OUTPUT
-	oSum : INT;
-	oProduct : INT;
+    oSum: INT;
+    oProduct: INT;
 END_VAR
 VAR
-	i : INT;
-	j : INT;
-	tempSum : INT := 0;
-	tempProduct : INT := 1;
+    j: INT;
+    tempSum: INT;
+    tempProduct: INT;
+    i: INT := 0;
 END_VAR

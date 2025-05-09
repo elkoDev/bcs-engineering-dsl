@@ -22,7 +22,7 @@ control LoopTestController {
             for (var i: INT = 0 to 5 by 1) {
                 tempSum = tempSum + i;
             }
-            for (var i: INT = 1 to i <= iCount by 1) {
+            for (var i: INT = 1 to iCount by 1) {
                 tempSum = tempSum + i;
             }
             
