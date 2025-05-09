@@ -8,6 +8,7 @@ import {
   Channel,
   ControlModel,
   ControlUnit,
+  ForStmt,
   FunctionBlockDecl,
   isArrayLiteral,
   isAssignmentStmt,
@@ -30,6 +31,7 @@ import {
   StructDecl,
   StructLiteral,
   SwitchStmt,
+  UseOutput,
   UseStmt,
   VarDecl,
 } from "./generated/ast.js";
@@ -73,11 +75,26 @@ export function registerBCSControlValidationChecks(
     VarDecl: [validator.checkVarDeclTypes],
     UseStmt: [validator.checkUseStmtTypes],
     SwitchStmt: [validator.checkSwitchCaseTypes],
+    ForStmt: [validator.checkToExprType],
   };
   registry.register(checks, validator);
 }
 
 export class BCSControlLangValidator {
+  checkToExprType(stmt: ForStmt, accept: ValidationAcceptor) {
+    const toExpr = stmt.toExpr;
+    if (!toExpr) return;
+
+    const type = this.inferType(toExpr, accept);
+    if (type && type !== "INT") {
+      accept(
+        "error",
+        `For loop 'to' expression must be of type INT, but got '${type}'.`,
+        { node: toExpr }
+      );
+    }
+  }
+
   checkNoWriteToInputDatapoints(
     stmt: AssignmentStmt,
     accept: ValidationAcceptor
@@ -148,7 +165,6 @@ export class BCSControlLangValidator {
       }
     }
   }
-
   checkNestedVarDuplicates(unit: ControlUnit, accept: ValidationAcceptor) {
     DuplicationValidator.checkNestedScopeVariableDuplicates(unit, accept);
   }
@@ -330,15 +346,15 @@ export class BCSControlLangValidator {
       return;
     }
 
-    // 4) Single output result (direct reference)
+    // Single output result (direct reference)
     if (isSingle) {
       this.validateSingleOutput(useStmt, fb, output, accept);
     }
-    // 5) Output mapping list (explicit mappings)
+    // Output mapping list (explicit mappings)
     else if (isMapping) {
       this.validateMappedOutputs(useStmt, fb, output, accept);
     }
-    // 6) No outputs provided
+    // No outputs provided
     else if (getOutputs(fb).length > 0) {
       accept(
         "error",
@@ -353,7 +369,7 @@ export class BCSControlLangValidator {
   private validateSingleOutput(
     useStmt: UseStmt,
     fb: FunctionBlockDecl,
-    output: any,
+    output: UseOutput,
     accept: ValidationAcceptor
   ) {
     if (getOutputs(fb).length !== 1) {
@@ -368,7 +384,7 @@ export class BCSControlLangValidator {
     }
 
     const expected = getOutputs(fb)[0];
-    const actual = output.singleOutput!.outputVar?.ref;
+    const actual = output.singleOutput!.targetOutputVar?.ref;
 
     if (actual) {
       const expectedType = this.inferVarDeclType(expected);
@@ -382,7 +398,7 @@ export class BCSControlLangValidator {
         accept(
           "error",
           `Type mismatch for output '${expected.name}': cannot assign to '${actual.name}' of type '${actualType}', expected '${expectedType}'.`,
-          { node: output.singleOutput!, property: "outputVar" }
+          { node: output.singleOutput!, property: "targetOutputVar" }
         );
       }
     }
@@ -391,7 +407,7 @@ export class BCSControlLangValidator {
   private validateMappedOutputs(
     useStmt: UseStmt,
     fb: FunctionBlockDecl,
-    output: any,
+    output: UseOutput,
     accept: ValidationAcceptor
   ) {
     if (output.mappingOutputs.length !== getOutputs(fb).length) {
@@ -414,16 +430,16 @@ export class BCSControlLangValidator {
 
     // Perform type checking for mappings
     for (const map of output.mappingOutputs) {
-      const targetVar = map.outputVar?.ref;
-      const fbOutputVar = map.fbOutput?.ref;
+      const fbOutputVar = map.fbOutputVar?.ref;
+      const targetOutputVar = map.targetOutputVar?.ref;
 
-      if (!targetVar || !fbOutputVar) continue;
+      if (!targetOutputVar || !fbOutputVar) continue;
 
-      const expected = getOutputs(fb).find((o) => o.name === targetVar.name);
+      const expected = getOutputs(fb).find((o) => o.name === fbOutputVar.name);
       const expectedType = expected
         ? this.inferVarDeclType(expected)
         : undefined;
-      const actualType = this.inferVarDeclType(fbOutputVar);
+      const actualType = this.inferVarDeclType(targetOutputVar);
 
       if (
         expectedType &&
@@ -432,8 +448,8 @@ export class BCSControlLangValidator {
       ) {
         accept(
           "error",
-          `Type mismatch for mapped output '${targetVar.name}': expected '${expectedType}', got '${actualType}'.`,
-          { node: map, property: "outputVar" }
+          `Type mismatch for mapped output '${fbOutputVar.name}': expected '${expectedType}', got '${actualType}'.`,
+          { node: map, property: "fbOutputVar" }
         );
       }
     }
@@ -606,7 +622,6 @@ export class BCSControlLangValidator {
       return;
     }
 
-    // We've already checked that init exists and is a Primary with an ArrayLiteral val in hasArrayLiteralInit
     this.validateArrayLiteralSize(
       (varDecl.init! as Primary).val as ArrayLiteral,
       expectedDimensions,

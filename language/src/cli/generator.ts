@@ -1,6 +1,6 @@
 import { ControlModel, HardwareModel } from "../language/generated/ast.js";
+import { generateBeckhoffCode } from "./beckhoff/beckhoff-generator.js";
 import { extractDestinationAndName } from "./cli-util.js";
-import { generateBeckhoffArtifacts } from "./beckhoff/beckhoff-generator.js";
 
 export function generateArtifacts(
   controlModel: ControlModel,
@@ -20,11 +20,11 @@ export function generateArtifacts(
       // Add Siemens specific code generation logic here
       break;
     case "Beckhoff":
-      return generateBeckhoffArtifacts(
+      return generateBeckhoffCode(
         controlModel,
         hardwareModel,
         filePathData.destination
-      );
+      ).files;
     case "KNX":
       // Add KNX specific code generation logic here
       break;

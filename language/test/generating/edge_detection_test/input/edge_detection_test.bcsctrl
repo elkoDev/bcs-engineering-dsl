@@ -1,0 +1,36 @@
+// A test file for edge detection code generation
+control EdgeDetectionTestController {
+    unit TestEdgeDetection {
+        var sensor1: BOOL;
+        var sensor2: BOOL;
+        var pushButton: BOOL;
+        
+        var startSignal: BOOL;
+        var stopSignal: BOOL;
+        var toggleOutput: BOOL;
+        var pulseOutput: BOOL = false;
+        
+        // Rising edge detection
+        on_rising(sensor1) {
+            startSignal = true;
+        }
+        
+        // Falling edge detection
+        on_falling(sensor2) {
+            stopSignal = true;
+        }
+        
+        // Edge detection with toggle logic
+        on_rising(pushButton) {
+            toggleOutput = !toggleOutput;
+        }
+        
+        // Edge detection for pulse generation
+        on_rising(sensor1) {
+            pulseOutput = true;
+        }
+        on_falling(sensor2) {
+            pulseOutput = true;
+        }
+    }
+}

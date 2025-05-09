@@ -1,0 +1,61 @@
+// A test file for switch statement code generation
+control SwitchTestController {
+    enum OperationMode {
+        IDLE,
+        HEATING,
+        COOLING,
+        ERROR
+    }
+
+    functionblock SwitchFB {
+        inputs {
+            var iMode: OperationMode;
+            var iTemperature: REAL;
+        }
+        outputs {
+            var oHeatingValue: REAL;
+            var oCoolingValue: REAL;
+            var oStatusMessage: STRING;
+        }
+        locals {
+            var adjustedTemp: REAL;
+        }
+        logic {
+            adjustedTemp = iTemperature * 1.05;
+            
+            switch (iMode) {
+                case OperationMode.IDLE: {
+                    oHeatingValue = 0.0;
+                    oCoolingValue = 0.0;
+                    oStatusMessage = "System idle";
+                }
+                case OperationMode.HEATING: {
+                    oHeatingValue = adjustedTemp;
+                    oCoolingValue = 0.0;
+                    oStatusMessage = "Heating active";
+                }
+                case OperationMode.COOLING: {
+                    oHeatingValue = 0.0;
+                    oCoolingValue = adjustedTemp;
+                    oStatusMessage = "Cooling active";
+                }
+                default: {
+                    oHeatingValue = 0.0;
+                    oCoolingValue = 0.0;
+                    oStatusMessage = "Error state";
+                }
+            }
+        }
+    }
+
+    unit TestSwitch {
+        var mode: OperationMode = OperationMode.HEATING;
+        var temperature: REAL = 22.5;
+        var heatingValue: REAL;
+        var coolingValue: REAL;
+        var statusMsg: STRING;
+        
+        use SwitchFB(iMode: mode, iTemperature: temperature) -> 
+            { oHeatingValue: heatingValue, oCoolingValue: coolingValue, oStatusMessage: statusMsg };
+    }
+}

@@ -1,0 +1,14 @@
+// A simple enum test file to verify enum code generation
+control EnumTestController {
+    enum Mode {
+        OFF, ECO, COMFORT
+    }
+
+    unit TestUnit {
+        var currentMode: Mode = Mode.OFF;
+        
+        if (currentMode == Mode.ECO) {
+            currentMode = Mode.COMFORT;
+        }
+    }
+}

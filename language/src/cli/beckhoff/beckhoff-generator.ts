@@ -8,7 +8,6 @@ import {
   StructDecl,
   FunctionBlockDecl,
   VarDecl,
-  TypeRef,
   Primary,
   isRef,
   isBinExpr,
@@ -26,18 +25,24 @@ import {
   isSwitchStmt,
   isUseStmt,
   isWaitStmt,
-  isRampStmt,
   isExpressionStmt,
   isOnRisingEdgeStmt,
   isOnFallingEdgeStmt,
   Expr,
   isParenExpr,
-  ControlUnit,
   isControlUnit,
-  NegExpr,
-  NotExpr,
-  ParenExpr,
   isVarDecl,
+  isBreakStmt,
+  isContinueStmt,
+  UseStmt,
+  NamedElement,
+  ControlUnit,
+  TypeRef,
+  Ref,
+  SwitchStmt,
+  ForStmt,
+  IfStmt,
+  WhileStmt,
 } from "../../language/generated/ast.js";
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
@@ -48,6 +53,7 @@ import {
   getLocals,
   getLogic,
 } from "../../language/utils/function-block-utils.js";
+import { Reference } from "langium";
 
 // Helper function to check if a node is a primitive value
 function isPrimitive(expr: Primary): boolean {
@@ -59,102 +65,28 @@ function isPrimitive(expr: Primary): boolean {
 }
 
 /**
- * Helper function to get a reference name using various strategies
- * Improved to better handle complex references in DSL
+ * Helper function to extract the name from a reference with improved debugging
+ * This function properly handles all types of references in our AST
  */
-function getReferenceName(ref: any): string {
-  // First, check for a resolved reference with a name
-  if (ref?.ref?.name) {
-    return ref.ref.name;
-  }
-  
-  // For references with original text (unresolved references)
-  if (ref && "$refText" in ref) {
-    return ref.$refText;
-  }
-  
-  // For direct name property
-  if (ref && "name" in ref) {
-    return ref.name;
-  }
-  
-  // For property references
-  if (ref?.property && "name" in ref.property) {
-    return ref.property.name;
-  }
-  
-  // Only use this as a last resort
-  return "UNKNOWN_REF";
+function getReferenceName(ref: Reference<NamedElement>): string {
+  return (
+    ref?.$refText ??
+    (console.warn("Unresolved reference:", JSON.stringify(ref, null, 2)),
+    "UNRESOLVED_REF")
+  );
 }
 
 /**
- * Convert an expression to a valid ST expression
+ * Check if a referenced element belongs to a control unit
+ * This helps us determine if we need to qualify the variable name
  */
-function convertExprToST(expr: Expr): string {
-  if (isPrimary(expr)) {
-    if (isPrimitive(expr)) {
-      if (typeof expr.val === "string") {
-        return `'${expr.val}'`; // String literals use single quotes in ST
-      } else if (typeof expr.val === "boolean") {
-        return expr.val ? "TRUE" : "FALSE"; // Booleans are uppercase in ST
-      } else if (expr.val !== undefined) {
-        return expr.val.toString(); // Numbers as strings
-      }
-    } else if (isArrayLiteral(expr.val)) {
-      return `[${expr.val.elements.map((e) => convertExprToST(e)).join(", ")}]`;
-    } else if (isStructLiteral(expr.val)) {
-      return `(${expr.val.fields
-        .map((f) => `${f.name}:=${convertExprToST(f.value)}`)
-        .join(", ")})`;
-    } else if (isRef(expr)) {
-      // Special handling for hardware references and dot notation
-      if (expr.ref && expr.properties && expr.properties.length > 0) {
-        // This is likely a hardware reference like Buttons.Room1
-        // First get the base name (e.g., "Buttons")
-        const baseName = getReferenceName(expr.ref);
-        
-        // Collect all property names (e.g., "Room1")
-        const propNames = expr.properties.map(prop => getReferenceName(prop));
-        
-        // Join them with dots to form the full reference
-        return [baseName, ...propNames].join('.');
-      }
-      
-      // Standard reference without properties
-      let result = "";
-      
-      // Get the reference name
-      if (expr.ref) {
-        result = getReferenceName(expr.ref);
-      } else {
-        result = "UNKNOWN_REF";
-      }
-
-      // Add indices if any
-      if (expr.indices && expr.indices.length > 0) {
-        result += `[${expr.indices
-          .map((idx) => convertExprToST(idx))
-          .join(", ")}]`;
-      }
-
-      return result;
-    }
-  } else if (isBinExpr(expr)) {
-    // Special handling for operators that are different in ST
-    const op = translateOperator(expr.op);
-    return `${convertExprToST(expr.e1)} ${op} ${convertExprToST(expr.e2)}`;
-  } else if (isNegExpr(expr)) {
-    const negExpr = expr as NegExpr;
-    return `-${convertExprToST(negExpr.expr)}`;
-  } else if (isNotExpr(expr)) {
-    const notExpr = expr as NotExpr;
-    return `NOT ${convertExprToST(notExpr.expr)}`;
-  } else if (isParenExpr(expr)) {
-    const parenExpr = expr as ParenExpr;
-    return `(${convertExprToST(parenExpr.expr)})`;
-  }
-
-  return "UNKNOWN_EXPR";
+function isControlUnitVariable(
+  ref: Reference<NamedElement>
+): [boolean, string | null] {
+  const container = ref?.ref?.$container;
+  return container && isControlUnit(container)
+    ? [true, container.name]
+    : [false, null];
 }
 
 /**
@@ -175,731 +107,1088 @@ function translateOperator(op: string): string {
   }
 }
 
-export function generateBeckhoffArtifacts(
-  controlModel: ControlModel,
-  hardwareModel: HardwareModel,
-  destination: string
-): string[] {
-  if (!fs.existsSync(destination))
-    fs.mkdirSync(destination, { recursive: true });
-  const files: string[] = [];
+class BeckhoffGeneratorContext {
+  hardwareChannelFlatNames: Set<string>;
+  usedInstanceNames: Set<string>;
+  edgeDetectionInstanceMap: Map<string, string>;
+  controlModel: ControlModel;
+  hardwareModel: HardwareModel;
+  destination: string;
 
-  for (const item of controlModel.controlBlock.items) {
-    // Skip items marked as extern
-    if (isEnumDecl(item) || isStructDecl(item) || isFunctionBlockDecl(item)) {
-      if (item.isExtern) continue;
-    }
-
-    if (isEnumDecl(item)) files.push(writeEnum(item, destination));
-    else if (isStructDecl(item)) files.push(writeStruct(item, destination));
-    else if (isFunctionBlockDecl(item))
-      files.push(...writeFunctionBlock(item, destination));
+  constructor(
+    controlModel: ControlModel,
+    hardwareModel: HardwareModel,
+    destination: string
+  ) {
+    this.controlModel = controlModel;
+    this.hardwareModel = hardwareModel;
+    this.destination = destination;
+    this.hardwareChannelFlatNames = new Set();
+    this.usedInstanceNames = new Set();
+    this.edgeDetectionInstanceMap = new Map();
   }
 
-  files.push(writeProgramMain(controlModel, hardwareModel, destination));
-  return files;
-}
+  getQualifiedReferenceName(ref: Reference<NamedElement>): string {
+    const [isInControlUnit, unitName] = isControlUnitVariable(ref);
+    if (isInControlUnit && unitName && isVarDecl(ref.ref)) {
+      return `${unitName}_${getReferenceName(ref)}`;
+    }
+    return getReferenceName(ref);
+  }
 
-/**
- * Generate ST code for an enum declaration
- * @param enumDecl Enum declaration from AST
- * @param destination Output directory
- * @returns Path to the generated file
- */
-function writeEnum(enumDecl: EnumDecl, destination: string): string {
-  const filePath = path.join(destination, `${enumDecl.name}.st`);
+  convertExprToST(expr: Expr): string {
+    if (isPrimary(expr)) {
+      return this.convertPrimaryExprToST(expr);
+    }
+    if (isBinExpr(expr)) return this.handleBinExpr(expr);
+    return "UNKNOWN_EXPR";
+  }
 
-  const enumContent = toString(
-    expandToNode`
-      {attribute 'qualified_only'}
-      {attribute 'strict'}
-      TYPE ${enumDecl.name} :
-      (
-          ${joinToNode(
-            enumDecl.members.map((member, index) => ({ member, index })),
-            ({ member, index }) => expandToNode`
-              ${member.name} := ${index}${
-              index < enumDecl.members.length - 1 ? "," : ""
-            }
-            `,
-            { appendNewLineIfNotEmpty: true }
-          )}
+  private convertPrimaryExprToST(expr: any): string {
+    if (isRef(expr)) return this.handleRefExpr(expr);
+    if (isParenExpr(expr)) return this.handleParenExpr(expr);
+    if (isNegExpr(expr)) return this.handleNegExpr(expr);
+    if (isNotExpr(expr)) return this.handleNotExpr(expr);
+    if (isArrayLiteral(expr.val)) return this.handleArrayLiteral(expr);
+    if (isStructLiteral(expr.val)) return this.handleStructLiteral(expr);
+    if (isPrimitive(expr)) return this.primitiveToST(expr.val);
+    return "UNKNOWN_PRIMARY_EXPR";
+  }
+
+  private handleParenExpr(expr: any): string {
+    return `(${this.convertExprToST(expr.expr)})`;
+  }
+
+  private handleNegExpr(expr: any): string {
+    return `-${this.convertExprToST(expr.expr)}`;
+  }
+
+  private handleNotExpr(expr: any): string {
+    return `NOT ${this.convertExprToST(expr.expr)}`;
+  }
+
+  private handleArrayLiteral(expr: any): string {
+    // For multi-dimensional arrays, we need to flatten the array elements
+    const flatElements = expr.val.elements.flatMap((e: any) => {
+      if (isPrimary(e) && isArrayLiteral(e.val)) {
+        return e.val.elements.map((nestedE: any) => this.convertExprToST(nestedE));
+      }
+      return [this.convertExprToST(e)];
+    });
+    return `[${flatElements.join(", ")}]`;
+  }
+
+  private handleStructLiteral(expr: any): string {
+    return `(${expr.val.fields
+      .map((f: any) => `${f.name}:=${this.convertExprToST(f.value)}`)
+      .join(", ")})`;
+  }
+
+  private handleBinExpr(expr: any): string {
+    const op = translateOperator(expr.op);
+    return `${this.convertExprToST(expr.e1)} ${op} ${this.convertExprToST(expr.e2)}`;
+  }
+
+  handleRefExpr(expr: Ref): string {
+    if (expr.ref && expr.properties?.length === 1) {
+      const flat = `${getReferenceName(expr.ref)}_${getReferenceName(
+        expr.properties[0]
+      )}`;
+      if (this.hardwareChannelFlatNames.has(flat)) return flat;
+    }
+    if (expr.ref) {
+      let result = this.getQualifiedReferenceName(expr.ref);
+      if (expr.indices?.length)
+        result += `[${expr.indices
+          .map((idx) => this.convertExprToST(idx))
+          .join(", ")}]`;
+      if (expr.properties?.length)
+        result += `.${expr.properties.map(getReferenceName).join(".")}`;
+      return result;
+    }
+    return "UNKNOWN_REF";
+  }
+
+  primitiveToST(val: any): string {
+    if (typeof val === "string") return `'${val.replaceAll('"', "")}'`;
+    if (typeof val === "boolean") return val ? "TRUE" : "FALSE";
+    if (val !== undefined) return val.toString();
+    return "";
+  }
+
+  convertStatementToST(
+    stmt: Statement,
+    edgeMetadata?: [string, number],
+    indent: number = 0,
+    fbInstanceTracker?: Map<string, Map<number, string>>,
+    mainStatements?: Statement[]
+  ): string {
+    const pad = (level: number) => "    ".repeat(level);
+    if (isAssignmentStmt(stmt))
+      return (
+        pad(indent) +
+        `${this.convertExprToST(stmt.target)} := ${this.convertExprToST(
+          stmt.value
+        )};`
       );
-      END_TYPE
-    `
-  );
-
-  fs.writeFileSync(filePath, enumContent);
-  return filePath;
-}
-
-/**
- * Generate ST code for a struct declaration
- * @param structDecl Struct declaration from AST
- * @param destination Output directory
- * @returns Path to the generated file
- */
-function writeStruct(structDecl: StructDecl, destination: string): string {
-  const filePath = path.join(destination, `${structDecl.name}.st`);
-
-  const structContent = toString(
-    expandToNode`
-      TYPE ${structDecl.name} :
-      STRUCT
-          ${joinToNode(
-            structDecl.fields,
-            (field) => expandToNode`
-              ${field.name} : ${convertTypeRefToST(field.typeRef)}${
-              field.init ? ` := ${convertExprToST(field.init)}` : ""
-            };
-            `,
-            { appendNewLineIfNotEmpty: true }
-          )}
-      END_STRUCT
-      END_TYPE
-    `
-  );
-
-  fs.writeFileSync(filePath, structContent);
-  return filePath;
-}
-
-/**
- * Convert a TypeRef to a valid ST type representation
- */
-function convertTypeRefToST(typeRef: TypeRef): string {
-  if (typeRef.type) {
-    // Basic type
-    if (typeRef.sizes.length === 0) {
-      return typeRef.type;
-    } else {
-      // Array type
-      return `ARRAY [${typeRef.sizes
-        .map((size) => {
-          if (isPrimary(size) && typeof size.val === "number") {
-            return `0..${size.val - 1}`;
-          }
-          return "0..?";
-        })
-        .join(", ")}] OF ${typeRef.type}`;
-    }
-  } else if (typeRef.ref) {
-    // User defined type
-    const typeDecl = typeRef.ref.ref;
-    const typeName = typeDecl && "name" in typeDecl ? typeDecl.name : "UNKNOWN";
-
-    if (typeRef.sizes.length === 0) {
-      return typeName as string;
-    } else {
-      // Array of user defined type
-      return `ARRAY [${typeRef.sizes
-        .map((size) => {
-          if (isPrimary(size) && typeof size.val === "number") {
-            return `0..${size.val - 1}`;
-          }
-          return "0..?";
-        })
-        .join(", ")}] OF ${typeName}`;
-    }
+    if (isIfStmt(stmt)) return this.stIf(stmt, indent);
+    if (isWhileStmt(stmt)) return this.stWhile(stmt, indent);
+    if (isForStmt(stmt)) return this.stFor(stmt, indent);
+    if (isSwitchStmt(stmt)) return this.stSwitch(stmt, indent);
+    if (isWaitStmt(stmt))
+      return (
+        pad(indent) +
+        `// Wait statements are not directly supported in ST - using equivalent timer logic`
+      );
+    if (isBreakStmt(stmt)) return pad(indent) + `EXIT;`;
+    if (isContinueStmt(stmt)) return pad(indent) + `CONTINUE;`;
+    if (isExpressionStmt(stmt))
+      return pad(indent) + `${this.convertExprToST(stmt.expr)};`;
+    if (isUseStmt(stmt)) return this.stUse(stmt, indent, fbInstanceTracker);
+    if (isOnRisingEdgeStmt(stmt))
+      return this.stEdge(stmt, edgeMetadata, indent, true, mainStatements);
+    if (isOnFallingEdgeStmt(stmt))
+      return this.stEdge(stmt, edgeMetadata, indent, false, mainStatements);
+    if (isVarDecl(stmt))
+      return (
+        pad(indent) +
+        `${stmt.name}: ${convertTypeRefToST(stmt.typeRef)}${
+          stmt.init ? ` := ${this.convertExprToST(stmt.init)}` : ""
+        };`
+      );
+    return (
+      pad(indent) + `// Unsupported statement type: ${(stmt as any).$type}`
+    );
   }
 
-  return "UNKNOWN_TYPE";
-}
-
-/**
- * Generate ST code for a function block
- * @param fbDecl Function block declaration from AST
- * @param destination Output directory
- * @returns Array of paths to the generated files
- */
-function writeFunctionBlock(
-  fbDecl: FunctionBlockDecl,
-  destination: string
-): string[] {
-  const files: string[] = [];
-
-  // Get the different parts of the function block
-  const inputs = getInputs(fbDecl);
-  const outputs = getOutputs(fbDecl);
-  const locals = getLocals(fbDecl);
-  const logic = getLogic(fbDecl);
-
-  // Write declaration file
-  const declFilePath = path.join(destination, `${fbDecl.name}_decl.st`);
-  const declContent = toString(
-    expandToNode`
-      FUNCTION_BLOCK ${fbDecl.name}
-      VAR_INPUT
-          ${joinToNode(
-            inputs,
-            (input) => expandToNode`
-              ${input.name}: ${convertTypeRefToST(input.typeRef)}${
-              input.init ? ` := ${convertExprToST(input.init)}` : ""
-            };
-            `,
-            { appendNewLineIfNotEmpty: true }
-          )}
-      END_VAR
-      VAR_OUTPUT
-          ${joinToNode(
-            outputs,
-            (output) => expandToNode`
-              ${output.name}: ${convertTypeRefToST(output.typeRef)}${
-              output.init ? ` := ${convertExprToST(output.init)}` : ""
-            };
-            `,
-            { appendNewLineIfNotEmpty: true }
-          )}
-      END_VAR
-      VAR
-          ${joinToNode(
-            locals,
-            (local) => expandToNode`
-              ${local.name}: ${convertTypeRefToST(local.typeRef)}${
-              local.init ? ` := ${convertExprToST(local.init)}` : ""
-            };
-            `,
-            { appendNewLineIfNotEmpty: true }
-          )}
-      END_VAR
-    `
-  );
-  fs.writeFileSync(declFilePath, declContent);
-  files.push(declFilePath);
-
-  // Write implementation file
-  const implFilePath = path.join(destination, `${fbDecl.name}_impl.st`);
-  const implContent = toString(
-    expandToNode`
-      ${joinToNode(logic?.stmts || [], (stmt) => convertStatementToST(stmt), {
-        appendNewLineIfNotEmpty: true,
-      })}
-    `
-  );
-  fs.writeFileSync(implFilePath, implContent);
-  files.push(implFilePath);
-
-  return files;
-}
-
-/**
- * Convert a statement to ST code
- * @param stmt Statement to convert
- * @returns ST code representation of the statement
- */
-function convertStatementToST(stmt: Statement): string {
-  if (isAssignmentStmt(stmt)) {
-    return `${convertExprToST(stmt.target)} := ${convertExprToST(stmt.value)};`;
-  } else if (isIfStmt(stmt)) {
-    let ifContent = `IF ${convertExprToST(stmt.condition)} THEN\n`;
-
-    for (const subStmt of stmt.stmts) {
-      ifContent += `  ${convertStatementToST(subStmt)}\n`;
+  stIf(stmt: IfStmt, indent: number): string {
+    const pad = (level: number) => "    ".repeat(level);
+    let result =
+      pad(indent) + `IF ${this.convertExprToST(stmt.condition)} THEN\n`;
+    result +=
+      stmt.stmts
+        .map((s: any) => this.convertStatementToST(s, undefined, indent + 1))
+        .join("\n") + "\n";
+    for (const elseIfStmt of stmt.elseIfStmts) {
+      result +=
+        pad(indent) +
+        `ELSIF ${this.convertExprToST(elseIfStmt.condition)} THEN\n`;
+      result +=
+        elseIfStmt.stmts
+          .map((s: any) => this.convertStatementToST(s, undefined, indent + 1))
+          .join("\n") + "\n";
     }
-
-    for (const elseIf of stmt.elseIfStmts) {
-      ifContent += `ELSIF ${convertExprToST(elseIf.condition)} THEN\n`;
-      for (const subStmt of elseIf.stmts) {
-        ifContent += `  ${convertStatementToST(subStmt)}\n`;
-      }
-    }
-
     if (stmt.elseStmt) {
-      ifContent += `ELSE\n`;
-      for (const subStmt of stmt.elseStmt.stmts) {
-        ifContent += `  ${convertStatementToST(subStmt)}\n`;
-      }
+      result += pad(indent) + `ELSE\n`;
+      result +=
+        (stmt.elseStmt.stmts || [])
+          .map((s: any) => this.convertStatementToST(s, undefined, indent + 1))
+          .join("\n") + "\n";
     }
+    result += pad(indent) + `END_IF;`;
+    return result;
+  }
 
-    ifContent += `END_IF;`;
-    return ifContent;
-  } else if (isWhileStmt(stmt)) {
-    let whileContent = `WHILE ${convertExprToST(stmt.condition)} DO\n`;
+  stWhile(stmt: WhileStmt, indent: number): string {
+    const pad = (level: number) => "    ".repeat(level);
+    let result = `${pad(indent)}WHILE ${this.convertExprToST(stmt.condition)} DO\n`;
+    result += stmt.stmts
+      .map((subStmt: any) => this.convertStatementToST(subStmt, undefined, indent + 1))
+      .join("\n") + "\n";
+    result += `${pad(indent)}END_WHILE;`;
+    return result;
+  }
 
-    for (const subStmt of stmt.stmts) {
-      whileContent += `  ${convertStatementToST(subStmt)}\n`;
-    }
+  stFor(stmt: ForStmt, indent: number): string {
+    const pad = (level: number) => "    ".repeat(level);
+    let result = `${pad(indent)}FOR ${stmt.loopVar.name} := ${
+      stmt.loopVar.init ? this.convertExprToST(stmt.loopVar.init) : "0"
+    } TO ${this.convertExprToST(stmt.toExpr)}${
+      stmt.step ? ` BY ${this.convertExprToST(stmt.step)}` : ""
+    } DO\n`;
+    result +=
+      stmt.stmts
+        .map((s: any) => this.convertStatementToST(s, undefined, indent + 1))
+        .join("\n") + "\n";
+    result += `${pad(indent)}END_FOR;`;
+    return result;
+  }
 
-    whileContent += `END_WHILE;`;
-    return whileContent;
-  } else if (isForStmt(stmt)) {
-    let forContent = `FOR ${stmt.loopVar.name} := ${
-      stmt.loopVar.init ? convertExprToST(stmt.loopVar.init) : "0"
-    } TO ${convertExprToST(stmt.end)}`;
-
-    if (stmt.step) {
-      forContent += ` BY ${convertExprToST(stmt.step)}`;
-    }
-
-    forContent += ` DO\n`;
-
-    for (const subStmt of stmt.stmts) {
-      forContent += `  ${convertStatementToST(subStmt)}\n`;
-    }
-
-    forContent += `END_FOR;`;
-    return forContent;
-  } else if (isSwitchStmt(stmt)) {
-    let switchContent = `CASE ${convertExprToST(stmt.expr)} OF\n`;
-
+  stSwitch(stmt: SwitchStmt, indent: number): string {
+    const pad = (level: number) => "    ".repeat(level);
+    let result = `${pad(indent)}CASE ${this.convertExprToST(stmt.expr)} OF\n`;
     for (const caseOption of stmt.cases) {
       const literals = caseOption.literals
-        .map((lit) => {
-          if (isEnumMemberLiteral(lit.val)) {
-            return `${lit.val.enumDecl.ref?.name}.${lit.val.member.ref?.name}`;
-          } else {
-            return String(lit.val);
-          }
-        })
+        .map((lit: any) =>
+          isEnumMemberLiteral(lit.val)
+            ? `${lit.val.enumDecl.ref?.name}.${lit.val.member.ref?.name}`
+            : String(lit.val)
+        )
         .join(", ");
-
-      switchContent += `  ${literals}:\n`;
-
-      for (const subStmt of caseOption.stmts) {
-        switchContent += `    ${convertStatementToST(subStmt)}\n`;
-      }
+      result += `${pad(indent + 1)}${literals}:\n`;
+      result += caseOption.stmts
+        .map((subStmt: any) => this.convertStatementToST(subStmt, undefined, indent + 2))
+        .join("\n") + "\n";
     }
-
     if (stmt.default) {
-      switchContent += `  ELSE:\n`;
-
-      for (const subStmt of stmt.default.stmts) {
-        switchContent += `    ${convertStatementToST(subStmt)}\n`;
-      }
+      result += `${pad(indent + 1)}ELSE\n`;
+      result += stmt.default.stmts
+        .map((subStmt: any) => this.convertStatementToST(subStmt, undefined, indent + 2))
+        .join("\n") + "\n";
     }
+    result += `${pad(indent)}END_CASE;`;
+    return result;
+  }
 
-    switchContent += `END_CASE;`;
-    return switchContent;
-  } else if (isWaitStmt(stmt)) {
-    return `// Wait statements are not directly supported in ST - using equivalent timer logic\n`;
-  } else if (isRampStmt(stmt)) {
-    return `// Ramp statements require custom implementation in TwinCAT\n// Target: ${convertExprToST(
-      stmt.target
-    )}, From: ${convertExprToST(stmt.fromExpr)}, To: ${convertExprToST(
-      stmt.toExpr
-    )}, Duration: ${stmt.dur}\n`;
-  } else if (isExpressionStmt(stmt)) {
-    return `${convertExprToST(stmt.expr)};`;
-  } else if (isUseStmt(stmt)) {
+  stUse(
+    stmt: any,
+    indent: number,
+    fbInstanceTracker?: Map<string, Map<number, string>>
+  ): string {
+    if (fbInstanceTracker) {
+      return this.convertUseStmtToST(stmt, fbInstanceTracker);
+    }
+    return this.convertStatementToST(stmt, undefined, indent);
+  }
+
+  stEdge(
+    stmt: any,
+    edgeMetadata: [string, number] | undefined,
+    indent: number,
+    rising: boolean,
+    mainStatements?: Statement[]
+  ): string {
+    const type = rising ? "rising" : "falling";
+    const edgeStatements = (mainStatements ?? []).filter(
+      rising ? isOnRisingEdgeStmt : isOnFallingEdgeStmt
+    );
+    const statementIndex = edgeStatements.indexOf(stmt);
+    if (statementIndex !== -1) {
+      return this.convertEdgeDetectionToST(stmt, statementIndex, type, indent);
+    }
+    return this.convertStatementToST(stmt, edgeMetadata, indent);
+  }
+
+  convertEdgeDetectionToST(
+    stmt: Statement,
+    index: number,
+    type: "rising" | "falling",
+    indent: number = 0
+  ): string {
+    const pad = (level: number) => "    ".repeat(level);
+    if (type === "rising" && isOnRisingEdgeStmt(stmt)) {
+      const signalExpr = this.convertExprToST(stmt.signal);
+      const key = `${type}_${signalExpr}_${index}`;
+      const instanceName = this.edgeDetectionInstanceMap.get(key);
+      if (!instanceName) {
+        console.warn(`Could not find instance name for rising edge: ${key}`);
+        return "// ERROR: Missing edge detection instance";
+      }
+      let risingContent = `${pad(
+        indent
+      )}// Rising edge detection for ${signalExpr}\n`;
+      risingContent += `${pad(indent)}${instanceName}(CLK := ${signalExpr});\n`;
+      risingContent += `${pad(indent)}IF ${instanceName}.Q THEN\n`;
+      for (const subStmt of stmt.stmts) {
+        risingContent +=
+          this.convertStatementToST(subStmt, undefined, indent + 1) + "\n";
+      }
+      risingContent += `${pad(indent)}END_IF;`;
+      return risingContent;
+    } else if (type === "falling" && isOnFallingEdgeStmt(stmt)) {
+      const signalExpr = this.convertExprToST(stmt.signal);
+      const key = `${type}_${signalExpr}_${index}`;
+      const instanceName = this.edgeDetectionInstanceMap.get(key);
+      if (!instanceName) {
+        console.warn(`Could not find instance name for falling edge: ${key}`);
+        return "// ERROR: Missing edge detection instance";
+      }
+      let fallingContent = `${pad(
+        indent
+      )}// Falling edge detection for ${signalExpr}\n`;
+      fallingContent += `${pad(
+        indent
+      )}${instanceName}(CLK := ${signalExpr});\n`;
+      fallingContent += `${pad(indent)}IF ${instanceName}.Q THEN\n`;
+      for (const subStmt of stmt.stmts) {
+        fallingContent +=
+          this.convertStatementToST(subStmt, undefined, indent + 1) + "\n";
+      }
+      fallingContent += `${pad(indent)}END_IF;`;
+      return fallingContent;
+    }
+    return "// Error: Invalid edge detection statement";
+  }
+
+  convertUseStmtToST(
+    stmt: UseStmt,
+    fbInstanceTracker: Map<string, Map<number, string>>
+  ): string {
     let useContent = "";
 
-    // Handle function block instantiation and calling
-    const fbName = stmt.functionBlockRef.ref?.name || "UNKNOWN_FB";
+    // Get the function block type
+    const fbType = stmt.functionBlockRef.ref?.name ?? "UNKNOWN_FB";
+
+    // Find the instances map for this FB type
+    const instanceMap = fbInstanceTracker.get(fbType);
+
+    if (!instanceMap) {
+      console.warn(`No instance map found for FB type: ${fbType}`);
+      return "// ERROR: Missing function block instance tracking";
+    }
+
+    // Find all existing use statements of this type to determine the index
+    const fbTypeInstances = Array.from(instanceMap.entries());
+
+    // Find the appropriate instance - use the pre-assigned instance name
+    // We're finding the first instance that hasn't been used yet
+    let fbInstanceName = "";
+    for (const [_, name] of fbTypeInstances) {
+      if (!this.usedInstanceNames.has(`used_${fbType}_${name}`)) {
+        fbInstanceName = name;
+        // Mark this specific instance as used
+        this.usedInstanceNames.add(`used_${fbType}_${name}`);
+        break;
+      }
+    }
+
+    // If no unused instance found, use the first one (fallback)
+    if (!fbInstanceName && fbTypeInstances.length > 0) {
+      fbInstanceName = fbTypeInstances[0][1];
+    }
+
+    // If still no instance, create a new one (emergency fallback)
+    if (!fbInstanceName) {
+      fbInstanceName = `${fbType.charAt(0).toLowerCase()}${fbType.slice(
+        1
+      )}Instance`;
+      console.warn(`Using emergency fallback instance: ${fbInstanceName}`);
+    }
 
     // Map inputs
     const inputMappings = stmt.inputArgs
       .map((arg) => {
-        return `${arg.inputVar.ref?.name}:=${convertExprToST(arg.value)}`;
+        return `${arg.inputVar.ref?.name}:=${this.convertExprToST(arg.value)}`;
       })
       .join(", ");
 
     // Handle output mapping
     if (stmt.useOutput.singleOutput) {
-      const outVarName = stmt.useOutput.singleOutput.outputVar.ref?.name;
-      useContent += `${outVarName} := ${fbName}(${inputMappings});\n`;
-    } else if (stmt.useOutput.mappingOutputs.length > 0) {
-      useContent += `${fbName}(${inputMappings});\n`;
+      const targetOutputVarRef = stmt.useOutput.singleOutput.targetOutputVar;
+      const targetOutputVarName =
+        this.getQualifiedReferenceName(targetOutputVarRef);
 
-      // Map outputs after function block call
+      // Using direct access for single output case, which returns directly from FB call
+      useContent += `${fbInstanceName} := ${fbType}(${inputMappings});\n`;
+      useContent += `${targetOutputVarName} := ${fbInstanceName};`;
+    } else if (stmt.useOutput.mappingOutputs.length > 0) {
+      // First initialize the instance with input values
+      useContent += `${fbInstanceName}(${inputMappings});\n`;
+
+      // Map outputs from instance properties
       for (const outMapping of stmt.useOutput.mappingOutputs) {
-        const outVarName = outMapping.outputVar.ref?.name;
-        const fbOutName = outMapping.fbOutput.ref?.name;
-        useContent += `${outVarName} := ${fbName}.${fbOutName};\n`;
+        const targetOutputVarRef = outMapping.targetOutputVar;
+        const targetOutputVarName =
+          this.getQualifiedReferenceName(targetOutputVarRef);
+
+        const fbOutputVarName = outMapping.fbOutputVar.ref?.name ?? "output";
+        useContent += `${targetOutputVarName} := ${fbInstanceName}.${fbOutputVarName};\n`;
       }
     } else {
-      useContent += `${fbName}(${inputMappings});\n`;
+      useContent += `${fbInstanceName}(${inputMappings});\n`;
     }
 
     return useContent;
-  } else if (isOnRisingEdgeStmt(stmt)) {
-    // Get the signal name and expression
-    const signalExpr = convertExprToST(stmt.signal);
-    // Generate a unique instance name for the R_TRIG based on the signal
-    const signalRefText =
-      stmt.signal.ref && "$refText" in stmt.signal.ref
-        ? (stmt.signal.ref as any).$refText
-        : "signal";
-    const instanceName = `R_TRIG_${signalRefText}_instance`;
-
-    // Using Beckhoff's built-in R_TRIG function block for rising edge detection
-    let risingContent = `// Rising edge detection for ${signalExpr}\n`;
-    risingContent += `${instanceName}(CLK := ${signalExpr});\n`;
-    risingContent += `IF ${instanceName}.Q THEN\n`;
-
-    for (const subStmt of stmt.stmts) {
-      risingContent += `  ${convertStatementToST(subStmt)}\n`;
-    }
-
-    risingContent += `END_IF;`;
-    return risingContent;
-  } else if (isOnFallingEdgeStmt(stmt)) {
-    // Get the signal name and expression
-    const signalExpr = convertExprToST(stmt.signal);
-    // Generate a unique instance name for the F_TRIG based on the signal
-    const signalRefText =
-      stmt.signal.ref && "$refText" in stmt.signal.ref
-        ? (stmt.signal.ref as any).$refText
-        : "signal";
-    const instanceName = `F_TRIG_${signalRefText}_instance`;
-
-    // Using Beckhoff's built-in F_TRIG function block for falling edge detection
-    let fallingContent = `// Falling edge detection for ${signalExpr}\n`;
-    fallingContent += `${instanceName}(CLK := ${signalExpr});\n`;
-    fallingContent += `IF ${instanceName}.Q THEN\n`;
-
-    for (const subStmt of stmt.stmts) {
-      fallingContent += `  ${convertStatementToST(subStmt)}\n`;
-    }
-
-    fallingContent += `END_IF;`;
-    return fallingContent;
-  } else if (isVarDecl(stmt)) {
-    return `${stmt.name}: ${convertTypeRefToST(stmt.typeRef)}${
-      stmt.init ? ` := ${convertExprToST(stmt.init)}` : ""
-    };`;
   }
 
-  return `// Unsupported statement type: ${(stmt as any).$type}`;
-}
+  generateBeckhoffArtifacts(): string[] {
+    if (!fs.existsSync(this.destination))
+      fs.mkdirSync(this.destination, { recursive: true });
+    const files: string[] = [];
 
-/**
- * Generate ST code for the MAIN program
- * @param controlModel Control model from the DSL
- * @param destination Output directory
- * @returns Path to the generated file
- */
-function writeProgramMain(
-  controlModel: ControlModel,
-  hardwareModel: HardwareModel,
-  destination: string
-): string {
-  // Collect all variables that need to be declared in the MAIN program
-  const mainVars: VarDecl[] = [];
-  // Collect all FB instances that need to be created
-  const fbInstances: FunctionBlockDecl[] = [];
-  // Collect all statements for the main logic
-  const mainStatements: Statement[] = [];
+    for (const item of this.controlModel.controlBlock.items) {
+      // Skip items marked as extern
+      if (isEnumDecl(item) || isStructDecl(item) || isFunctionBlockDecl(item)) {
+        if (item.isExtern) continue;
+      }
 
-  // Look for control units that should be included in MAIN
-  for (const item of controlModel.controlBlock.items) {
-    if (isControlUnit(item)) {
-      const controlUnit = item as ControlUnit;
+      if (isEnumDecl(item)) files.push(this.writeEnum(item));
+      else if (isStructDecl(item)) files.push(this.writeStruct(item));
+      else if (isFunctionBlockDecl(item))
+        files.push(...this.writeFunctionBlock(item));
+    }
 
-      // Add statements from this control unit
-      mainStatements.push(...controlUnit.stmts);
+    files.push(this.writeProgramMain());
+    return files;
+  }
 
-      // Process control unit local variables
-      const varDecls = controlUnit.stmts.filter(isVarDecl);
-      mainVars.push(...varDecls);
+  writeEnum(enumDecl: EnumDecl): string {
+    const filePath = path.join(this.destination, `${enumDecl.name}.st`);
 
-      // Find all function block references to create instances
-      const useStmts = controlUnit.stmts.filter(isUseStmt);
-      for (const useStmt of useStmts) {
-        const fbRef = useStmt.functionBlockRef.ref;
-        if (fbRef && !fbInstances.includes(fbRef)) {
-          fbInstances.push(fbRef);
-        }
+    const enumContent = toString(
+      expandToNode`
+        {attribute 'qualified_only'}
+        {attribute 'strict'}
+        TYPE ${enumDecl.name} :
+        (
+            ${joinToNode(
+              enumDecl.members.map((member, index) => ({ member, index })),
+              ({ member, index }) => expandToNode`
+                ${member.name} := ${index}${
+                index < enumDecl.members.length - 1 ? "," : ""
+              }
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+        );
+        END_TYPE
+      `
+    );
+
+    fs.writeFileSync(filePath, enumContent);
+    return filePath;
+  }
+
+  writeStruct(structDecl: StructDecl): string {
+    const filePath = path.join(this.destination, `${structDecl.name}.st`);
+
+    const structContent = toString(
+      expandToNode`
+        TYPE ${structDecl.name} :
+        STRUCT
+            ${joinToNode(
+              structDecl.fields,
+              (field) => expandToNode`
+                ${field.name} : ${convertTypeRefToST(field.typeRef)}${
+                field.init ? ` := ${this.convertExprToST(field.init)}` : ""
+              };
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+        END_STRUCT
+        END_TYPE
+      `
+    );
+
+    fs.writeFileSync(filePath, structContent);
+    return filePath;
+  }
+
+  writeFunctionBlock(fbDecl: FunctionBlockDecl): string[] {
+    const files: string[] = [];
+
+    // Get the different parts of the function block
+    const inputs = getInputs(fbDecl);
+    const outputs = getOutputs(fbDecl);
+    const locals = getLocals(fbDecl);
+    const logic = getLogic(fbDecl);
+
+    // Collect all loop variables from the logic block
+    const loopVars = new Map<string, { type: string; init?: Expr }>();
+    this.collectLoopVars(logic?.stmts ?? [], loopVars);
+    // Filter out loop vars already declared as locals
+    const localNames = new Set(locals.map((l) => l.name));
+    const loopVarsToDeclare = Array.from(loopVars.entries()).filter(
+      ([name]) => !localNames.has(name)
+    );
+
+    // Write declaration file
+    const declFilePath = path.join(this.destination, `${fbDecl.name}_decl.st`);
+    const declContent = toString(
+      expandToNode`
+        FUNCTION_BLOCK ${fbDecl.name}
+        VAR_INPUT
+            ${joinToNode(
+              inputs,
+              (input) => expandToNode`
+                ${input.name}: ${convertTypeRefToST(input.typeRef)}${
+                input.init ? ` := ${this.convertExprToST(input.init)}` : ""
+              };
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+        END_VAR
+        VAR_OUTPUT
+            ${joinToNode(
+              outputs,
+              (output) => expandToNode`
+                ${output.name}: ${convertTypeRefToST(output.typeRef)}${
+                output.init ? ` := ${this.convertExprToST(output.init)}` : ""
+              };
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+        END_VAR
+        VAR
+            ${joinToNode(
+              locals,
+              (local) => expandToNode`
+                ${local.name}: ${convertTypeRefToST(local.typeRef)}${
+                local.init ? ` := ${this.convertExprToST(local.init)}` : ""
+              };
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+            ${joinToNode(
+              loopVarsToDeclare,
+              ([name, { type, init }]) => expandToNode`
+                ${name}: ${type}${
+                init ? ` := ${this.convertExprToST(init)}` : ""
+              };
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+        END_VAR
+      `
+    );
+    fs.writeFileSync(declFilePath, declContent);
+    files.push(declFilePath);
+
+    // Write implementation file
+    const implFilePath = path.join(this.destination, `${fbDecl.name}_impl.st`);
+    const implContent = (logic?.stmts || [])
+      .map((stmt) => this.convertStatementToST(stmt, undefined, 0).trimEnd())
+      .join("\n");
+    fs.writeFileSync(implFilePath, implContent);
+    files.push(implFilePath);
+
+    return files;
+  }
+
+  /**
+   * Recursively collect all loop variables (from ForStmt) in a list of statements
+   */
+  collectLoopVars(
+    stmts: Statement[],
+    found: Map<string, { type: string; init?: Expr }>
+  ) {
+    for (const stmt of stmts) {
+      if (isForStmt(stmt)) {
+        this.handleForLoopVar(stmt, found);
+      } else if (isIfStmt(stmt)) {
+        this.handleIfLoopVar(stmt, found);
+      } else if (isWhileStmt(stmt)) {
+        this.collectLoopVars(stmt.stmts, found);
+      } else if (isSwitchStmt(stmt)) {
+        this.handleSwitchLoopVar(stmt, found);
       }
     }
   }
 
-  // Extract hardware datapoints
-  const { inputs, outputs } = extractHardwareDatapoints(hardwareModel);
-
-  // Include R_TRIG and F_TRIG instances for edge detection
-  const edgeDetectionFBs: string[] = [];
-
-  // Look for edge detection statements and create FB instances for them
-  mainStatements.forEach((stmt) => {
-    if (isOnRisingEdgeStmt(stmt)) {
-      const signal = stmt.signal;
-      // Use $refText to get the signal name
-      const signalRefText =
-        signal.ref && "$refText" in signal.ref
-          ? (signal.ref as any).$refText
-          : "signal";
-      edgeDetectionFBs.push(`R_TRIG_${signalRefText}_instance: R_TRIG;`);
-    } else if (isOnFallingEdgeStmt(stmt)) {
-      const signal = stmt.signal;
-      // Use $refText to get the signal name
-      const signalRefText =
-        signal.ref && "$refText" in signal.ref
-          ? (signal.ref as any).$refText
-          : "signal";
-      edgeDetectionFBs.push(`F_TRIG_${signalRefText}_instance: F_TRIG;`);
+  private handleForLoopVar(stmt: any, found: Map<string, { type: string; init?: Expr }>) {
+    if (!found.has(stmt.loopVar.name)) {
+      found.set(stmt.loopVar.name, {
+        type: stmt.loopVar.typeRef.type ?? "INT",
+        init: stmt.loopVar.init,
+      });
     }
-  });
+    this.collectLoopVars(stmt.stmts, found);
+  }
 
-  // Generate declaration part
-  const declContent = toString(
-    expandToNode`
-      PROGRAM MAIN
-      VAR_INPUT
-          ${joinToNode(
-            inputs,
-            (input) => expandToNode`
-              ${input.name}: ${input.type} AT ${input.ioBinding}; (* Input channel from hardware *)
-            `,
-            { appendNewLineIfNotEmpty: true }
-          )}
-      END_VAR
-      VAR_OUTPUT
-          ${joinToNode(
-            outputs,
-            (output) => expandToNode`
-              ${output.name}: ${output.type} AT ${output.ioBinding}; (* Output channel to hardware *)
-            `,
-            { appendNewLineIfNotEmpty: true }
-          )}
-      END_VAR
-      VAR
-          ${joinToNode(
-            mainVars,
-            (varDecl) => expandToNode`
-              ${varDecl.name}: ${convertTypeRefToST(varDecl.typeRef)}${
-              varDecl.init ? ` := ${convertExprToST(varDecl.init)}` : ""
-            };
-            `,
-            { appendNewLineIfNotEmpty: true }
-          )}
-          ${joinToNode(
-            fbInstances,
-            (fb) => expandToNode`
-              ${fb.name.charAt(0).toLowerCase() + fb.name.slice(1)}Instance: ${
-              fb.name
-            };
-            `,
-            { appendNewLineIfNotEmpty: true }
-          )}
-          ${edgeDetectionFBs.join("\n          ")}
-          bRunOnlyOnce: BOOL := FALSE;
-      END_VAR
-    `
-  );
+  private handleIfLoopVar(stmt: any, found: Map<string, { type: string; init?: Expr }>) {
+    this.collectLoopVars(stmt.stmts, found);
+    for (const elseIf of stmt.elseIfStmts) {
+      this.collectLoopVars(elseIf.stmts, found);
+    }
+    if (stmt.elseStmt) {
+      this.collectLoopVars(stmt.elseStmt.stmts, found);
+    }
+  }
 
-  // Generate implementation part
-  const implContent = toString(
-    expandToNode`
-      // Initialize code - runs only once
-      IF NOT bRunOnlyOnce THEN
-          ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_ERROR OR ADSLOG_MSGTYPE_LOG, 
-                   msgFmtStr := 'Program started %s', 
-                   strArg := 'successfully!');
-          bRunOnlyOnce := TRUE;
-      END_IF
+  private handleSwitchLoopVar(stmt: any, found: Map<string, { type: string; init?: Expr }>) {
+    for (const c of stmt.cases) {
+      this.collectLoopVars(c.stmts, found);
+    }
+    if (stmt.default) {
+      this.collectLoopVars(stmt.default.stmts, found);
+    }
+  }
 
-      // Main program logic
-      ${joinToNode(
-        mainStatements.filter((stmt) => !isVarDecl(stmt)),
-        (stmt) => convertStatementToST(stmt),
-        { appendNewLineIfNotEmpty: true }
-      )}
-    `
-  );
+  writeProgramMain(): string {
+    this.usedInstanceNames.clear();
+    this.edgeDetectionInstanceMap.clear();
 
-  // Write declaration file
-  const declFilePath = path.join(destination, `MAIN_decl.st`);
-  fs.writeFileSync(declFilePath, declContent);
+    const mainVars: EmittedVarDecl[] = [];
+    const fbInstancesMap = new Map<string, string>();
+    const fbInstanceTracker = new Map<string, Map<number, string>>();
+    const mainStatements: Statement[] = [];
 
-  // Write implementation file
-  const implFilePath = path.join(destination, `MAIN_impl.st`);
-  fs.writeFileSync(implFilePath, implContent);
+    this.processControlUnits(mainVars, fbInstancesMap, fbInstanceTracker, mainStatements);
 
-  return implFilePath;
+    const loopVars = new Map<string, { type: string; init?: Expr }>();
+    this.collectLoopVars(mainStatements, loopVars);
+    const declaredVarNames = new Set(mainVars.map((v) => v.varDecl.name));
+    const loopVarsToDeclare = Array.from(loopVars.entries()).filter(
+      ([name]) => !declaredVarNames.has(name)
+    );
+
+    const { inputs, outputs } = this.extractHardwareDatapoints();
+    this.hardwareChannelFlatNames = new Set([
+      ...inputs.map((i) => i.name),
+      ...outputs.map((o) => o.name),
+    ]);
+
+    const edgeDetectionFBMap = new Map<string, string>();
+    this.assignEdgeDetectionInstances(mainStatements, edgeDetectionFBMap);
+
+    const declContent = this.generateMainDeclContent(inputs, outputs, mainVars, loopVarsToDeclare, fbInstancesMap, edgeDetectionFBMap);
+    const implContent = this.generateMainImplContent(mainStatements, fbInstanceTracker);
+
+    const declFilePath = path.join(this.destination, `MAIN_decl.st`);
+    fs.writeFileSync(declFilePath, declContent);
+    const implFilePath = path.join(this.destination, `MAIN_impl.st`);
+    fs.writeFileSync(implFilePath, implContent);
+    return implFilePath;
+  }
+
+  private processControlUnits(
+    mainVars: EmittedVarDecl[],
+    fbInstancesMap: Map<string, string>,
+    fbInstanceTracker: Map<string, Map<number, string>>,
+    mainStatements: Statement[]
+  ) {
+    for (const item of this.controlModel.controlBlock.items) {
+      if (!isControlUnit(item)) continue;
+      const controlUnit = item;
+      mainStatements.push(...controlUnit.stmts);
+      this.addVarDeclsFromControlUnit(controlUnit, mainVars);
+      this.assignFBInstancesFromControlUnit(controlUnit, fbInstancesMap, fbInstanceTracker);
+    }
+  }
+
+  private addVarDeclsFromControlUnit(controlUnit: ControlUnit, mainVars: EmittedVarDecl[]) {
+    const varDecls = controlUnit.stmts.filter(isVarDecl);
+    mainVars.push(
+      ...varDecls.map((varDecl) => new EmittedVarDecl(controlUnit, varDecl))
+    );
+  }
+
+  private assignFBInstancesFromControlUnit(
+    controlUnit: ControlUnit,
+    fbInstancesMap: Map<string, string>,
+    fbInstanceTracker: Map<string, Map<number, string>>
+  ) {
+    const useStmts = controlUnit.stmts.filter(isUseStmt);
+    const fbTypeToUseStmts = this.groupUseStmtsByFBType(useStmts);
+    for (const [fbType, stmts] of fbTypeToUseStmts.entries()) {
+      if (!fbInstanceTracker.has(fbType)) {
+        fbInstanceTracker.set(fbType, new Map());
+      }
+      stmts.forEach((useStmt, index) => {
+        const instanceName = this.createFBInstanceName(fbType, index);
+        fbInstancesMap.set(instanceName, fbType);
+        this.usedInstanceNames.add(instanceName);
+        fbInstanceTracker.get(fbType)?.set(index, instanceName);
+      });
+    }
+  }
+
+  private groupUseStmtsByFBType(useStmts: UseStmt[]): Map<string, UseStmt[]> {
+    const fbTypeToUseStmts = new Map<string, UseStmt[]>();
+    for (const useStmt of useStmts) {
+      const fbType = useStmt.functionBlockRef.ref?.name ?? "UNKNOWN_FB";
+      if (!fbTypeToUseStmts.has(fbType)) {
+        fbTypeToUseStmts.set(fbType, []);
+      }
+      fbTypeToUseStmts.get(fbType)?.push(useStmt);
+    }
+    return fbTypeToUseStmts;
+  }
+
+  private createFBInstanceName(fbType: string, index: number): string {
+    let baseInstanceName = fbType.charAt(0).toLowerCase() + fbType.slice(1) + "Instance";
+    if (index > 0) {
+      return `${baseInstanceName}${index + 1}`;
+    }
+    return baseInstanceName;
+  }
+
+  private assignEdgeDetectionInstances(mainStatements: Statement[], edgeDetectionFBMap: Map<string, string>) {
+    const risingEdgeStatements = mainStatements.filter(isOnRisingEdgeStmt);
+    const fallingEdgeStatements = mainStatements.filter(isOnFallingEdgeStmt);
+    risingEdgeStatements.forEach((stmt, index) => {
+      const signalExpr = this.convertExprToST(stmt.signal);
+      const signalPath = signalExpr.replace(/\./g, "_");
+      let baseInstanceName = `r_TRIG_${signalPath}_Instance`;
+      let instanceName = baseInstanceName;
+      if (
+        index > 0 ||
+        Array.from(edgeDetectionFBMap.keys()).some(
+          (key) => key === baseInstanceName
+        )
+      ) {
+        instanceName = `${baseInstanceName}${index + 1}`;
+      }
+      edgeDetectionFBMap.set(instanceName, "R_TRIG");
+      this.usedInstanceNames.add(instanceName);
+      const key = `rising_${signalExpr}_${index}`;
+      this.edgeDetectionInstanceMap.set(key, instanceName);
+    });
+    fallingEdgeStatements.forEach((stmt, index) => {
+      const signalExpr = this.convertExprToST(stmt.signal);
+      const signalPath = signalExpr.replace(/\./g, "_");
+      let baseInstanceName = `f_TRIG_${signalPath}_Instance`;
+      let instanceName = baseInstanceName;
+      if (
+        index > 0 ||
+        Array.from(edgeDetectionFBMap.keys()).some(
+          (key) => key === baseInstanceName
+        )
+      ) {
+        instanceName = `${baseInstanceName}${index + 1}`;
+      }
+      edgeDetectionFBMap.set(instanceName, "F_TRIG");
+      this.usedInstanceNames.add(instanceName);
+      const key = `falling_${signalExpr}_${index}`;
+      this.edgeDetectionInstanceMap.set(key, instanceName);
+    });
+  }
+
+  private generateMainDeclContent(
+    inputs: Array<{ name: string; type: string; ioBinding: string }>,
+    outputs: Array<{ name: string; type: string; ioBinding: string }>,
+    mainVars: EmittedVarDecl[],
+    loopVarsToDeclare: [string, { type: string; init?: Expr }][],
+    fbInstancesMap: Map<string, string>,
+    edgeDetectionFBMap: Map<string, string>
+  ): string {
+    return toString(
+      expandToNode`
+        PROGRAM MAIN
+        VAR
+            ${joinToNode(
+              inputs,
+              (input) => expandToNode`
+                ${input.name} AT ${input.ioBinding.substring(0, 2)}*: ${
+                input.type
+              }; (* Input channel from hardware *)
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+            ${joinToNode(
+              outputs,
+              (output) => expandToNode`
+                ${output.name} AT ${output.ioBinding.substring(0, 2)}*: ${
+                output.type
+              }; (* Output channel to hardware *)
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+            ${joinToNode(
+              mainVars,
+              (v) => expandToNode`
+                ${v.name}: ${convertTypeRefToST(v.varDecl.typeRef)}${
+                v.varDecl.init
+                  ? ` := ${this.convertExprToST(v.varDecl.init)}`
+                  : ""
+              };
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+            ${joinToNode(
+              loopVarsToDeclare,
+              ([name, { type, init }]) => expandToNode`
+                ${name}: ${type}${
+                init ? ` := ${this.convertExprToST(init)}` : ""
+              };
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+            ${joinToNode(
+              Array.from(fbInstancesMap.entries()),
+              ([instanceName, fbType]) => expandToNode`
+                ${instanceName}: ${fbType}; (* Function block instance *)
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+            ${joinToNode(
+              Array.from(edgeDetectionFBMap.entries()),
+              ([instanceName, fbType]) => expandToNode`
+                ${instanceName}: ${fbType}; (* Edge detection instance *)
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+            bRunOnlyOnce: BOOL := FALSE;
+        END_VAR
+      `
+    );
+  }
+
+  private generateMainImplContent(
+    mainStatements: Statement[],
+    fbInstanceTracker: Map<string, Map<number, string>>
+  ): string {
+    const risingEdgeStatements = mainStatements.filter(isOnRisingEdgeStmt);
+    const fallingEdgeStatements = mainStatements.filter(isOnFallingEdgeStmt);
+    return toString(
+      expandToNode`
+        // Initialize code - runs only once
+        IF NOT bRunOnlyOnce THEN
+            ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_LOG,  
+                     msgFmtStr := 'Program started %s', 
+                     strArg := 'successfully!');
+            bRunOnlyOnce := TRUE;
+        END_IF
+
+        // Main program logic
+        ${joinToNode(
+          mainStatements.filter((stmt) => !isVarDecl(stmt)),
+          (stmt, index) => {
+            if (isOnRisingEdgeStmt(stmt)) {
+              const statementIndex = risingEdgeStatements.indexOf(stmt);
+              if (statementIndex !== -1) {
+                return this.convertEdgeDetectionToST(
+                  stmt,
+                  statementIndex,
+                  "rising"
+                );
+              }
+            } else if (isOnFallingEdgeStmt(stmt)) {
+              const statementIndex = fallingEdgeStatements.indexOf(stmt);
+              if (statementIndex !== -1) {
+                return this.convertEdgeDetectionToST(
+                  stmt,
+                  statementIndex,
+                  "falling"
+                );
+              }
+            } else if (isUseStmt(stmt)) {
+              return this.convertUseStmtToST(stmt, fbInstanceTracker);
+            }
+            return this.convertStatementToST(
+              stmt,
+              undefined,
+              0,
+              fbInstanceTracker,
+              mainStatements
+            );
+          },
+          { appendNewLineIfNotEmpty: true }
+        )}
+      `
+    );
+  }
+
+  extractHardwareDatapoints(): {
+    inputs: Array<{ name: string; type: string; ioBinding: string }>;
+    outputs: Array<{ name: string; type: string; ioBinding: string }>;
+  } {
+    const inputs: Array<{ name: string; type: string; ioBinding: string }> = [];
+    const outputs: Array<{ name: string; type: string; ioBinding: string }> = [];
+    for (const controller of this.hardwareModel.controllers) {
+      if (controller.platform !== "Beckhoff") continue;
+      const portGroups = this.collectPortGroups(controller.components);
+      this.processDatapoints(controller.components, portGroups, inputs, outputs);
+    }
+    return { inputs, outputs };
+  }
+
+  private collectPortGroups(components: any[]): Map<string, any> {
+    const portGroups = new Map();
+    for (const component of components) {
+      if ("moduleType" in component) {
+        portGroups.set(component.name, component);
+      }
+    }
+    return portGroups;
+  }
+
+  private processDatapoints(
+    components: any[],
+    portGroups: Map<string, any>,
+    inputs: Array<{ name: string; type: string; ioBinding: string }>,
+    outputs: Array<{ name: string; type: string; ioBinding: string }>
+  ) {
+    for (const component of components) {
+      if ("portgroup" in component) {
+        const datapoint = component;
+        const portgroup = portGroups.get(datapoint.portgroup.ref?.name);
+        if (!portgroup) continue;
+        const isInput =
+          portgroup.ioType === "DIGITAL_INPUT" ||
+          portgroup.ioType === "ANALOG_INPUT";
+        this.processChannels(datapoint, portgroup, isInput, inputs, outputs);
+      }
+    }
+  }
+
+  private processChannels(
+    datapoint: any,
+    portgroup: any,
+    isInput: boolean,
+    inputs: Array<{ name: string; type: string; ioBinding: string }>,
+    outputs: Array<{ name: string; type: string; ioBinding: string }>
+  ) {
+    for (const channel of datapoint.channels) {
+      const varName = `${datapoint.name}_${channel.name}`;
+      let plcType: string;
+      switch (channel.dataType) {
+        case "BOOL":
+          plcType = "BOOL";
+          break;
+        case "INT":
+          plcType = "INT";
+          break;
+        case "REAL":
+          plcType = "REAL";
+          break;
+        default:
+          plcType = "BYTE";
+      }
+      const addrMatch = portgroup.startAddress?.match(
+        /([IQ])([XBWDL])?(\d+(\.\d+)?)?/
+      );
+      if (!addrMatch) continue;
+      const ioPrefix = addrMatch[1];
+      const ioType = addrMatch[2] ?? this.getDefaultIOType(plcType);
+      const ioBaseAddr = addrMatch[3] ? parseInt(addrMatch[3]) : 0;
+      const offsetAddr = ioBaseAddr + channel.index;
+      const ioBinding = `%${ioPrefix}${ioType}${offsetAddr}`;
+      if (isInput) {
+        inputs.push({ name: varName, type: plcType, ioBinding });
+      } else {
+        outputs.push({ name: varName, type: plcType, ioBinding });
+      }
+    }
+  }
+
+  getDefaultIOType(plcType: string): string {
+    switch (plcType) {
+      case "BOOL":
+        return "X"; // Single bit
+      case "BYTE":
+        return "B"; // 8 bits
+      case "WORD":
+      case "INT":
+        return "W"; // 16 bits
+      case "DWORD":
+      case "DINT":
+      case "REAL":
+        return "D"; // 32 bits
+      case "LWORD":
+      case "LINT":
+      case "LREAL":
+        return "L"; // 64 bits
+      default:
+        return "B"; // Default to byte
+    }
+  }
+
+  generate(): {
+    files: string[];
+    csharpStrings: Record<
+      string,
+      { declaration: string; implementation?: string }
+    >;
+  } {
+    const files = this.generateBeckhoffArtifacts();
+
+    function createCSharpString(filePath: string): string {
+      return fs.readFileSync(filePath, "utf8").replace(/\r\n/g, "\\r\\n");
+    }
+
+    // Create C#-compatible strings for each POU
+    const csharpStrings: Record<
+      string,
+      { declaration: string; implementation?: string }
+    > = {};
+
+    // Process each item in the control model to create C# ready strings
+    for (const item of this.controlModel.controlBlock.items) {
+      if ("isExtern" in item && item.isExtern) continue;
+      if (isEnumDecl(item) || isStructDecl(item)) {
+        const filePath = path.join(this.destination, `${item.name}.st`);
+        csharpStrings[item.name] = {
+          declaration: createCSharpString(filePath),
+        };
+      } else if (isFunctionBlockDecl(item)) {
+        const declFilePath = path.join(
+          this.destination,
+          `${item.name}_decl.st`
+        );
+        const implFilePath = path.join(
+          this.destination,
+          `${item.name}_impl.st`
+        );
+
+        csharpStrings[item.name] = {
+          declaration: createCSharpString(declFilePath),
+          implementation: createCSharpString(implFilePath),
+        };
+      }
+    }
+
+    // Add MAIN program
+    const mainDeclFilePath = path.join(this.destination, `MAIN_decl.st`);
+    const mainImplFilePath = path.join(this.destination, `MAIN_impl.st`);
+
+    csharpStrings["MAIN"] = {
+      declaration: createCSharpString(mainDeclFilePath),
+      implementation: createCSharpString(mainImplFilePath),
+    };
+
+    return { files, csharpStrings };
+  }
 }
 
-/**
- * Main function to generate C# compatible ST code from the DSL models
- * This creates both the individual files and combined format strings for C# integration
- */
 export function generateBeckhoffCode(
   controlModel: ControlModel,
   hardwareModel: HardwareModel,
   destination: string
-): {
-  files: string[];
-  csharpStrings: Record<
-    string,
-    { declaration: string; implementation?: string }
-  >;
-} {
-  // Generate individual ST files
-  const files = generateBeckhoffArtifacts(
+) {
+  const ctx = new BeckhoffGeneratorContext(
     controlModel,
     hardwareModel,
     destination
   );
-
-  // Create C#-compatible strings for each POU
-  const csharpStrings: Record<
-    string,
-    { declaration: string; implementation?: string }
-  > = {};
-
-  // Process each item in the control model to create C# ready strings
-  for (const item of controlModel.controlBlock.items) {
-    // Skip items marked as extern
-    if ("isExtern" in item && item.isExtern) continue;
-
-    if (isEnumDecl(item)) {
-      const filePath = path.join(destination, `${item.name}.st`);
-      csharpStrings[item.name] = {
-        declaration: fs
-          .readFileSync(filePath, "utf8")
-          .replace(/\r\n/g, "\\r\\n"),
-      };
-    } else if (isStructDecl(item)) {
-      const filePath = path.join(destination, `${item.name}.st`);
-      csharpStrings[item.name] = {
-        declaration: fs
-          .readFileSync(filePath, "utf8")
-          .replace(/\r\n/g, "\\r\\n"),
-      };
-    } else if (isFunctionBlockDecl(item)) {
-      const declFilePath = path.join(destination, `${item.name}_decl.st`);
-      const implFilePath = path.join(destination, `${item.name}_impl.st`);
-
-      csharpStrings[item.name] = {
-        declaration: fs
-          .readFileSync(declFilePath, "utf8")
-          .replace(/\r\n/g, "\\r\\n"),
-        implementation: fs
-          .readFileSync(implFilePath, "utf8")
-          .replace(/\r\n/g, "\\r\\n"),
-      };
-    }
-  }
-
-  // Add MAIN program
-  const mainDeclFilePath = path.join(destination, `MAIN_decl.st`);
-  const mainImplFilePath = path.join(destination, `MAIN_impl.st`);
-
-  csharpStrings["MAIN"] = {
-    declaration: fs
-      .readFileSync(mainDeclFilePath, "utf8")
-      .replace(/\r\n/g, "\\r\\n"),
-    implementation: fs
-      .readFileSync(mainImplFilePath, "utf8")
-      .replace(/\r\n/g, "\\r\\n"),
-  };
-
-  return { files, csharpStrings };
+  return ctx.generate();
 }
 
-/**
- * Extract hardware datapoints from the hardware model
- * These will be used to create I/O variables in the PLC program
- */
-function extractHardwareDatapoints(hardwareModel: HardwareModel): {
-  inputs: Array<{ name: string; type: string; ioBinding: string }>;
-  outputs: Array<{ name: string; type: string; ioBinding: string }>;
-} {
-  const inputs: Array<{ name: string; type: string; ioBinding: string }> = [];
-  const outputs: Array<{ name: string; type: string; ioBinding: string }> = [];
+class EmittedVarDecl {
+  controlUnit: ControlUnit;
+  varDecl: VarDecl;
 
-  // Process each controller in the hardware model
-  for (const controller of hardwareModel.controllers) {
-    // We only process Beckhoff hardware components
-    if (controller.platform !== "Beckhoff") continue;
-
-    // Map to hold port groups for reference
-    const portGroups = new Map();
-
-    // First pass: collect all port groups
-    for (const component of controller.components) {
-      if ("moduleType" in component) {
-        // PortGroup
-        portGroups.set(component.name, component);
-      }
-    }
-
-    // Second pass: process all datapoints
-    for (const component of controller.components) {
-      if ("portgroup" in component) {
-        // Datapoint
-        const datapoint = component;
-        const portgroup = portGroups.get(datapoint.portgroup.ref?.name);
-
-        if (!portgroup) continue;
-
-        // Determine if this is an input or output based on the port group
-        const isInput =
-          portgroup.ioType === "DIGITAL_INPUT" ||
-          portgroup.ioType === "ANALOG_INPUT";
-
-        // Process each channel in the datapoint
-        for (const channel of datapoint.channels) {
-          // Create variable name: [DatapointName]_[ChannelName]
-          const varName = `${datapoint.name}_${channel.name}`;
-
-          // Determine PLC data type from channel type
-          let plcType: string;
-          switch (channel.dataType) {
-            case "BOOL":
-              plcType = "BOOL";
-              break;
-            case "INT":
-              plcType = "INT";
-              break;
-            case "REAL":
-              plcType = "REAL";
-              break;
-            default:
-              plcType = "BYTE"; // Default to BYTE for unknown types
-          }
-
-          // Calculate the IO binding address
-          // Parse the start address from the IOBinding format: %I* or %Q*
-          const addrMatch = portgroup.startAddress?.match(
-            /%([IQ])([XBWDL])?([0-9]+(\.[0-9]+)?)?/
-          );
-          if (!addrMatch) continue;
-
-          const ioPrefix = addrMatch[1]; // I or Q
-          const ioType = addrMatch[2] || getDefaultIOType(plcType); // X, B, W, D, L if specified
-          const ioBaseAddr = addrMatch[3] ? parseInt(addrMatch[3]) : 0;
-
-          // Calculate the offset based on channel index
-          const offsetAddr = ioBaseAddr + channel.index;
-
-          // Construct the IO binding
-          const ioBinding = `%${ioPrefix}${ioType}${offsetAddr}`;
-
-          // Add to the appropriate array
-          if (isInput) {
-            inputs.push({ name: varName, type: plcType, ioBinding });
-          } else {
-            outputs.push({ name: varName, type: plcType, ioBinding });
-          }
-        }
-      }
-    }
+  constructor(controlUnit: ControlUnit, varDecl: VarDecl) {
+    this.controlUnit = controlUnit;
+    this.varDecl = varDecl;
   }
 
-  return { inputs, outputs };
+  get name(): string {
+    return `${this.controlUnit.name}_${this.varDecl.name}`;
+  }
 }
 
-/**
- * Get the default IO type suffix based on the data type
- */
-function getDefaultIOType(plcType: string): string {
-  switch (plcType) {
-    case "BOOL":
-      return "X"; // Single bit
-    case "BYTE":
-      return "B"; // 8 bits
-    case "WORD":
-    case "INT":
-      return "W"; // 16 bits
-    case "DWORD":
-    case "DINT":
-    case "REAL":
-      return "D"; // 32 bits
-    case "LWORD":
-    case "LINT":
-    case "LREAL":
-      return "L"; // 64 bits
-    default:
-      return "B"; // Default to byte
+function convertTypeRefToST(typeRef: TypeRef): string {
+  if (typeRef.type) {
+    if (typeRef.sizes.length === 0) {
+      return typeRef.type;
+    } else {
+      return `ARRAY [${typeRef.sizes
+        .map((size) => {
+          if (isPrimary(size) && typeof size.val === "number") {
+            return `0..${size.val - 1}`;
+          }
+          return "0..?";
+
+        })
+        .join(", ")}] OF ${typeRef.type}`;
+    }
+  } else if (typeRef.ref) {
+    const typeDecl = typeRef.ref.ref;
+    const typeName = typeDecl && "name" in typeDecl ? typeDecl.name : "UNKNOWN";
+    if (typeRef.sizes.length === 0) {
+      return typeName as string;
+    } else {
+      return `ARRAY [${typeRef.sizes
+        .map((size) => {
+          if (isPrimary(size) && typeof size.val === "number") {
+            return `0..${size.val - 1}`;
+          }
+          return "0..?";
+
+        })
+        .join(", ")}] OF ${typeName}`;
+    }
   }
+  return "UNKNOWN_TYPE";
 }

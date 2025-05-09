@@ -1,28 +1,28 @@
 PROGRAM MAIN
-VAR_INPUT
-    UltrasonicSensor_Distance: INT AT %IW0; (* Input channel from hardware *)
-    UltrasonicSensor_Valid: BOOL AT %IW0; (* Input channel from hardware *)
-    Temperatures_Room1: REAL AT %IW0; (* Input channel from hardware *)
-    Temperatures_Room2: REAL AT %IW1; (* Input channel from hardware *)
-    Temperatures_Room3: REAL AT %IW2; (* Input channel from hardware *)
-    Temperatures_Room4: REAL AT %IW3; (* Input channel from hardware *)
-    Buttons_Room1: BOOL AT %IX8; (* Input channel from hardware *)
-    Buttons_Room2: BOOL AT %IX9; (* Input channel from hardware *)
-END_VAR
-VAR_OUTPUT
-    Lights_Room1: BOOL AT %QX0; (* Output channel to hardware *)
-    Lights_Room2: BOOL AT %QX1; (* Output channel to hardware *)
-END_VAR
 VAR
-    retries: INT := 0;
-    daliAddress: E_DALIAddressType;
-    daliPriority: E_DALICommandPriority := FALSE;
-    addressList: ST_DALIChangeAddressList := (nOldAddress:=1, nNewAddress:=2, nRandomAddress:=3, nErrors:=0);
-    status: BOOL;
-    distance: INT := FALSE;
-    heatingLogicInstance: HeatingLogic;
-    fB_Tc3_DALIInstance: FB_Tc3_DALI;
-    R_TRIG_Buttons_instance: R_TRIG;
-          F_TRIG_Buttons_instance: F_TRIG;
+    UltrasonicSensor_Distance AT %I*: INT; (* Input channel from hardware *)
+    UltrasonicSensor_Valid AT %I*: BOOL; (* Input channel from hardware *)
+    Temperatures_Room1 AT %I*: REAL; (* Input channel from hardware *)
+    Temperatures_Room2 AT %I*: REAL; (* Input channel from hardware *)
+    Temperatures_Room3 AT %I*: REAL; (* Input channel from hardware *)
+    Temperatures_Room4 AT %I*: REAL; (* Input channel from hardware *)
+    Buttons_Room1 AT %I*: BOOL; (* Input channel from hardware *)
+    Buttons_Room2 AT %I*: BOOL; (* Input channel from hardware *)
+    Lights_Room1 AT %Q*: BOOL; (* Output channel to hardware *)
+    Lights_Room2 AT %Q*: BOOL; (* Output channel to hardware *)
+    RetryHeaterStartup_retries: INT := 0;
+    UseDaliLibrary_daliAddress: E_DALIAddressType;
+    UseDaliLibrary_daliPriority: E_DALICommandPriority := E_DALICommandPriority.High;
+    UseDaliLibrary_addressList: ST_DALIChangeAddressList := (nOldAddress:=1, nNewAddress:=2, nRandomAddress:=3, nErrors:=0);
+    UseDaliLibrary_status: BOOL;
+    UseDaliLibrary_resultMessage: I_TcMessage;
+    UseDaliLibrary_failureStatus: INT;
+    ValidateSensorDistance_distance: INT := UltrasonicSensor_Distance;
+    heatingLogicInstance: HeatingLogic; (* Function block instance *)
+    fB_DALI207QueryFailureStatusInstance: FB_DALI207QueryFailureStatus; (* Function block instance *)
+    fB_DALI207QueryFailureStatusInstance2: FB_DALI207QueryFailureStatus; (* Function block instance *)
+    r_TRIG_Buttons_Room1_Instance: R_TRIG; (* Edge detection instance *)
+    r_TRIG_Buttons_Room2_Instance2: R_TRIG; (* Edge detection instance *)
+    f_TRIG_Buttons_Room2_Instance: F_TRIG; (* Edge detection instance *)
     bRunOnlyOnce: BOOL := FALSE;
 END_VAR

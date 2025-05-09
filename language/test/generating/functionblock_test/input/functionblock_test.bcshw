@@ -1,0 +1,9 @@
+// A minimal hardware definition to accompany functionblock_test.bcsctrl
+controller FunctionBlockTestController for Beckhoff {
+    portgroup DI {
+        moduleType: EL1008
+        ioType: DIGITAL_INPUT
+        startAddress: %IX0.0
+        channels: 8
+    }
+}
