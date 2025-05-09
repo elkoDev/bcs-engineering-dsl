@@ -138,35 +138,55 @@ class BeckhoffGeneratorContext {
 
   convertExprToST(expr: Expr): string {
     if (isPrimary(expr)) {
-      if (isRef(expr)) return this.handleRefExpr(expr);
-      if (isParenExpr(expr)) return `(${this.convertExprToST(expr.expr)})`;
-      if (isNegExpr(expr)) return `-${this.convertExprToST(expr.expr)}`;
-      if (isNotExpr(expr)) return `NOT ${this.convertExprToST(expr.expr)}`;
-      if (isArrayLiteral(expr.val)) {
-        // For multi-dimensional arrays, we need to flatten the array elements
-        const flatElements = expr.val.elements.flatMap((e) => {
-          // If it's a nested array literal, flatten it
-          if (isPrimary(e) && isArrayLiteral(e.val)) {
-            return e.val.elements.map((nestedE) =>
-              this.convertExprToST(nestedE)
-            );
-          }
-          return [this.convertExprToST(e)];
-        });
-        return `[${flatElements.join(", ")}]`;
-      }
-      if (isStructLiteral(expr.val))
-        return `(${expr.val.fields
-          .map((f) => `${f.name}:=${this.convertExprToST(f.value)}`)
-          .join(", ")})`;
-      if (isPrimitive(expr)) return this.primitiveToST(expr.val);
-    } else if (isBinExpr(expr)) {
-      const op = translateOperator(expr.op);
-      return `${this.convertExprToST(expr.e1)} ${op} ${this.convertExprToST(
-        expr.e2
-      )}`;
+      return this.convertPrimaryExprToST(expr);
     }
+    if (isBinExpr(expr)) return this.handleBinExpr(expr);
     return "UNKNOWN_EXPR";
+  }
+
+  private convertPrimaryExprToST(expr: any): string {
+    if (isRef(expr)) return this.handleRefExpr(expr);
+    if (isParenExpr(expr)) return this.handleParenExpr(expr);
+    if (isNegExpr(expr)) return this.handleNegExpr(expr);
+    if (isNotExpr(expr)) return this.handleNotExpr(expr);
+    if (isArrayLiteral(expr.val)) return this.handleArrayLiteral(expr);
+    if (isStructLiteral(expr.val)) return this.handleStructLiteral(expr);
+    if (isPrimitive(expr)) return this.primitiveToST(expr.val);
+    return "UNKNOWN_PRIMARY_EXPR";
+  }
+
+  private handleParenExpr(expr: any): string {
+    return `(${this.convertExprToST(expr.expr)})`;
+  }
+
+  private handleNegExpr(expr: any): string {
+    return `-${this.convertExprToST(expr.expr)}`;
+  }
+
+  private handleNotExpr(expr: any): string {
+    return `NOT ${this.convertExprToST(expr.expr)}`;
+  }
+
+  private handleArrayLiteral(expr: any): string {
+    // For multi-dimensional arrays, we need to flatten the array elements
+    const flatElements = expr.val.elements.flatMap((e: any) => {
+      if (isPrimary(e) && isArrayLiteral(e.val)) {
+        return e.val.elements.map((nestedE: any) => this.convertExprToST(nestedE));
+      }
+      return [this.convertExprToST(e)];
+    });
+    return `[${flatElements.join(", ")}]`;
+  }
+
+  private handleStructLiteral(expr: any): string {
+    return `(${expr.val.fields
+      .map((f: any) => `${f.name}:=${this.convertExprToST(f.value)}`)
+      .join(", ")})`;
+  }
+
+  private handleBinExpr(expr: any): string {
+    const op = translateOperator(expr.op);
+    return `${this.convertExprToST(expr.e1)} ${op} ${this.convertExprToST(expr.e2)}`;
   }
 
   handleRefExpr(expr: Ref): string {
@@ -644,147 +664,153 @@ class BeckhoffGeneratorContext {
   ) {
     for (const stmt of stmts) {
       if (isForStmt(stmt)) {
-        // Only add if not already present
-        if (!found.has(stmt.loopVar.name)) {
-          found.set(stmt.loopVar.name, {
-            type: stmt.loopVar.typeRef.type ?? "INT",
-            init: stmt.loopVar.init,
-          });
-        }
-        // Recurse into the body
-        this.collectLoopVars(stmt.stmts, found);
+        this.handleForLoopVar(stmt, found);
       } else if (isIfStmt(stmt)) {
-        this.collectLoopVars(stmt.stmts, found);
-        for (const elseIf of stmt.elseIfStmts) {
-          this.collectLoopVars(elseIf.stmts, found);
-        }
-        if (stmt.elseStmt) {
-          this.collectLoopVars(stmt.elseStmt.stmts, found);
-        }
+        this.handleIfLoopVar(stmt, found);
       } else if (isWhileStmt(stmt)) {
         this.collectLoopVars(stmt.stmts, found);
       } else if (isSwitchStmt(stmt)) {
-        for (const c of stmt.cases) {
-          this.collectLoopVars(c.stmts, found);
-        }
-        if (stmt.default) {
-          this.collectLoopVars(stmt.default.stmts, found);
-        }
+        this.handleSwitchLoopVar(stmt, found);
       }
     }
   }
 
+  private handleForLoopVar(stmt: any, found: Map<string, { type: string; init?: Expr }>) {
+    if (!found.has(stmt.loopVar.name)) {
+      found.set(stmt.loopVar.name, {
+        type: stmt.loopVar.typeRef.type ?? "INT",
+        init: stmt.loopVar.init,
+      });
+    }
+    this.collectLoopVars(stmt.stmts, found);
+  }
+
+  private handleIfLoopVar(stmt: any, found: Map<string, { type: string; init?: Expr }>) {
+    this.collectLoopVars(stmt.stmts, found);
+    for (const elseIf of stmt.elseIfStmts) {
+      this.collectLoopVars(elseIf.stmts, found);
+    }
+    if (stmt.elseStmt) {
+      this.collectLoopVars(stmt.elseStmt.stmts, found);
+    }
+  }
+
+  private handleSwitchLoopVar(stmt: any, found: Map<string, { type: string; init?: Expr }>) {
+    for (const c of stmt.cases) {
+      this.collectLoopVars(c.stmts, found);
+    }
+    if (stmt.default) {
+      this.collectLoopVars(stmt.default.stmts, found);
+    }
+  }
+
   writeProgramMain(): string {
-    // Reset the used instance names and edge detection maps to ensure clean tracking for this program
     this.usedInstanceNames.clear();
     this.edgeDetectionInstanceMap.clear();
 
-    // Collect all variables that need to be declared in the MAIN program
     const mainVars: EmittedVarDecl[] = [];
-    // Collect all FB instances that need to be created
-    // Use Map to store instance name -> FB type
     const fbInstancesMap = new Map<string, string>();
-    // Map to track FB instances by FB type and index (similar to edge detection)
     const fbInstanceTracker = new Map<string, Map<number, string>>();
-    // Collect all statements for the main logic
     const mainStatements: Statement[] = [];
 
-    // Look for control units that should be included in MAIN
-    for (const item of this.controlModel.controlBlock.items) {
-      if (isControlUnit(item)) {
-        const controlUnit = item;
+    this.processControlUnits(mainVars, fbInstancesMap, fbInstanceTracker, mainStatements);
 
-        // Add statements from this control unit
-        mainStatements.push(...controlUnit.stmts);
-
-        // Process control unit local variables
-        const varDecls = controlUnit.stmts.filter(isVarDecl);
-        mainVars.push(
-          ...varDecls.map((varDecl) => new EmittedVarDecl(controlUnit, varDecl))
-        );
-
-        // Find all function block references to create instances
-        const useStmts = controlUnit.stmts.filter(isUseStmt);
-
-        // Group use statements by FB type to assign consistent indices
-        const fbTypeToUseStmts = new Map<string, UseStmt[]>();
-        for (const useStmt of useStmts) {
-          const fbType = useStmt.functionBlockRef.ref?.name ?? "UNKNOWN_FB";
-          if (!fbTypeToUseStmts.has(fbType)) {
-            fbTypeToUseStmts.set(fbType, []);
-          }
-          fbTypeToUseStmts.get(fbType)?.push(useStmt);
-        }
-
-        // Now process all FB types and assign instances with consistent indices
-        for (const [fbType, stmts] of fbTypeToUseStmts.entries()) {
-          // For each FB type, create a map to track instances by index
-          if (!fbInstanceTracker.has(fbType)) {
-            fbInstanceTracker.set(fbType, new Map());
-          }
-
-          // Process each use statement of this type
-          stmts.forEach((useStmt, index) => {
-            // Create a proper instance name in camelCase
-            let baseInstanceName =
-              fbType.charAt(0).toLowerCase() + fbType.slice(1) + "Instance";
-            let instanceName = baseInstanceName;
-
-            // If not the first instance of this type, add a numeric suffix
-            if (index > 0) {
-              // Start from 1 for the suffix (reserve base name for first instance)
-              instanceName = `${baseInstanceName}${index + 1}`;
-            }
-
-            // Add to instance maps and track used names
-            fbInstancesMap.set(instanceName, fbType);
-            this.usedInstanceNames.add(instanceName);
-
-            // Store for later reference in statement conversion
-            fbInstanceTracker.get(fbType)?.set(index, instanceName);
-          });
-        }
-      }
-    }
-
-    // --- Collect loop variables from all main statements ---
     const loopVars = new Map<string, { type: string; init?: Expr }>();
     this.collectLoopVars(mainStatements, loopVars);
-    // Filter out loop vars already declared in mainVars
     const declaredVarNames = new Set(mainVars.map((v) => v.varDecl.name));
     const loopVarsToDeclare = Array.from(loopVars.entries()).filter(
       ([name]) => !declaredVarNames.has(name)
     );
 
-    // Extract hardware datapoints
     const { inputs, outputs } = this.extractHardwareDatapoints();
-
-    // Fill the set of flat hardware channel names
     this.hardwareChannelFlatNames = new Set([
       ...inputs.map((i) => i.name),
       ...outputs.map((o) => o.name),
     ]);
 
-    // Handle edge detection trigger instances (R_TRIG and F_TRIG)
-    // Use a Map to ensure unique instance names
     const edgeDetectionFBMap = new Map<string, string>();
+    this.assignEdgeDetectionInstances(mainStatements, edgeDetectionFBMap);
 
-    // First pass: Pre-process all edge detection statements to assign unique instance names
-    // This ensures consistent naming when we actually process the statements in convertStatementToST
+    const declContent = this.generateMainDeclContent(inputs, outputs, mainVars, loopVarsToDeclare, fbInstancesMap, edgeDetectionFBMap);
+    const implContent = this.generateMainImplContent(mainStatements, fbInstanceTracker);
+
+    const declFilePath = path.join(this.destination, `MAIN_decl.st`);
+    fs.writeFileSync(declFilePath, declContent);
+    const implFilePath = path.join(this.destination, `MAIN_impl.st`);
+    fs.writeFileSync(implFilePath, implContent);
+    return implFilePath;
+  }
+
+  private processControlUnits(
+    mainVars: EmittedVarDecl[],
+    fbInstancesMap: Map<string, string>,
+    fbInstanceTracker: Map<string, Map<number, string>>,
+    mainStatements: Statement[]
+  ) {
+    for (const item of this.controlModel.controlBlock.items) {
+      if (!isControlUnit(item)) continue;
+      const controlUnit = item;
+      mainStatements.push(...controlUnit.stmts);
+      this.addVarDeclsFromControlUnit(controlUnit, mainVars);
+      this.assignFBInstancesFromControlUnit(controlUnit, fbInstancesMap, fbInstanceTracker);
+    }
+  }
+
+  private addVarDeclsFromControlUnit(controlUnit: ControlUnit, mainVars: EmittedVarDecl[]) {
+    const varDecls = controlUnit.stmts.filter(isVarDecl);
+    mainVars.push(
+      ...varDecls.map((varDecl) => new EmittedVarDecl(controlUnit, varDecl))
+    );
+  }
+
+  private assignFBInstancesFromControlUnit(
+    controlUnit: ControlUnit,
+    fbInstancesMap: Map<string, string>,
+    fbInstanceTracker: Map<string, Map<number, string>>
+  ) {
+    const useStmts = controlUnit.stmts.filter(isUseStmt);
+    const fbTypeToUseStmts = this.groupUseStmtsByFBType(useStmts);
+    for (const [fbType, stmts] of fbTypeToUseStmts.entries()) {
+      if (!fbInstanceTracker.has(fbType)) {
+        fbInstanceTracker.set(fbType, new Map());
+      }
+      stmts.forEach((useStmt, index) => {
+        const instanceName = this.createFBInstanceName(fbType, index);
+        fbInstancesMap.set(instanceName, fbType);
+        this.usedInstanceNames.add(instanceName);
+        fbInstanceTracker.get(fbType)?.set(index, instanceName);
+      });
+    }
+  }
+
+  private groupUseStmtsByFBType(useStmts: UseStmt[]): Map<string, UseStmt[]> {
+    const fbTypeToUseStmts = new Map<string, UseStmt[]>();
+    for (const useStmt of useStmts) {
+      const fbType = useStmt.functionBlockRef.ref?.name ?? "UNKNOWN_FB";
+      if (!fbTypeToUseStmts.has(fbType)) {
+        fbTypeToUseStmts.set(fbType, []);
+      }
+      fbTypeToUseStmts.get(fbType)?.push(useStmt);
+    }
+    return fbTypeToUseStmts;
+  }
+
+  private createFBInstanceName(fbType: string, index: number): string {
+    let baseInstanceName = fbType.charAt(0).toLowerCase() + fbType.slice(1) + "Instance";
+    if (index > 0) {
+      return `${baseInstanceName}${index + 1}`;
+    }
+    return baseInstanceName;
+  }
+
+  private assignEdgeDetectionInstances(mainStatements: Statement[], edgeDetectionFBMap: Map<string, string>) {
     const risingEdgeStatements = mainStatements.filter(isOnRisingEdgeStmt);
     const fallingEdgeStatements = mainStatements.filter(isOnFallingEdgeStmt);
-
-    // Process rising edge statements first
     risingEdgeStatements.forEach((stmt, index) => {
-      // Get the signal expression string
       const signalExpr = this.convertExprToST(stmt.signal);
-
-      // Create a more specific instance name based on the full signal path
       const signalPath = signalExpr.replace(/\./g, "_");
       let baseInstanceName = `r_TRIG_${signalPath}_Instance`;
       let instanceName = baseInstanceName;
-
-      // If not the first instance with this base name, add a numeric suffix
       if (
         index > 0 ||
         Array.from(edgeDetectionFBMap.keys()).some(
@@ -793,28 +819,16 @@ class BeckhoffGeneratorContext {
       ) {
         instanceName = `${baseInstanceName}${index + 1}`;
       }
-
-      // Add to maps and track used names
       edgeDetectionFBMap.set(instanceName, "R_TRIG");
       this.usedInstanceNames.add(instanceName);
-
-      // Store this specific instance name for this statement
-      // Use a unique key combining statement type, signal, and index
       const key = `rising_${signalExpr}_${index}`;
       this.edgeDetectionInstanceMap.set(key, instanceName);
     });
-
-    // Process falling edge statements next
     fallingEdgeStatements.forEach((stmt, index) => {
-      // Get the signal expression string
       const signalExpr = this.convertExprToST(stmt.signal);
-
-      // Create a more specific instance name based on the full signal path
       const signalPath = signalExpr.replace(/\./g, "_");
       let baseInstanceName = `f_TRIG_${signalPath}_Instance`;
       let instanceName = baseInstanceName;
-
-      // If not the first instance with this base name, add a numeric suffix
       if (
         index > 0 ||
         Array.from(edgeDetectionFBMap.keys()).some(
@@ -823,19 +837,22 @@ class BeckhoffGeneratorContext {
       ) {
         instanceName = `${baseInstanceName}${index + 1}`;
       }
-
-      // Add to maps and track used names
       edgeDetectionFBMap.set(instanceName, "F_TRIG");
       this.usedInstanceNames.add(instanceName);
-
-      // Store this specific instance name for this statement
-      // Use a unique key combining statement type, signal, and index
       const key = `falling_${signalExpr}_${index}`;
       this.edgeDetectionInstanceMap.set(key, instanceName);
     });
+  }
 
-    // Generate declaration part
-    const declContent = toString(
+  private generateMainDeclContent(
+    inputs: Array<{ name: string; type: string; ioBinding: string }>,
+    outputs: Array<{ name: string; type: string; ioBinding: string }>,
+    mainVars: EmittedVarDecl[],
+    loopVarsToDeclare: [string, { type: string; init?: Expr }][],
+    fbInstancesMap: Map<string, string>,
+    edgeDetectionFBMap: Map<string, string>
+  ): string {
+    return toString(
       expandToNode`
         PROGRAM MAIN
         VAR
@@ -895,9 +912,15 @@ class BeckhoffGeneratorContext {
         END_VAR
       `
     );
+  }
 
-    // Generate implementation part
-    const implContent = toString(
+  private generateMainImplContent(
+    mainStatements: Statement[],
+    fbInstanceTracker: Map<string, Map<number, string>>
+  ): string {
+    const risingEdgeStatements = mainStatements.filter(isOnRisingEdgeStmt);
+    const fallingEdgeStatements = mainStatements.filter(isOnFallingEdgeStmt);
+    return toString(
       expandToNode`
         // Initialize code - runs only once
         IF NOT bRunOnlyOnce THEN
@@ -944,16 +967,6 @@ class BeckhoffGeneratorContext {
         )}
       `
     );
-
-    // Write declaration file
-    const declFilePath = path.join(this.destination, `MAIN_decl.st`);
-    fs.writeFileSync(declFilePath, declContent);
-
-    // Write implementation file
-    const implFilePath = path.join(this.destination, `MAIN_impl.st`);
-    fs.writeFileSync(implFilePath, implContent);
-
-    return implFilePath;
   }
 
   extractHardwareDatapoints(): {
@@ -961,87 +974,82 @@ class BeckhoffGeneratorContext {
     outputs: Array<{ name: string; type: string; ioBinding: string }>;
   } {
     const inputs: Array<{ name: string; type: string; ioBinding: string }> = [];
-    const outputs: Array<{ name: string; type: string; ioBinding: string }> =
-      [];
-
-    // Process each controller in the this.hardwareModel
+    const outputs: Array<{ name: string; type: string; ioBinding: string }> = [];
     for (const controller of this.hardwareModel.controllers) {
-      // We only process Beckhoff hardware components
       if (controller.platform !== "Beckhoff") continue;
+      const portGroups = this.collectPortGroups(controller.components);
+      this.processDatapoints(controller.components, portGroups, inputs, outputs);
+    }
+    return { inputs, outputs };
+  }
 
-      // Map to hold port groups for reference
-      const portGroups = new Map();
-
-      // First pass: collect all port groups
-      for (const component of controller.components) {
-        if ("moduleType" in component) {
-          portGroups.set(component.name, component);
-        }
-      }
-
-      // Second pass: process all datapoints
-      for (const component of controller.components) {
-        if ("portgroup" in component) {
-          const datapoint = component;
-          const portgroup = portGroups.get(datapoint.portgroup.ref?.name);
-
-          if (!portgroup) continue;
-
-          // Determine if this is an input or output based on the port group
-          const isInput =
-            portgroup.ioType === "DIGITAL_INPUT" ||
-            portgroup.ioType === "ANALOG_INPUT";
-
-          // Process each channel in the datapoint
-          for (const channel of datapoint.channels) {
-            // Create variable name: [DatapointName]_[ChannelName]
-            const varName = `${datapoint.name}_${channel.name}`;
-
-            // Determine PLC data type from channel type
-            let plcType: string;
-            switch (channel.dataType) {
-              case "BOOL":
-                plcType = "BOOL";
-                break;
-              case "INT":
-                plcType = "INT";
-                break;
-              case "REAL":
-                plcType = "REAL";
-                break;
-              default:
-                plcType = "BYTE"; // Default to BYTE for unknown types
-            }
-
-            // Calculate the IO binding address
-            // Parse the start address from the IOBinding format: %I* or %Q*
-            const addrMatch = portgroup.startAddress?.match(
-              /([IQ])([XBWDL])?(\d+(\.\d+)?)?/
-            );
-            if (!addrMatch) continue;
-
-            const ioPrefix = addrMatch[1]; // I or Q
-            const ioType = addrMatch[2] ?? this.getDefaultIOType(plcType); // X, B, W, D, L if specified
-            const ioBaseAddr = addrMatch[3] ? parseInt(addrMatch[3]) : 0;
-
-            // Calculate the offset based on channel index
-            const offsetAddr = ioBaseAddr + channel.index;
-
-            // Construct the IO binding
-            const ioBinding = `%${ioPrefix}${ioType}${offsetAddr}`;
-
-            // Add to the appropriate array
-            if (isInput) {
-              inputs.push({ name: varName, type: plcType, ioBinding });
-            } else {
-              outputs.push({ name: varName, type: plcType, ioBinding });
-            }
-          }
-        }
+  private collectPortGroups(components: any[]): Map<string, any> {
+    const portGroups = new Map();
+    for (const component of components) {
+      if ("moduleType" in component) {
+        portGroups.set(component.name, component);
       }
     }
+    return portGroups;
+  }
 
-    return { inputs, outputs };
+  private processDatapoints(
+    components: any[],
+    portGroups: Map<string, any>,
+    inputs: Array<{ name: string; type: string; ioBinding: string }>,
+    outputs: Array<{ name: string; type: string; ioBinding: string }>
+  ) {
+    for (const component of components) {
+      if ("portgroup" in component) {
+        const datapoint = component;
+        const portgroup = portGroups.get(datapoint.portgroup.ref?.name);
+        if (!portgroup) continue;
+        const isInput =
+          portgroup.ioType === "DIGITAL_INPUT" ||
+          portgroup.ioType === "ANALOG_INPUT";
+        this.processChannels(datapoint, portgroup, isInput, inputs, outputs);
+      }
+    }
+  }
+
+  private processChannels(
+    datapoint: any,
+    portgroup: any,
+    isInput: boolean,
+    inputs: Array<{ name: string; type: string; ioBinding: string }>,
+    outputs: Array<{ name: string; type: string; ioBinding: string }>
+  ) {
+    for (const channel of datapoint.channels) {
+      const varName = `${datapoint.name}_${channel.name}`;
+      let plcType: string;
+      switch (channel.dataType) {
+        case "BOOL":
+          plcType = "BOOL";
+          break;
+        case "INT":
+          plcType = "INT";
+          break;
+        case "REAL":
+          plcType = "REAL";
+          break;
+        default:
+          plcType = "BYTE";
+      }
+      const addrMatch = portgroup.startAddress?.match(
+        /([IQ])([XBWDL])?(\d+(\.\d+)?)?/
+      );
+      if (!addrMatch) continue;
+      const ioPrefix = addrMatch[1];
+      const ioType = addrMatch[2] ?? this.getDefaultIOType(plcType);
+      const ioBaseAddr = addrMatch[3] ? parseInt(addrMatch[3]) : 0;
+      const offsetAddr = ioBaseAddr + channel.index;
+      const ioBinding = `%${ioPrefix}${ioType}${offsetAddr}`;
+      if (isInput) {
+        inputs.push({ name: varName, type: plcType, ioBinding });
+      } else {
+        outputs.push({ name: varName, type: plcType, ioBinding });
+      }
+    }
   }
 
   getDefaultIOType(plcType: string): string {
@@ -1161,6 +1169,7 @@ function convertTypeRefToST(typeRef: TypeRef): string {
             return `0..${size.val - 1}`;
           }
           return "0..?";
+
         })
         .join(", ")}] OF ${typeRef.type}`;
     }
@@ -1176,6 +1185,7 @@ function convertTypeRefToST(typeRef: TypeRef): string {
             return `0..${size.val - 1}`;
           }
           return "0..?";
+
         })
         .join(", ")}] OF ${typeName}`;
     }
