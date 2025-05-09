@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import { Command } from "commander";
 import { createBcsEngineeringServices } from "../language/bcs-engineering-module.js";
-import { generateCodeAndConfig } from "./generator.js";
+import { generateArtifacts } from "./generator.js";
 import { NodeFileSystem } from "langium/node";
 import * as url from "node:url";
 import * as fs from "node:fs/promises";
@@ -20,7 +20,7 @@ export const generateAction = async (
   const services = createBcsEngineeringServices(NodeFileSystem).bcsControl;
   const [controlModel, hardwareModels] =
     await extractControlModelWithHardwareModels(fileName, services);
-  const generatedFilePaths = generateCodeAndConfig(
+  const generatedFilePaths = generateArtifacts(
     controlModel,
     hardwareModels[0],
     fileName,

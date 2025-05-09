@@ -1,0 +1,34 @@
+// A test file for IO code generation
+control IOHardwareTestController {
+
+    unit TestHardwareIOLogic {
+        // Check Analog Input: UltrasonicSensor
+        var distance: INT;
+        var valid: BOOL;
+        distance = UltrasonicSensor.Distance;
+        valid = UltrasonicSensor.Valid;
+
+        // Check Analog Input: Temperatures
+        var temp1 : REAL;
+        var temp2 : REAL;
+        var temp3 : REAL;
+        var temp4 : REAL;
+        temp1 = Temperatures.Room1;
+        temp2 = Temperatures.Room2;
+        temp3 = Temperatures.Room3;
+        temp4 = Temperatures.Room4;
+
+        // Check Digital Input: Buttons
+        var btn1 : BOOL;
+        var btn2 : BOOL;
+        btn1 = Buttons.Room1;
+        btn2 = Buttons.Room2;
+
+        // Check Digital Output: Lights
+        Lights.Room1 = true;
+        Lights.Room2 = false;
+        // Optionally toggle outputs for test coverage
+        Lights.Room1 = false;
+        Lights.Room2 = true;
+    }
+}

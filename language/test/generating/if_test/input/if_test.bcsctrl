@@ -1,0 +1,58 @@
+// A test file for if statement code generation
+control IfTestController {
+    functionblock IfLogicFB {
+        inputs {
+            var iValue1: INT;
+            var iValue2: INT;
+            var iCondition: BOOL;
+        }
+        outputs {
+            var oResult: INT;
+            var oStatus: STRING;
+        }
+        locals {
+            var tempValue: INT;
+        }
+        logic {
+            // Simple if statement
+            if (iCondition) {
+                tempValue = iValue1 + iValue2;
+            } else {
+                tempValue = iValue1 - iValue2;
+            }
+            
+            // Nested if statements
+            if (tempValue > 100) {
+                if (iValue1 > 50) {
+                    oResult = 100;
+                } else {
+                    tempValue = -100;
+                }
+                oStatus = "Value clamped to maximum";
+            } else if (tempValue < 0) {
+                oResult = 0;
+                oStatus = "Value clamped to minimum";
+            } else {
+                oResult = tempValue;
+                oStatus = "Value in range";
+            }
+        }
+    }
+
+    unit TestIfLogic {
+        var value1: INT = 75;
+        var value2: INT = 50;
+        var condition: BOOL = true;
+        var result: INT;
+        var status: STRING;
+        
+        use IfLogicFB(
+            iValue1: value1,
+            iValue2: value2,
+            iCondition: condition
+        ) -> {
+            oResult: result,
+            oStatus: status
+        };
+    }
+}

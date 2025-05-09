@@ -1,0 +1,104 @@
+// A test file for array code generation
+control ArrayTestController {
+    functionblock ArrayTestFB {
+        inputs {
+            var iValues: INT[10];
+            var iCount: INT;
+        }
+        outputs {
+            var oSum: INT;
+            var oAverage: REAL;
+            var oMaxValue: INT;
+            var oProcessedValues: INT[10];
+        }
+        locals {
+            var i: INT;
+            var sum: INT = 0;
+            var maxVal: INT = -32768; // Minimum INT value
+        }
+        logic {
+            // Reset calculations
+            sum = 0;
+            maxVal = -32768;
+            
+            // Process array elements
+            for (var i: INT = 0 to iCount - 1 by 1) {
+                // Calculate sum
+                sum = sum + iValues[i];
+                
+                // Find maximum value
+                if (iValues[i] > maxVal) {
+                    maxVal = iValues[i];
+                }
+                
+                // Process and store values (multiply by 2)
+                oProcessedValues[i] = iValues[i] * 2;
+            }
+            
+            // Zero out remaining array elements
+            for (var i: INT = iCount to 9) {
+                oProcessedValues[i] = 0;
+            }
+            
+            // Set outputs
+            oSum = sum;
+            oMaxValue = maxVal;
+            
+            // Calculate average (avoid division by zero)
+            if (iCount > 0) {
+                oAverage = sum / iCount;
+            } else {
+                oAverage = 0.0;
+            }
+        }
+    }
+
+    unit TestArrays {
+        var values: INT[10] = [10, 20, 30, 40, 50, -5, 15, 25, 35, 45];
+        var count: INT = 8;
+        var sum: INT;
+        var average: REAL;
+        var maxValue: INT;
+        var processedValues: INT[10];
+        var twoDimensionalArray: INT[2][3] = [[1, 2, 3], [4, 5, 6]];
+        
+        use ArrayTestFB(
+            iValues: values,
+            iCount: count
+        ) -> {
+            oSum: sum,
+            oAverage: average,
+            oMaxValue: maxValue,
+            oProcessedValues: processedValues
+        };
+
+        // Test the two-dimensional array
+        var rowCount: INT = 2;
+        var colCount: INT = 3;
+        var rowSum: INT[2] = [0, 0];
+        var colSum: INT[3] = [0, 0, 0];
+        for (var i: INT = 0 to rowCount - 1) {
+            for (var j: INT = 0 to colCount - 1) {
+                rowSum[i] = rowSum[i] + twoDimensionalArray[i][j];
+                colSum[j] = colSum[j] + twoDimensionalArray[i][j];
+            }
+        }
+    }
+
+    unit TestArrayOperations {
+        var array1: INT[5] = [1, 2, 3, 4, 5];
+        var array2: INT[5] = [6, 7, 8, 9, 10];
+        var resultArray: INT[5];
+        var resultArray2: INT[5];
+        
+        // Element-wise addition
+        for (var i: INT = 0 to 4) {
+            resultArray[i] = array1[i] + array2[i];
+        }
+
+        // Element-wise multiplication
+        for (var i: INT = 0 to 4) {
+            resultArray2[i] = array1[i] * array2[i];
+        }
+    }
+}

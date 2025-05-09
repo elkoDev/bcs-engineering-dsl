@@ -1,0 +1,16 @@
+// Hardware configuration for edge detection test
+controller EdgeDetectionTestController for Beckhoff {
+    portgroup DI {
+        moduleType: EL1008
+        ioType: DIGITAL_INPUT
+        startAddress: %IX0.0
+        channels: 8
+    }
+    
+    portgroup DO {
+        moduleType: EL2008
+        ioType: DIGITAL_OUTPUT
+        startAddress: %QX0.0
+        channels: 8
+    }
+}

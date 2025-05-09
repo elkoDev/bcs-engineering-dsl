@@ -1,0 +1,9 @@
+// A minimal hardware definition to accompany switch_test.bcsctrl
+controller SwitchTestController for Beckhoff {
+    portgroup DI {
+        moduleType: EL1008
+        ioType: DIGITAL_INPUT
+        startAddress: %IX0.0
+        channels: 8
+    }
+}

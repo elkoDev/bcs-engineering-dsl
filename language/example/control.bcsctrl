@@ -1,4 +1,5 @@
 import library Tc3_DALI;
+import library Tc3_EventLogger;
 
 extern enum E_DALIAddressType { Short, Group, Broadcast, BroadcastUnaddr }
 extern enum E_DALICommandPriority { High, MiddleHigh, Middle, MiddleLow, Low, Unknown }
@@ -8,26 +9,40 @@ extern struct ST_DALIChangeAddressList {
     nRandomAddress: INT,
     nErrors: INT
 }
-extern functionblock FB_Tc3_DALI {
+extern struct I_TcMessage {
+    dummy : BOOL // Placeholder for actual message structure
+}
+
+extern functionblock FB_DALI207QueryFailureStatus {
     inputs {
-        var iDALIAddress: E_DALIAddressType;
-        var iDALICommandPriority: E_DALICommandPriority;
-        var iAddressList: ST_DALIChangeAddressList;
+        var bStart : BOOL;
+        var nAddress : INT;
+        var eAddressType : E_DALIAddressType;
+        var eCommandPriority  : E_DALICommandPriority;
     }
     outputs {
-        var oDALIStatus: BOOL;
+        var bError : BOOL;
+        var ipResultMessage : I_TcMessage;
+        var bBusy : BOOL;
+        var nFailureStatus : INT;
     }
 }
 
 control MainController {
 
     enum Mode { OFF, ECO, COMFORT }
+    struct Temperatures {
+        Room1: REAL,
+        Room2: REAL
+    }
 
     var mode: Mode = Mode.OFF;
     var lightLevel: INT = 0;
     var heater: BOOL;
     var lightsOn: BOOL;
     var heatingEnabled: BOOL;
+    var arrayOfLights: BOOL[10];
+    var temperaturesArray: Temperatures[10];
 
     functionblock HeatingLogic {
         inputs {
@@ -52,10 +67,18 @@ control MainController {
         on_rising(Buttons.Room1) {
             Lights.Room1 = !Lights.Room1;
         }
+        on_rising(Buttons.Room2) {
+            Lights.Room2 = !Lights.Room2;
+        }
     }
 
     unit TurnOnLightsScheduled at TOD#06:30:00 {
         Lights.Room1 = true;
+        arrayOfLights[0] = true;
+        arrayOfLights[1] = true;
+        arrayOfLights[2] = true;
+        temperaturesArray[0].Room1 = 20.5;
+        temperaturesArray[1].Room2 = 22.0;
     }
 
     unit RetryHeaterStartup when (mode != Mode.OFF) {
@@ -64,12 +87,18 @@ control MainController {
             heater = true;
             retries = retries + 1;
             wait T#1s;
+            if (retries == 2) {
+                break;
+            }
         }
     }
 
     unit DimLightsGradually {
         for (var i: INT = 0 to 5 by 1) {
             lightLevel = i * 20;
+            if (i == 2) {
+                continue;
+            }
             wait T#1s;
         }
     }
@@ -91,10 +120,6 @@ control MainController {
                 lightLevel = 0;
             }
         }
-    }
-
-    unit FadeOutLights at TOD#22:00:00 {
-        ramp(lightLevel, 100, 0, T#10s);
     }
 
     unit MorningPresenceCheck {
@@ -119,11 +144,30 @@ control MainController {
             nErrors: 0
         };
         var status: BOOL;
-        use FB_Tc3_DALI(
-            iDALIAddress: daliAddress,
-            iDALICommandPriority: daliPriority,
-            iAddressList: addressList
-        ) -> status;
+        var resultMessage: I_TcMessage;
+        var failureStatus: INT;
+        use FB_DALI207QueryFailureStatus(
+            bStart: true,
+            nAddress: 1,
+            eAddressType: daliAddress,
+            eCommandPriority: daliPriority
+        ) -> {
+            bBusy: status,
+            bError: status,
+            nFailureStatus: failureStatus,
+            ipResultMessage: resultMessage
+        };
+        use FB_DALI207QueryFailureStatus(
+            bStart: false,
+            nAddress: 2,
+            eAddressType: daliAddress,
+            eCommandPriority: daliPriority
+        ) -> {
+            bBusy: status,
+            bError: status,
+            nFailureStatus: failureStatus,
+            ipResultMessage: resultMessage
+        };
     }
 
     unit ButtonReleaseHandler {

@@ -136,8 +136,9 @@ Statement:
     | LocalVarDeclStmt
     | WaitStmt
     | EdgeStmt
-    | RampStmt
     | UseStmt
+    | ContinueStmt
+    | BreakStmt
 ;
 
 AssignmentStmt:
@@ -161,7 +162,7 @@ WhileStmt:
 ;
 
 ForStmt:
-    'for' '(' loopVar=LoopVarDecl 'to' end=Expr ( 'by' step=Expr )? ')' Block
+    'for' '(' loopVar=LoopVarDecl 'to' toExpr=Expr ( 'by' step=Expr )? ')' Block
 ;
 
 LoopVarDecl infers VarDecl:
@@ -207,11 +208,11 @@ UseOutput:
 ;
 
 SimpleUseResult:
-    outputVar=[VarDecl]
+    targetOutputVar=[VarDecl]
 ;
 
 MappingUseResult:
-    outputVar=[VarDecl] ':' fbOutput=[VarDecl]
+    fbOutputVar=[VarDecl] ':' targetOutputVar=[VarDecl]
 ;
 
 
@@ -239,9 +240,21 @@ OnFallingEdgeStmt:
     'on_falling' EdgeStatementCore Block
 ;
 
-RampStmt:
-    'ramp' '(' target=Ref ',' fromExpr=Expr ',' toExpr=Expr ',' dur=TimeLiteral ')' ';'
+// --------------------------------------------------------------------------
+// Loop Control Statements
+// --------------------------------------------------------------------------
+type LoopControlStmt = ContinueStmt | BreakStmt;
+
+ContinueStmt returns LoopControlStmt:
+    {infer ContinueStmt}
+    'continue' ';'
 ;
+
+BreakStmt returns LoopControlStmt:
+    {infer BreakStmt}
+    'break' ';'
+;
+
 
 // ==========================================================================
 // 6) Expressions and Literals
