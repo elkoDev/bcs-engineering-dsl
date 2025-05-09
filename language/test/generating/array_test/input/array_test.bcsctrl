@@ -84,4 +84,19 @@ control ArrayTestController {
             }
         }
     }
+
+    unit TestArrayOperations {
+        var array1: INT[5] = [1, 2, 3, 4, 5];
+        var array2: INT[5] = [6, 7, 8, 9, 10];
+        var resultArray: INT[5];
+        
+        // Element-wise addition
+        for (var i: INT = 0 to 4) {
+            resultArray[i] = array1[i] + array2[i];
+        }
+        // Element-wise multiplication
+        for (var i: INT = 0 to 4) {
+            resultArray[i] = array1[i] * array2[i];
+        }
+    }
 }

@@ -149,9 +149,9 @@ export class BCSControlLangValidator {
       }
     }
   }
-
   checkNestedVarDuplicates(unit: ControlUnit, accept: ValidationAcceptor) {
-    DuplicationValidator.checkNestedScopeVariableDuplicates(unit, accept);
+    // Skip validation of loop variables - they can be reused in different scopes
+    DuplicationValidator.checkNestedScopeVariableDuplicates(unit, accept, true);
   }
 
   checkUniqueVarNamesInFunctionBlock(

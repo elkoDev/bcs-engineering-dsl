@@ -142,10 +142,19 @@ class BeckhoffGeneratorContext {
       if (isParenExpr(expr)) return `(${this.convertExprToST(expr.expr)})`;
       if (isNegExpr(expr)) return `-${this.convertExprToST(expr.expr)}`;
       if (isNotExpr(expr)) return `NOT ${this.convertExprToST(expr.expr)}`;
-      if (isArrayLiteral(expr.val))
-        return `[${expr.val.elements
-          .map((e) => this.convertExprToST(e))
-          .join(", ")}]`;
+      if (isArrayLiteral(expr.val)) {
+        // For multi-dimensional arrays, we need to flatten the array elements
+        const flatElements = expr.val.elements.flatMap((e) => {
+          // If it's a nested array literal, flatten it
+          if (isPrimary(e) && isArrayLiteral(e.val)) {
+            return e.val.elements.map((nestedE) =>
+              this.convertExprToST(nestedE)
+            );
+          }
+          return [this.convertExprToST(e)];
+        });
+        return `[${flatElements.join(", ")}]`;
+      }
       if (isStructLiteral(expr.val))
         return `(${expr.val.fields
           .map((f) => `${f.name}:=${this.convertExprToST(f.value)}`)
