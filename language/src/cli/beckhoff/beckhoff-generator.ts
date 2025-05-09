@@ -637,6 +637,45 @@ class BeckhoffGeneratorContext {
     return files;
   }
 
+  /**
+   * Recursively collect all loop variables (from ForStmt) in a list of statements
+   */
+  collectLoopVars(
+    stmts: Statement[],
+    found: Map<string, { type: string; init?: Expr }>
+  ) {
+    for (const stmt of stmts) {
+      if (isForStmt(stmt)) {
+        // Only add if not already present
+        if (!found.has(stmt.loopVar.name)) {
+          found.set(stmt.loopVar.name, {
+            type: stmt.loopVar.typeRef.type ?? "INT",
+            init: stmt.loopVar.init,
+          });
+        }
+        // Recurse into the body
+        this.collectLoopVars(stmt.stmts, found);
+      } else if (isIfStmt(stmt)) {
+        this.collectLoopVars(stmt.stmts, found);
+        for (const elseIf of stmt.elseIfStmts) {
+          this.collectLoopVars(elseIf.stmts, found);
+        }
+        if (stmt.elseStmt) {
+          this.collectLoopVars(stmt.elseStmt.stmts, found);
+        }
+      } else if (isWhileStmt(stmt)) {
+        this.collectLoopVars(stmt.stmts, found);
+      } else if (isSwitchStmt(stmt)) {
+        for (const c of stmt.cases) {
+          this.collectLoopVars(c.stmts, found);
+        }
+        if (stmt.default) {
+          this.collectLoopVars(stmt.default.stmts, found);
+        }
+      }
+    }
+  }
+
   writeProgramMain(): string {
     // Reset the used instance names and edge detection maps to ensure clean tracking for this program
     this.usedInstanceNames.clear();
@@ -709,6 +748,15 @@ class BeckhoffGeneratorContext {
         }
       }
     }
+
+    // --- Collect loop variables from all main statements ---
+    const loopVars = new Map<string, { type: string; init?: Expr }>();
+    this.collectLoopVars(mainStatements, loopVars);
+    // Filter out loop vars already declared in mainVars
+    const declaredVarNames = new Set(mainVars.map((v) => v.varDecl.name));
+    const loopVarsToDeclare = Array.from(loopVars.entries()).filter(
+      ([name]) => !declaredVarNames.has(name)
+    );
 
     // Extract hardware datapoints
     const { inputs, outputs } = this.extractHardwareDatapoints();
@@ -818,6 +866,15 @@ class BeckhoffGeneratorContext {
                 v.varDecl.init
                   ? ` := ${this.convertExprToST(v.varDecl.init)}`
                   : ""
+              };
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+            ${joinToNode(
+              loopVarsToDeclare,
+              ([name, { type, init }]) => expandToNode`
+                ${name}: ${type}${
+                init ? ` := ${this.convertExprToST(init)}` : ""
               };
               `,
               { appendNewLineIfNotEmpty: true }
