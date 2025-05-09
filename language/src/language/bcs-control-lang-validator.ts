@@ -331,15 +331,15 @@ export class BCSControlLangValidator {
       return;
     }
 
-    // 4) Single output result (direct reference)
+    // Single output result (direct reference)
     if (isSingle) {
       this.validateSingleOutput(useStmt, fb, output, accept);
     }
-    // 5) Output mapping list (explicit mappings)
+    // Output mapping list (explicit mappings)
     else if (isMapping) {
       this.validateMappedOutputs(useStmt, fb, output, accept);
     }
-    // 6) No outputs provided
+    // No outputs provided
     else if (getOutputs(fb).length > 0) {
       accept(
         "error",
@@ -607,7 +607,6 @@ export class BCSControlLangValidator {
       return;
     }
 
-    // We've already checked that init exists and is a Primary with an ArrayLiteral val in hasArrayLiteralInit
     this.validateArrayLiteralSize(
       (varDecl.init! as Primary).val as ArrayLiteral,
       expectedDimensions,
