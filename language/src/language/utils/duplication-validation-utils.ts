@@ -97,6 +97,14 @@ export class DuplicationValidator {
     outerNames: Set<string>,
     accept: ValidationAcceptor
   ) {
+    // Allow loop variables (ForStmt.loopVar) to shadow and repeat in neighbor scopes
+    const container = (varDecl as any).$container;
+    if (container && isForStmt(container) && container.loopVar === varDecl) {
+      // Skip duplicate check for loop variables
+      // (This allows shadowing and reuse of the same name in nested/neighboring loops)
+      localNames.add(varDecl.name);
+      return;
+    }
     const name = varDecl.name;
     if (localNames.has(name) || outerNames.has(name)) {
       accept("error", `Duplicate variable '${name}' in this scope.`, {

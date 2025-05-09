@@ -9,12 +9,15 @@ control LoopTestController {
             var oProduct: INT;
         }
         locals {
-            var i: INT;
             var j: INT;
-            var tempSum: INT = 0;
-            var tempProduct: INT = 1;
+            var tempSum: INT;
+            var tempProduct: INT;
         }
         logic {
+            // Reset calculations
+            tempSum = 0;
+            tempProduct = 1;
+
             // For loop test
             for (var i: INT = 0 to 5 by 1) {
                 tempSum = tempSum + i;
