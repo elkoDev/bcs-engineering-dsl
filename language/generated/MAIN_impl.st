@@ -24,10 +24,10 @@ arrayOfLights[2] := TRUE;
 temperaturesArray[0].Room1 := 20.5;
 temperaturesArray[1].Room2 := 22;
 WHILE RetryHeaterStartup_retries < 3 DO
-        heater := TRUE;
-        RetryHeaterStartup_retries := RetryHeaterStartup_retries + 1;
-        // Wait statements are not directly supported in ST - using equivalent timer logic
-        IF RetryHeaterStartup_retries = 2 THEN
+    heater := TRUE;
+    RetryHeaterStartup_retries := RetryHeaterStartup_retries + 1;
+    // Wait statements are not directly supported in ST - using equivalent timer logic
+    IF RetryHeaterStartup_retries = 2 THEN
         EXIT;
     END_IF;
 END_WHILE;
@@ -42,12 +42,12 @@ heatingLogicInstance := HeatingLogic(iTemp:=Temperatures_Room1, iMode:=mode);
 heatingEnabled := heatingLogicInstance;
 heater := heatingEnabled;
 CASE mode OF
-        Mode.COMFORT:
-                lightLevel := 100;
-        Mode.ECO:
-                lightLevel := 50;
-        ELSE:
-                lightLevel := 0;
+    OperatingMode.COMFORT:
+        lightLevel := 100;
+    OperatingMode.ECO:
+        lightLevel := 50;
+    ELSE
+        lightLevel := 0;
 END_CASE;
 IF FALSE >= 'TOD#07:00:00' THEN
     Lights_Room2 := TRUE;

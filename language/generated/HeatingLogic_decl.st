@@ -1,7 +1,7 @@
 FUNCTION_BLOCK HeatingLogic
 VAR_INPUT
     iTemp: REAL;
-    iMode: Mode;
+    iMode: OperatingMode;
 END_VAR
 VAR_OUTPUT
     oHeating: BOOL;

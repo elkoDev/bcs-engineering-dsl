@@ -30,13 +30,13 @@ extern functionblock FB_DALI207QueryFailureStatus {
 
 control MainController {
 
-    enum Mode { OFF, ECO, COMFORT }
+    enum OperatingMode { OFF, ECO, COMFORT }
     struct Temperatures {
         Room1: REAL,
         Room2: REAL
     }
 
-    var mode: Mode = Mode.OFF;
+    var mode: OperatingMode = OperatingMode.OFF;
     var lightLevel: INT = 0;
     var heater: BOOL;
     var lightsOn: BOOL;
@@ -47,15 +47,15 @@ control MainController {
     functionblock HeatingLogic {
         inputs {
             var iTemp: REAL;
-            var iMode: Mode;
+            var iMode: OperatingMode;
         }
         outputs {
             var oHeating: BOOL;
         }
         logic {
-            if (iMode == Mode.COMFORT && iTemp < 21.0) {
+            if (iMode == OperatingMode.COMFORT && iTemp < 21.0) {
                 oHeating = true;
-            } else if (iMode == Mode.ECO && iTemp < 18.0) {
+            } else if (iMode == OperatingMode.ECO && iTemp < 18.0) {
                 oHeating = true;
             } else {
                 oHeating = false;
@@ -81,7 +81,7 @@ control MainController {
         temperaturesArray[1].Room2 = 22.0;
     }
 
-    unit RetryHeaterStartup when (mode != Mode.OFF) {
+    unit RetryHeaterStartup when (mode != OperatingMode.OFF) {
         var retries: INT = 0;
         while (retries < 3) {
             heater = true;
@@ -110,10 +110,10 @@ control MainController {
 
     unit AdjustLightLevelByMode {
         switch (mode) {
-            case Mode.COMFORT: {
+            case OperatingMode.COMFORT: {
                 lightLevel = 100;
             }
-            case Mode.ECO: {
+            case OperatingMode.ECO: {
                 lightLevel = 50;
             }
             default: {

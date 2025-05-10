@@ -10,6 +10,13 @@ VAR
     Buttons_Room2 AT %I*: BOOL; (* Input channel from hardware *)
     Lights_Room1 AT %Q*: BOOL; (* Output channel to hardware *)
     Lights_Room2 AT %Q*: BOOL; (* Output channel to hardware *)
+    mode: OperatingMode := OperatingMode.OFF;
+    lightLevel: INT := 0;
+    heater: BOOL;
+    lightsOn: BOOL;
+    heatingEnabled: BOOL;
+    arrayOfLights: ARRAY [0..9] OF BOOL;
+    temperaturesArray: ARRAY [0..9] OF Temperatures;
     RetryHeaterStartup_retries: INT := 0;
     UseDaliLibrary_daliAddress: E_DALIAddressType;
     UseDaliLibrary_daliPriority: E_DALICommandPriority := E_DALICommandPriority.High;
@@ -18,6 +25,7 @@ VAR
     UseDaliLibrary_resultMessage: I_TcMessage;
     UseDaliLibrary_failureStatus: INT;
     ValidateSensorDistance_distance: INT := UltrasonicSensor_Distance;
+    i: INT := 0;
     heatingLogicInstance: HeatingLogic; (* Function block instance *)
     fB_DALI207QueryFailureStatusInstance: FB_DALI207QueryFailureStatus; (* Function block instance *)
     fB_DALI207QueryFailureStatusInstance2: FB_DALI207QueryFailureStatus; (* Function block instance *)

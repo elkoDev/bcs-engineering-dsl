@@ -171,7 +171,9 @@ class BeckhoffGeneratorContext {
     // For multi-dimensional arrays, we need to flatten the array elements
     const flatElements = expr.val.elements.flatMap((e: any) => {
       if (isPrimary(e) && isArrayLiteral(e.val)) {
-        return e.val.elements.map((nestedE: any) => this.convertExprToST(nestedE));
+        return e.val.elements.map((nestedE: any) =>
+          this.convertExprToST(nestedE)
+        );
       }
       return [this.convertExprToST(e)];
     });
@@ -186,7 +188,9 @@ class BeckhoffGeneratorContext {
 
   private handleBinExpr(expr: any): string {
     const op = translateOperator(expr.op);
-    return `${this.convertExprToST(expr.e1)} ${op} ${this.convertExprToST(expr.e2)}`;
+    return `${this.convertExprToST(expr.e1)} ${op} ${this.convertExprToST(
+      expr.e2
+    )}`;
   }
 
   handleRefExpr(expr: Ref): string {
@@ -291,10 +295,15 @@ class BeckhoffGeneratorContext {
 
   stWhile(stmt: WhileStmt, indent: number): string {
     const pad = (level: number) => "    ".repeat(level);
-    let result = `${pad(indent)}WHILE ${this.convertExprToST(stmt.condition)} DO\n`;
-    result += stmt.stmts
-      .map((subStmt: any) => this.convertStatementToST(subStmt, undefined, indent + 1))
-      .join("\n") + "\n";
+    let result = `${pad(indent)}WHILE ${this.convertExprToST(
+      stmt.condition
+    )} DO\n`;
+    result +=
+      stmt.stmts
+        .map((subStmt: any) =>
+          this.convertStatementToST(subStmt, undefined, indent + 1)
+        )
+        .join("\n") + "\n";
     result += `${pad(indent)}END_WHILE;`;
     return result;
   }
@@ -326,15 +335,21 @@ class BeckhoffGeneratorContext {
         )
         .join(", ");
       result += `${pad(indent + 1)}${literals}:\n`;
-      result += caseOption.stmts
-        .map((subStmt: any) => this.convertStatementToST(subStmt, undefined, indent + 2))
-        .join("\n") + "\n";
+      result +=
+        caseOption.stmts
+          .map((subStmt: any) =>
+            this.convertStatementToST(subStmt, undefined, indent + 2)
+          )
+          .join("\n") + "\n";
     }
     if (stmt.default) {
       result += `${pad(indent + 1)}ELSE\n`;
-      result += stmt.default.stmts
-        .map((subStmt: any) => this.convertStatementToST(subStmt, undefined, indent + 2))
-        .join("\n") + "\n";
+      result +=
+        stmt.default.stmts
+          .map((subStmt: any) =>
+            this.convertStatementToST(subStmt, undefined, indent + 2)
+          )
+          .join("\n") + "\n";
     }
     result += `${pad(indent)}END_CASE;`;
     return result;
@@ -675,7 +690,10 @@ class BeckhoffGeneratorContext {
     }
   }
 
-  private handleForLoopVar(stmt: any, found: Map<string, { type: string; init?: Expr }>) {
+  private handleForLoopVar(
+    stmt: any,
+    found: Map<string, { type: string; init?: Expr }>
+  ) {
     if (!found.has(stmt.loopVar.name)) {
       found.set(stmt.loopVar.name, {
         type: stmt.loopVar.typeRef.type ?? "INT",
@@ -685,7 +703,10 @@ class BeckhoffGeneratorContext {
     this.collectLoopVars(stmt.stmts, found);
   }
 
-  private handleIfLoopVar(stmt: any, found: Map<string, { type: string; init?: Expr }>) {
+  private handleIfLoopVar(
+    stmt: any,
+    found: Map<string, { type: string; init?: Expr }>
+  ) {
     this.collectLoopVars(stmt.stmts, found);
     for (const elseIf of stmt.elseIfStmts) {
       this.collectLoopVars(elseIf.stmts, found);
@@ -695,7 +716,10 @@ class BeckhoffGeneratorContext {
     }
   }
 
-  private handleSwitchLoopVar(stmt: any, found: Map<string, { type: string; init?: Expr }>) {
+  private handleSwitchLoopVar(
+    stmt: any,
+    found: Map<string, { type: string; init?: Expr }>
+  ) {
     for (const c of stmt.cases) {
       this.collectLoopVars(c.stmts, found);
     }
@@ -713,7 +737,14 @@ class BeckhoffGeneratorContext {
     const fbInstanceTracker = new Map<string, Map<number, string>>();
     const mainStatements: Statement[] = [];
 
-    this.processControlUnits(mainVars, fbInstancesMap, fbInstanceTracker, mainStatements);
+    this.collectGlobalVarDecls(mainVars);
+
+    this.processControlUnits(
+      mainVars,
+      fbInstancesMap,
+      fbInstanceTracker,
+      mainStatements
+    );
 
     const loopVars = new Map<string, { type: string; init?: Expr }>();
     this.collectLoopVars(mainStatements, loopVars);
@@ -731,8 +762,18 @@ class BeckhoffGeneratorContext {
     const edgeDetectionFBMap = new Map<string, string>();
     this.assignEdgeDetectionInstances(mainStatements, edgeDetectionFBMap);
 
-    const declContent = this.generateMainDeclContent(inputs, outputs, mainVars, loopVarsToDeclare, fbInstancesMap, edgeDetectionFBMap);
-    const implContent = this.generateMainImplContent(mainStatements, fbInstanceTracker);
+    const declContent = this.generateMainDeclContent(
+      inputs,
+      outputs,
+      mainVars,
+      loopVarsToDeclare,
+      fbInstancesMap,
+      edgeDetectionFBMap
+    );
+    const implContent = this.generateMainImplContent(
+      mainStatements,
+      fbInstanceTracker
+    );
 
     const declFilePath = path.join(this.destination, `MAIN_decl.st`);
     fs.writeFileSync(declFilePath, declContent);
@@ -752,14 +793,29 @@ class BeckhoffGeneratorContext {
       const controlUnit = item;
       mainStatements.push(...controlUnit.stmts);
       this.addVarDeclsFromControlUnit(controlUnit, mainVars);
-      this.assignFBInstancesFromControlUnit(controlUnit, fbInstancesMap, fbInstanceTracker);
+      this.assignFBInstancesFromControlUnit(
+        controlUnit,
+        fbInstancesMap,
+        fbInstanceTracker
+      );
     }
   }
 
-  private addVarDeclsFromControlUnit(controlUnit: ControlUnit, mainVars: EmittedVarDecl[]) {
+  private collectGlobalVarDecls(mainVars: EmittedVarDecl[]) {
+    const globalVarDecls =
+      this.controlModel.controlBlock.items.filter(isVarDecl);
+    globalVarDecls.forEach((varDecl) =>
+      mainVars.push(new EmittedVarDecl(varDecl))
+    );
+  }
+
+  private addVarDeclsFromControlUnit(
+    controlUnit: ControlUnit,
+    mainVars: EmittedVarDecl[]
+  ) {
     const varDecls = controlUnit.stmts.filter(isVarDecl);
     mainVars.push(
-      ...varDecls.map((varDecl) => new EmittedVarDecl(controlUnit, varDecl))
+      ...varDecls.map((varDecl) => new EmittedVarDecl(varDecl, controlUnit))
     );
   }
 
@@ -796,14 +852,18 @@ class BeckhoffGeneratorContext {
   }
 
   private createFBInstanceName(fbType: string, index: number): string {
-    let baseInstanceName = fbType.charAt(0).toLowerCase() + fbType.slice(1) + "Instance";
+    let baseInstanceName =
+      fbType.charAt(0).toLowerCase() + fbType.slice(1) + "Instance";
     if (index > 0) {
       return `${baseInstanceName}${index + 1}`;
     }
     return baseInstanceName;
   }
 
-  private assignEdgeDetectionInstances(mainStatements: Statement[], edgeDetectionFBMap: Map<string, string>) {
+  private assignEdgeDetectionInstances(
+    mainStatements: Statement[],
+    edgeDetectionFBMap: Map<string, string>
+  ) {
     const risingEdgeStatements = mainStatements.filter(isOnRisingEdgeStmt);
     const fallingEdgeStatements = mainStatements.filter(isOnFallingEdgeStmt);
     risingEdgeStatements.forEach((stmt, index) => {
@@ -974,11 +1034,17 @@ class BeckhoffGeneratorContext {
     outputs: Array<{ name: string; type: string; ioBinding: string }>;
   } {
     const inputs: Array<{ name: string; type: string; ioBinding: string }> = [];
-    const outputs: Array<{ name: string; type: string; ioBinding: string }> = [];
+    const outputs: Array<{ name: string; type: string; ioBinding: string }> =
+      [];
     for (const controller of this.hardwareModel.controllers) {
       if (controller.platform !== "Beckhoff") continue;
       const portGroups = this.collectPortGroups(controller.components);
-      this.processDatapoints(controller.components, portGroups, inputs, outputs);
+      this.processDatapoints(
+        controller.components,
+        portGroups,
+        inputs,
+        outputs
+      );
     }
     return { inputs, outputs };
   }
@@ -1145,16 +1211,19 @@ export function generateBeckhoffCode(
 }
 
 class EmittedVarDecl {
-  controlUnit: ControlUnit;
   varDecl: VarDecl;
+  controlUnit?: ControlUnit;
 
-  constructor(controlUnit: ControlUnit, varDecl: VarDecl) {
-    this.controlUnit = controlUnit;
+  constructor(varDecl: VarDecl, controlUnit?: ControlUnit) {
     this.varDecl = varDecl;
+    this.controlUnit = controlUnit;
   }
 
   get name(): string {
-    return `${this.controlUnit.name}_${this.varDecl.name}`;
+    if (this.controlUnit) {
+      return `${this.controlUnit.name}_${this.varDecl.name}`;
+    }
+    return `${this.varDecl.name}`;
   }
 }
 
@@ -1169,7 +1238,6 @@ function convertTypeRefToST(typeRef: TypeRef): string {
             return `0..${size.val - 1}`;
           }
           return "0..?";
-
         })
         .join(", ")}] OF ${typeRef.type}`;
     }
@@ -1185,7 +1253,6 @@ function convertTypeRefToST(typeRef: TypeRef): string {
             return `0..${size.val - 1}`;
           }
           return "0..?";
-
         })
         .join(", ")}] OF ${typeName}`;
     }

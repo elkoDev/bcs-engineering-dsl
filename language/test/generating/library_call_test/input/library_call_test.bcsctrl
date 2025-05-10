@@ -1,0 +1,82 @@
+// A library call test file
+extern functionblock FB_DALIV2Light {
+    inputs {
+        var bOn : BOOL;
+        var bOff : BOOL;
+        var bToggle : BOOL;
+        var nAddr : INT; // Using INT instead of BYTE
+        var eAddrType : E_DALIV2AddrType;
+        var nMasterDevAddr : INT; // Using INT instead of BYTE
+        var tCycleActualLevelMasterDev : TIME;
+    }
+    outputs {
+        var bLight : BOOL;
+        var bBusy : BOOL;
+        var bError : BOOL;
+        var nErrorId : INT; // Using INT instead of UDINT
+    }
+}
+
+extern struct ST_DALIV2CommandBuffer {
+    dummy : BOOL // Placeholder for actual command buffer structure
+}
+
+extern enum E_DALIV2AddrType { eDALIV2AddrTypeShort, eDALIV2AddrTypeGroup, eDALIV2AddrTypeBroadcast }
+
+control LibraryCallTestController {
+    // Command buffer as a global variable since we can't do VAR_IN_OUT directly
+    var commandBuffer: ST_DALIV2CommandBuffer;
+
+    unit TestDaliLight {
+        var lightStatus: BOOL;
+        var busyStatus: BOOL;
+        var errorStatus: BOOL;
+        var errorId: INT;
+        
+        // Turn light on
+        use FB_DALIV2Light(
+            bOn: true,
+            bOff: false,
+            bToggle: false,
+            nAddr: 1,
+            eAddrType: E_DALIV2AddrType.eDALIV2AddrTypeShort,
+            nMasterDevAddr: 0,
+            tCycleActualLevelMasterDev: 0
+        ) -> {
+            bLight: lightStatus,
+            bBusy: busyStatus,
+            bError: errorStatus,
+            nErrorId: errorId
+        };
+        
+        use FB_DALIV2Light(
+            bOn: false,
+            bOff: true,
+            bToggle: false,
+            nAddr: 1,
+            eAddrType: E_DALIV2AddrType.eDALIV2AddrTypeShort,
+            nMasterDevAddr: 0,
+            tCycleActualLevelMasterDev: 0
+        ) -> {
+            bLight: lightStatus,
+            bBusy: busyStatus,
+            bError: errorStatus,
+            nErrorId: errorId
+        };
+        
+        use FB_DALIV2Light(
+            bOn: false,
+            bOff: false,
+            bToggle: true,
+            nAddr: 1,
+            eAddrType: E_DALIV2AddrType.eDALIV2AddrTypeShort,
+            nMasterDevAddr: 0,
+            tCycleActualLevelMasterDev: 0
+        ) -> {
+            bLight: lightStatus,
+            bBusy: busyStatus,
+            bError: errorStatus,
+            nErrorId: errorId
+        };
+    }
+}
