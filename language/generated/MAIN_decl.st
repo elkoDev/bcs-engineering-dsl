@@ -23,7 +23,7 @@ VAR
     UseDaliLibrary_addressList: ST_DALIChangeAddressList := (nOldAddress:=1, nNewAddress:=2, nRandomAddress:=3, nErrors:=0);
     UseDaliLibrary_status: BOOL;
     UseDaliLibrary_resultMessage: I_TcMessage;
-    UseDaliLibrary_failureStatus: INT;
+    UseDaliLibrary_failureStatus: BYTE;
     ValidateSensorDistance_distance: INT := UltrasonicSensor_Distance;
     i: INT := 0;
     heatingLogicInstance: HeatingLogic; (* Function block instance *)

@@ -1,13 +1,16 @@
 import library Tc3_DALI;
 import library Tc3_EventLogger;
 
+extern type BYTE as INT;
+extern type UDINT as INT;
+extern type DWORD as INT;
 extern enum E_DALIAddressType { Short, Group, Broadcast, BroadcastUnaddr }
 extern enum E_DALICommandPriority { High, MiddleHigh, Middle, MiddleLow, Low, Unknown }
-extern struct ST_DALIChangeAddressList {
-    nOldAddress: INT,
-    nNewAddress: INT,
-    nRandomAddress: INT,
-    nErrors: INT
+extern struct ST_DALIChangeAddressList { 
+    nOldAddress       : BYTE,
+    nNewAddress       : BYTE,
+    nRandomAddress    : UDINT,
+    nErrors           : DWORD
 }
 extern struct I_TcMessage {
     dummy : BOOL // Placeholder for actual message structure
@@ -16,7 +19,7 @@ extern struct I_TcMessage {
 extern functionblock FB_DALI207QueryFailureStatus {
     inputs {
         var bStart : BOOL;
-        var nAddress : INT;
+        var nAddress : BYTE;
         var eAddressType : E_DALIAddressType;
         var eCommandPriority  : E_DALICommandPriority;
     }
@@ -24,7 +27,7 @@ extern functionblock FB_DALI207QueryFailureStatus {
         var bError : BOOL;
         var ipResultMessage : I_TcMessage;
         var bBusy : BOOL;
-        var nFailureStatus : INT;
+        var nFailureStatus : BYTE;
     }
 }
 
@@ -145,7 +148,7 @@ control MainController {
         };
         var status: BOOL;
         var resultMessage: I_TcMessage;
-        var failureStatus: INT;
+        var failureStatus: BYTE;
         use FB_DALI207QueryFailureStatus(
             bStart: true,
             nAddress: 1,
