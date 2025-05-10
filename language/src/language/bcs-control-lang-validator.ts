@@ -26,6 +26,7 @@ import {
   isPrimary,
   isStructDecl,
   isStructLiteral,
+  isTypeAlias,
   isVarDecl,
   Primary,
   StructDecl,
@@ -60,6 +61,7 @@ export function registerBCSControlValidationChecks(
     FunctionBlockDecl: [
       validator.checkUniqueVarNamesInFunctionBlock,
       validator.checkSingleBlockSectionsInFunctionBlock,
+      validator.checkRequiredLibraryReferenceForExternFBs,
     ],
     ControlUnit: [
       validator.checkUniqueVarNamesInUnit,
@@ -81,6 +83,19 @@ export function registerBCSControlValidationChecks(
 }
 
 export class BCSControlLangValidator {
+  checkRequiredLibraryReferenceForExternFBs(
+    fb: FunctionBlockDecl,
+    accept: ValidationAcceptor
+  ) {
+    if (fb.isExtern && !fb.libRef) {
+      accept(
+        "error",
+        `Extern function block '${fb.name}' must have a library reference.`,
+        { node: fb, property: "libRef" }
+      );
+    }
+  }
+
   checkToExprType(stmt: ForStmt, accept: ValidationAcceptor) {
     const toExpr = stmt.toExpr;
     if (!toExpr) return;
@@ -1067,6 +1082,9 @@ export class BCSControlLangValidator {
       }
       if (isStructDecl(typeDecl)) {
         baseType = `STRUCT:${typeDecl.name}`;
+      }
+      if (isTypeAlias(typeDecl)) {
+        baseType = typeDecl.primitive;
       }
     }
 

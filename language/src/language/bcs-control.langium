@@ -11,7 +11,7 @@ entry ControlModel:
 ;
 
 ImportDecl:
-    'import' 'library' libName=ID ';'
+    'import' 'library' name=ID ';'
 ;
 
 
@@ -36,10 +36,15 @@ Declaration:
     | StructDecl
     | VarDecl
     | FunctionBlockDecl
+    | TypeAlias
 ;
 
 TypeDecl:
-    (isExtern?='extern')? (EnumDecl | StructDecl | FunctionBlockDecl)
+    (isExtern?='extern')? (EnumDecl | StructDecl | FunctionBlockDecl | TypeAlias)
+;
+
+TypeAlias:
+    'type' name=ID 'as' primitive=PrimitiveType ';'
 ;
 
 // ---------- ENUM ----------
@@ -66,7 +71,7 @@ StructFieldDecl:
 
 // ---------- FUNCTION BLOCK ----------
 FunctionBlockDecl:
-    'functionblock' name=ID '{'
+    'functionblock' name=ID ('from' libRef=[ImportDecl:ID])?  '{'
         members+=FunctionBlockMember*
     '}'
 ;

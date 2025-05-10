@@ -13,6 +13,7 @@ import {
   isEnumDecl,
   isEnumMemberLiteral,
   isFunctionBlockDecl,
+  isImportDecl,
   isInputMapping,
   isMappingUseResult,
   isPrimary,
@@ -20,6 +21,7 @@ import {
   isSimpleUseResult,
   isStructDecl,
   isStructFieldDecl,
+  isTypeAlias,
   isTypeRef,
   isUseStmt,
   isVarDecl,
@@ -37,6 +39,13 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
     node: AstNode,
     acceptor: SemanticTokenAcceptor
   ): void {
+    if (isImportDecl(node)) {
+      acceptor({
+        node,
+        property: "name",
+        type: SemanticTokenTypes.macro,
+      });
+    }
     if (isControlBlock(node)) {
       acceptor({
         node,
@@ -78,6 +87,18 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         node,
         property: "sizes",
         type: SemanticTokenTypes.number,
+      });
+    }
+    if (isTypeAlias(node)) {
+      acceptor({
+        node,
+        property: "name",
+        type: SemanticTokenTypes.type,
+      });
+      acceptor({
+        node,
+        property: "primitive",
+        type: SemanticTokenTypes.type,
       });
     }
     if (isEnumDecl(node)) {
@@ -151,6 +172,11 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         node,
         property: "name",
         type: SemanticTokenTypes.function,
+      });
+      acceptor({
+        node,
+        property: "libRef",
+        type: SemanticTokenTypes.macro,
       });
     }
     if (isStructDecl(node)) {

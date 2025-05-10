@@ -1,12 +1,15 @@
 import library Tc3_DALI;
 
+extern type BYTE as INT;
+extern type UDINT as INT;
+extern type DWORD as INT;
 extern enum E_DALIAddressType {Short, Group, Broadcast, BroadcastUnaddr}
 extern enum E_DALICommandPriority {High, MiddleHigh, Middle, MiddleLow, Low, Unknown}
 extern struct ST_DALIChangeAddressList { 
-    nOldAddress       : INT,
-    nNewAddress       : INT,
-    nRandomAddress    : INT,
-    nErrors           : INT
+    nOldAddress       : BYTE,
+    nNewAddress       : BYTE,
+    nRandomAddress    : UDINT,
+    nErrors           : DWORD
 }
 
 extern functionblock FB_Tc3_DALI { 
