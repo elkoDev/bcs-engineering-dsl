@@ -7,8 +7,8 @@ IF NOT bRunOnlyOnce THEN
 END_IF
 
 // Main program logic
-simpleLogicFBInstance(iInput:=TestFunctionBlock_input, iInput2:=TestFunctionBlock_input2);
-TestFunctionBlock_output := simpleLogicFBInstance.oOutput;
+simpleLogicFBInstance1(iInput:=TestFunctionBlock_input, iInput2:=TestFunctionBlock_input2);
+TestFunctionBlock_output := simpleLogicFBInstance1.oOutput;
 
 simpleLogicFBInstance2(iInput:=TestFunctionBlock_input3, iInput2:=TestFunctionBlock_input4);
 TestFunctionBlock_output2 := simpleLogicFBInstance2.oOutput;

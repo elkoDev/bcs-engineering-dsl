@@ -17,5 +17,5 @@ export function detectDaliComType(
       }
     }
   }
-  throw new Error("No matching DALI terminals found in hardware model");
+  return undefined;
 }

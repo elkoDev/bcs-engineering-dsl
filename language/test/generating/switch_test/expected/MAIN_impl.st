@@ -7,8 +7,8 @@ IF NOT bRunOnlyOnce THEN
 END_IF
 
 // Main program logic
-switchFBInstance(iMode:=TestSwitch_mode, iTemperature:=TestSwitch_temperature);
-TestSwitch_heatingValue := switchFBInstance.oHeatingValue;
-TestSwitch_coolingValue := switchFBInstance.oCoolingValue;
-TestSwitch_statusMsg := switchFBInstance.oStatusMessage;
+switchFBInstance1(iMode:=TestSwitch_mode, iTemperature:=TestSwitch_temperature);
+TestSwitch_heatingValue := switchFBInstance1.oHeatingValue;
+TestSwitch_coolingValue := switchFBInstance1.oCoolingValue;
+TestSwitch_statusMsg := switchFBInstance1.oStatusMessage;
 

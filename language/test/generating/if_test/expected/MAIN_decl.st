@@ -5,6 +5,6 @@ VAR
     TestIfLogic_condition: BOOL := TRUE;
     TestIfLogic_result: INT;
     TestIfLogic_status: STRING;
-    ifLogicFBInstance: IfLogicFB; (* Function block instance *)
+    ifLogicFBInstance1: IfLogicFB; (* Function block instance *)
     bRunOnlyOnce: BOOL := FALSE;
 END_VAR

@@ -7,7 +7,7 @@ IF NOT bRunOnlyOnce THEN
 END_IF
 
 // Main program logic
-loopsFBInstance(iCount:=TestLoops_count);
-TestLoops_sum := loopsFBInstance.oSum;
-TestLoops_product := loopsFBInstance.oProduct;
+loopsFBInstance1(iCount:=TestLoops_count);
+TestLoops_sum := loopsFBInstance1.oSum;
+TestLoops_product := loopsFBInstance1.oProduct;
 

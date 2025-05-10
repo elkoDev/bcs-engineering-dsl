@@ -7,11 +7,11 @@ IF NOT bRunOnlyOnce THEN
 END_IF
 
 // Main program logic
-arrayTestFBInstance(iValues:=TestArrays_values, iCount:=TestArrays_count);
-TestArrays_sum := arrayTestFBInstance.oSum;
-TestArrays_average := arrayTestFBInstance.oAverage;
-TestArrays_maxValue := arrayTestFBInstance.oMaxValue;
-TestArrays_processedValues := arrayTestFBInstance.oProcessedValues;
+arrayTestFBInstance1(iValues:=TestArrays_values, iCount:=TestArrays_count);
+TestArrays_sum := arrayTestFBInstance1.oSum;
+TestArrays_average := arrayTestFBInstance1.oAverage;
+TestArrays_maxValue := arrayTestFBInstance1.oMaxValue;
+TestArrays_processedValues := arrayTestFBInstance1.oProcessedValues;
 
 FOR i := 0 TO TestArrays_rowCount - 1 DO
     FOR j := 0 TO TestArrays_colCount - 1 DO
