@@ -40,7 +40,7 @@ Declaration:
 ;
 
 TypeDecl:
-    (isExtern?='extern')? (EnumDecl | StructDecl | FunctionBlockDecl | TypeAlias)
+    (isExtern='extern')? (EnumDecl | StructDecl | FunctionBlockDecl | TypeAlias)
 ;
 
 TypeAlias:

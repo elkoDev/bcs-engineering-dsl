@@ -143,11 +143,14 @@ class BeckhoffGeneratorContext {
     this.hardwareChannelFlatNames = new Set();
     this.fbInstanceMap = new Map();
     this.fbInstanceCounter = 1;
+    // Removed addRequiredAdditionalFBInstances from constructor
   }
 
   // Generate a globally unique FB instance name
   createUniqueFBInstanceName(fbType: string): string {
-    const name = `${fbType.charAt(0).toLowerCase()}${fbType.slice(1)}Instance${this.fbInstanceCounter}`;
+    const name = `${fbType.charAt(0).toLowerCase()}${fbType.slice(1)}Instance${
+      this.fbInstanceCounter
+    }`;
     this.fbInstanceCounter++;
     return name;
   }
@@ -165,7 +168,12 @@ class BeckhoffGeneratorContext {
   }
 
   // Assign or get a unique FB instance for edge detection
-  getOrAssignEdgeFBInstance(type: "rising" | "falling", signalExpr: string, index: number, fbType: string): FBInstanceInfo {
+  getOrAssignEdgeFBInstance(
+    type: "rising" | "falling",
+    signalExpr: string,
+    index: number,
+    fbType: string
+  ): FBInstanceInfo {
     const key = `${type}_${signalExpr}_${index}`;
     if (this.fbInstanceMap.has(key)) {
       return this.fbInstanceMap.get(key)!;
@@ -177,7 +185,10 @@ class BeckhoffGeneratorContext {
   }
 
   // Get all instance declarations for main program
-  getAllFBInstanceDeclarations(): Array<{ instanceName: string; fbType: string }> {
+  getAllFBInstanceDeclarations(): Array<{
+    instanceName: string;
+    fbType: string;
+  }> {
     // Use a Set to avoid duplicates if the same instance is referenced by multiple keys
     const seen = new Set<string>();
     const result: Array<{ instanceName: string; fbType: string }> = [];
@@ -447,8 +458,15 @@ class BeckhoffGeneratorContext {
     const pad = (level: number) => "    ".repeat(level);
     if (type === "rising" && isOnRisingEdgeStmt(stmt)) {
       const signalExpr = this.convertExprToST(stmt.signal);
-      const { instanceName } = this.getOrAssignEdgeFBInstance("rising", signalExpr, index, "R_TRIG");
-      let risingContent = `${pad(indent)}// Rising edge detection for ${signalExpr}\n`;
+      const { instanceName } = this.getOrAssignEdgeFBInstance(
+        "rising",
+        signalExpr,
+        index,
+        "R_TRIG"
+      );
+      let risingContent = `${pad(
+        indent
+      )}// Rising edge detection for ${signalExpr}\n`;
       risingContent += `${pad(indent)}${instanceName}(CLK := ${signalExpr});\n`;
       risingContent += `${pad(indent)}IF ${instanceName}.Q THEN\n`;
       for (const subStmt of stmt.stmts) {
@@ -459,9 +477,18 @@ class BeckhoffGeneratorContext {
       return risingContent;
     } else if (type === "falling" && isOnFallingEdgeStmt(stmt)) {
       const signalExpr = this.convertExprToST(stmt.signal);
-      const { instanceName } = this.getOrAssignEdgeFBInstance("falling", signalExpr, index, "F_TRIG");
-      let fallingContent = `${pad(indent)}// Falling edge detection for ${signalExpr}\n`;
-      fallingContent += `${pad(indent)}${instanceName}(CLK := ${signalExpr});\n`;
+      const { instanceName } = this.getOrAssignEdgeFBInstance(
+        "falling",
+        signalExpr,
+        index,
+        "F_TRIG"
+      );
+      let fallingContent = `${pad(
+        indent
+      )}// Falling edge detection for ${signalExpr}\n`;
+      fallingContent += `${pad(
+        indent
+      )}${instanceName}(CLK := ${signalExpr});\n`;
       fallingContent += `${pad(indent)}IF ${instanceName}.Q THEN\n`;
       for (const subStmt of stmt.stmts) {
         fallingContent +=
@@ -485,14 +512,16 @@ class BeckhoffGeneratorContext {
     // Handle output mapping
     if (stmt.useOutput.singleOutput) {
       const targetOutputVarRef = stmt.useOutput.singleOutput.targetOutputVar;
-      const targetOutputVarName = this.getQualifiedReferenceName(targetOutputVarRef);
+      const targetOutputVarName =
+        this.getQualifiedReferenceName(targetOutputVarRef);
       useContent += `${instanceName} := ${fbType}(${inputMappings});\n`;
       useContent += `${targetOutputVarName} := ${instanceName};`;
     } else if (stmt.useOutput.mappingOutputs.length > 0) {
       useContent += `${instanceName}(${inputMappings});\n`;
       for (const outMapping of stmt.useOutput.mappingOutputs) {
         const targetOutputVarRef = outMapping.targetOutputVar;
-        const targetOutputVarName = this.getQualifiedReferenceName(targetOutputVarRef);
+        const targetOutputVarName =
+          this.getQualifiedReferenceName(targetOutputVarRef);
         const fbOutputVarName = outMapping.fbOutputVar.ref?.name ?? "output";
         useContent += `${targetOutputVarName} := ${instanceName}.${fbOutputVarName};\n`;
       }
@@ -717,6 +746,7 @@ class BeckhoffGeneratorContext {
   writeProgramMain(): string {
     this.fbInstanceMap.clear();
     this.fbInstanceCounter = 1;
+    this.addRequiredAdditionalFBInstances();
 
     const mainVars: EmittedVarDecl[] = [];
     const mainStatements: Statement[] = [];
@@ -724,8 +754,6 @@ class BeckhoffGeneratorContext {
     this.collectGlobalVarDecls(mainVars);
 
     this.processControlUnits(mainVars, mainStatements);
-
-    this.addRequiredAdditionalFBInstances(); // TODO: not working yet
 
     const loopVars = new Map<string, { type: string; init?: Expr }>();
     this.collectLoopVars(mainStatements, loopVars);
@@ -774,16 +802,29 @@ class BeckhoffGeneratorContext {
   }
 
   private addRequiredAdditionalFBInstances() {
+    // Check if any extern function block from Tc3_DALI is used
+    const hasExternDaliFB = this.controlModel.externTypeDecls.some(
+      (item) =>
+        isFunctionBlockDecl(item) &&
+        item.isExtern &&
+        item.name.startsWith("FB_DALI")
+    );
+    if (!hasExternDaliFB) return;
+
+    // Try to detect the DALI communication FB type from hardware
     const daliComType = detectDaliComType(this.hardwareModel);
-    if (daliComType) {
-      // Add to fbInstanceMap if needed
-      const fbType = daliComType;
-      // Use a synthetic key for this special instance
-      const key = `daliCom_${fbType}`;
-      if (!this.fbInstanceMap.has(key)) {
-        const instanceName = this.createUniqueFBInstanceName(fbType);
-        this.fbInstanceMap.set(key, { instanceName, fbType });
-      }
+    if (!daliComType) {
+      throw new Error(
+        "DALI communication moduleType not found in hardware. Please declare a portgroup with a supported DALI moduleType (e.g., KL6811, KL6821, EL6821) to use FB_DALI function blocks."
+      );
+    }
+    // Add to fbInstanceMap if needed
+    const fbType = daliComType;
+    // Use a synthetic key for this special instance
+    const key = `daliCom_${fbType}`;
+    if (!this.fbInstanceMap.has(key)) {
+      const instanceName = this.createUniqueFBInstanceName(fbType);
+      this.fbInstanceMap.set(key, { instanceName, fbType });
     }
   }
 
@@ -812,9 +853,7 @@ class BeckhoffGeneratorContext {
     }
   }
 
-  private assignEdgeDetectionInstances(
-    mainStatements: Statement[]
-  ) {
+  private assignEdgeDetectionInstances(mainStatements: Statement[]) {
     const risingEdgeStatements = mainStatements.filter(isOnRisingEdgeStmt);
     const fallingEdgeStatements = mainStatements.filter(isOnFallingEdgeStmt);
     risingEdgeStatements.forEach((stmt, index) => {
@@ -828,8 +867,8 @@ class BeckhoffGeneratorContext {
   }
 
   private generateMainDeclContent(
-    inputs: Array<{ name: string; type: string; ioBinding: string }>,
-    outputs: Array<{ name: string; type: string; ioBinding: string }>,
+    inputs: HardwareDatapoint[],
+    outputs: HardwareDatapoint[],
     mainVars: EmittedVarDecl[],
     loopVarsToDeclare: [string, { type: string; init?: Expr }][],
     fbInstanceDecls: Array<{ instanceName: string; fbType: string }>
@@ -878,9 +917,18 @@ class BeckhoffGeneratorContext {
             )}
             ${joinToNode(
               fbInstanceDecls,
-              ({ instanceName, fbType }) => expandToNode`
-                ${instanceName}: ${fbType}; (* Function block instance *)
-              `,
+              ({ instanceName, fbType }) => {
+                // Library special handling for constructor
+                const special = handleLibrarySpecials(fbType, "", this);
+                if (special.constructorArgs) {
+                  return expandToNode`
+                    ${instanceName}: ${fbType}(${special.constructorArgs}); (* Function block instance *)
+                  `;
+                }
+                return expandToNode`
+                  ${instanceName}: ${fbType}; (* Function block instance *)
+                `;
+              },
               { appendNewLineIfNotEmpty: true }
             )}
             bRunOnlyOnce: BOOL := FALSE;
@@ -1165,4 +1213,36 @@ function convertTypeRefToST(typeRef: TypeRef): string {
     }
   }
   return "UNKNOWN_TYPE";
+}
+
+/**
+ * Handles special input mapping and constructor logic for Beckhoff libraries (e.g., DALI, others in future).
+ * Returns an object with possibly modified inputMappings and constructorArgs for declaration.
+ */
+function handleLibrarySpecials(
+  fbType: string,
+  inputMappings: string,
+  context: BeckhoffGeneratorContext
+): { inputMappings: string; constructorArgs?: string } {
+  // DALI special handling
+  if (fbType.startsWith("FB_DALI")) {
+    const daliComType = detectDaliComType(context.hardwareModel);
+    if (!daliComType) {
+      throw new Error(
+        "DALI communication moduleType not found in hardware. Please declare a portgroup with a supported DALI moduleType (e.g., KL6811, KL6821, EL6821) to use FB_DALI function blocks."
+      );
+    }
+    const key = `daliCom_${daliComType}`;
+    const daliComInstance = context.fbInstanceMap.get(key);
+    if (!daliComInstance) {
+      throw new Error("DALI communication FB instance was not generated.");
+    }
+    // Only set constructorArgs, do NOT prepend to inputMappings
+    return {
+      inputMappings,
+      constructorArgs: daliComInstance.instanceName,
+    };
+  }
+  // Add more library-specific handling here as needed
+  return { inputMappings };
 }

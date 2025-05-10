@@ -19,7 +19,7 @@ extern functionblock FB_DALI102DirectArcPowerControl from Tc3_DALI {
     outputs {
         var bError : BOOL;
         var ipResultMessage : I_TcMessage;
-        var bBusy : BOOL; // Using INT instead of UDINT
+        var bBusy : BOOL;
     }
 }
 
