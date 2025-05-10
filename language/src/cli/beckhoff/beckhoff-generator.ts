@@ -54,6 +54,7 @@ import {
   getLogic,
 } from "../../language/utils/function-block-utils.js";
 import { Reference } from "langium";
+import { detectDaliComType } from "./beckhoff-utils.js";
 
 // Helper function to check if a node is a primitive value
 function isPrimitive(expr: Primary): boolean {
@@ -746,6 +747,8 @@ class BeckhoffGeneratorContext {
       mainStatements
     );
 
+    this.addRequiredAdditionalFBInstances(fbInstancesMap); // TODO: not working yet
+
     const loopVars = new Map<string, { type: string; init?: Expr }>();
     this.collectLoopVars(mainStatements, loopVars);
     const declaredVarNames = new Set(mainVars.map((v) => v.varDecl.name));
@@ -798,6 +801,18 @@ class BeckhoffGeneratorContext {
         fbInstancesMap,
         fbInstanceTracker
       );
+    }
+  }
+
+  private addRequiredAdditionalFBInstances(
+    fbInstancesMap: Map<string, string>
+  ) {
+    const daliComType = detectDaliComType(this.hardwareModel);
+    let daliComInstanceName: string | undefined;
+
+    if (daliComType) {
+      daliComInstanceName = "fbCom";
+      fbInstancesMap.set(daliComInstanceName, daliComType);
     }
   }
 

@@ -6,4 +6,11 @@ controller LibraryCallTestController for Beckhoff {
         startAddress: %IX0.0
         channels: 8
     }
+
+    portgroup DALI_OUTPUT {
+        moduleType: KL6821
+        ioType: DIGITAL_OUTPUT
+        startAddress: %QW0
+        channels: 8
+    }
 }
