@@ -108,10 +108,20 @@ function translateOperator(op: string): string {
   }
 }
 
-// Add a type for FB instance info
 interface FBInstanceInfo {
   instanceName: string;
   fbType: string;
+}
+
+interface HardwareDatapoint {
+  name: string;
+  type: string;
+  ioBinding: string;
+}
+
+interface HardwareDatapointsResult {
+  inputs: HardwareDatapoint[];
+  outputs: HardwareDatapoint[];
 }
 
 class BeckhoffGeneratorContext {
@@ -930,13 +940,9 @@ class BeckhoffGeneratorContext {
     );
   }
 
-  extractHardwareDatapoints(): {
-    inputs: Array<{ name: string; type: string; ioBinding: string }>;
-    outputs: Array<{ name: string; type: string; ioBinding: string }>;
-  } {
-    const inputs: Array<{ name: string; type: string; ioBinding: string }> = [];
-    const outputs: Array<{ name: string; type: string; ioBinding: string }> =
-      [];
+  extractHardwareDatapoints(): HardwareDatapointsResult {
+    const inputs: HardwareDatapoint[] = [];
+    const outputs: HardwareDatapoint[] = [];
     for (const controller of this.hardwareModel.controllers) {
       if (controller.platform !== "Beckhoff") continue;
       const portGroups = this.collectPortGroups(controller.components);
