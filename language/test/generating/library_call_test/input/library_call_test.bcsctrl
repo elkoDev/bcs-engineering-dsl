@@ -1,8 +1,7 @@
+// A library call test file
 import library Tc3_DALI;
 
-// A library call test file
 extern type BYTE as INT;
-
 extern enum E_DALIAddressType { Short, Group, Broadcast, BroadcastUnaddr }
 extern enum E_DALICommandPriority { High, MiddleHigh, Middle, MiddleLow, Low, Unknown }
 extern struct I_TcMessage {
@@ -12,7 +11,7 @@ extern struct I_TcMessage {
 extern functionblock FB_DALI102DirectArcPowerControl from Tc3_DALI {
     inputs {
         var bStart : BOOL;
-        var bOff : BYTE;
+        var nAddress : BYTE;
         var eAddressType : E_DALIAddressType;
         var eCommandPriority : E_DALICommandPriority;
         var nArcPowerLevel : BYTE;    
@@ -32,7 +31,7 @@ control LibraryCallTestController {
 
         use FB_DALI102DirectArcPowerControl(
             bStart: true,
-            bOff: 0,
+            nAddress: 0,
             eAddressType: E_DALIAddressType.Short,
             eCommandPriority: E_DALICommandPriority.High, 
             nArcPowerLevel: 100

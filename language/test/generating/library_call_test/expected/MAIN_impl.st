@@ -7,15 +7,8 @@ IF NOT bRunOnlyOnce THEN
 END_IF
 
 // Main program logic
-fB_DALIV2LightInstance(bOn:=TRUE, bOff:=FALSE, bToggle:=FALSE, nAddr:=1, eAddrType:=E_DALIV2AddrType.eDALIV2AddrTypeShort, nMasterDevAddr:=0, tCycleActualLevelMasterDev:='T#1s');
-TestDaliLight_lightStatus := fB_DALIV2LightInstance.bLight;
-TestDaliLight_busyStatus := fB_DALIV2LightInstance.bBusy;
-TestDaliLight_errorStatus := fB_DALIV2LightInstance.bError;
-TestDaliLight_errorId := fB_DALIV2LightInstance.nErrorId;
-
-fB_DALIV2LightInstance2(bOn:=FALSE, bOff:=TRUE, bToggle:=FALSE, nAddr:=1, eAddrType:=E_DALIV2AddrType.eDALIV2AddrTypeShort, nMasterDevAddr:=0, tCycleActualLevelMasterDev:='T#1s');
-TestDaliLight_lightStatus := fB_DALIV2LightInstance2.bLight;
-TestDaliLight_busyStatus := fB_DALIV2LightInstance2.bBusy;
-TestDaliLight_errorStatus := fB_DALIV2LightInstance2.bError;
-TestDaliLight_errorId := fB_DALIV2LightInstance2.nErrorId;
+fB_DALI102DirectArcPowerControlInstance(bStart:=TRUE, nAddress:=0, eAddressType:=E_DALIAddressType.Short, eCommandPriority:=E_DALICommandPriority.High, nArcPowerLevel:=100);
+TestDaliLight_hasError := fB_DALI102DirectArcPowerControlInstance.bError;
+TestDaliLight_resultMessage := fB_DALI102DirectArcPowerControlInstance.ipResultMessage;
+TestDaliLight_isBusy := fB_DALI102DirectArcPowerControlInstance.bBusy;
 

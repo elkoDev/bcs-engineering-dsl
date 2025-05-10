@@ -210,7 +210,7 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
       acceptor({
         node,
         property: "fbOutputVar",
-        type: SemanticTokenTypes.comment,
+        type: SemanticTokenTypes.parameter,
       });
       acceptor({
         node,
