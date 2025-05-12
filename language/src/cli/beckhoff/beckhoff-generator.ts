@@ -940,7 +940,7 @@ class BeckhoffGeneratorContext {
             );
             timeNow: TIMESTRUCT;
             todNow: TIME_OF_DAY;
-            dateToday: DATE;
+            dNow: DATE;
         END_VAR
       `
     );
@@ -968,7 +968,7 @@ class BeckhoffGeneratorContext {
     fbLocalTime();
     timeNow   := fbLocalTime.systemTime;
     todNow    := SYSTEMTIME_TO_TOD(timeNow);
-    dateToday := SYSTEMTIME_TO_DATE(timeNow);
+    dNow := DT_TO_DATE(SYSTEMTIME_TO_DT(timeNow));
 
     // --- User code ---
     ${joinToNode(
@@ -979,7 +979,7 @@ class BeckhoffGeneratorContext {
         if (sch) {
           return expandToNode`
           // Scheduled unit '${sch.name}' @ ${sch.timeLiteral}
-          IF dateToday <> ${sch.name}_lastRunDay THEN
+          IF dNow <> ${sch.name}_lastRunDay THEN
               ${sch.name}_hasRun := FALSE;
           END_IF;
           IF (NOT ${sch.name}_hasRun) AND (todNow >= ${sch.timeLiteral}) THEN
@@ -991,7 +991,7 @@ class BeckhoffGeneratorContext {
                 { appendNewLineIfNotEmpty: true }
               )}
               ${sch.name}_hasRun      := TRUE;
-              ${sch.name}_lastRunDay := dateToday;
+              ${sch.name}_lastRunDay := dNow;
           END_IF;
         `;
         }
@@ -1038,7 +1038,7 @@ class BeckhoffGeneratorContext {
         return expandToNode`
         // Regular unit '${reg.name}'
         ${joinToNode(
-          reg.stmts.filter((s) => !isVarDecl(s)), 
+          reg.stmts.filter((s) => !isVarDecl(s)),
           (stmt) => expandToNode`
             ${this.convertStatementToST(stmt, 0)}
         `,

@@ -10,7 +10,7 @@ END_IF;
 fbLocalTime();
 timeNow   := fbLocalTime.systemTime;
 todNow    := SYSTEMTIME_TO_TOD(timeNow);
-dateToday := SYSTEMTIME_TO_DATE(timeNow);
+dNow := DT_TO_DATE(SYSTEMTIME_TO_DT(timeNow));
 
 // --- User code ---
 // Regular unit 'ToggleLightsOnButtonPress'
@@ -23,7 +23,7 @@ IF r_TRIGInstance6.Q THEN
     Lights_Room2 := NOT Lights_Room2;
 END_IF;
 // Scheduled unit 'TurnOnLightsScheduled' @ TOD#06:30:00
-IF dateToday <> TurnOnLightsScheduled_lastRunDay THEN
+IF dNow <> TurnOnLightsScheduled_lastRunDay THEN
     TurnOnLightsScheduled_hasRun := FALSE;
 END_IF;
 IF (NOT TurnOnLightsScheduled_hasRun) AND (todNow >= TOD#06:30:00) THEN
@@ -34,7 +34,7 @@ IF (NOT TurnOnLightsScheduled_hasRun) AND (todNow >= TOD#06:30:00) THEN
     temperaturesArray[0].Room1 := 20.5;
     temperaturesArray[1].Room2 := 22;
     TurnOnLightsScheduled_hasRun      := TRUE;
-    TurnOnLightsScheduled_lastRunDay := dateToday;
+    TurnOnLightsScheduled_lastRunDay := dNow;
 END_IF;
 // Conditional unit 'RetryHeaterStartup'
 IF mode <> OperatingMode.OFF THEN

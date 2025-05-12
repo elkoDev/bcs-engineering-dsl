@@ -43,5 +43,5 @@ VAR
     );
     timeNow: TIMESTRUCT;
     todNow: TIME_OF_DAY;
-    dateToday: DATE;
+    dNow: DATE;
 END_VAR
