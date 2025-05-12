@@ -28,6 +28,13 @@ controller MainController for Beckhoff {
         channels: 4
     }
 
+    portgroup DaliPort {
+        moduleType: KL6811
+        ioType: ANALOG_OUTPUT
+        startAddress: %QW20
+        channels: 8
+    }
+
     datapoint UltrasonicSensor {
         portgroup: AnalogInputs
         channels: {
