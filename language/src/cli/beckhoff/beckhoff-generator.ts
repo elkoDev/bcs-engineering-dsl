@@ -781,7 +781,7 @@ class BeckhoffGeneratorContext {
     const declFilePath = path.join(this.destination, `MAIN_decl.st`);
     fs.writeFileSync(declFilePath, declContent);
     const implFilePath = path.join(this.destination, `MAIN_impl.st`);
-    fs.writeFileSync(implFilePath, implContent);
+    fs.writeFileSync(implFilePath, implContent.trimEnd());
     return implFilePath;
   }
 
@@ -1060,7 +1060,7 @@ class BeckhoffGeneratorContext {
       },
       { appendNewLineIfNotEmpty: true, prefix: "\n" }
     )}
-  `);
+    `);
 
     // Check if boilerplate is needed
     const boilerplateVars = ["fbLocalTime", "timeNow", "todNow", "dNow"];
@@ -1071,7 +1071,7 @@ class BeckhoffGeneratorContext {
       ? `fbLocalTime();\ntimeNow := fbLocalTime.systemTime;\ntodNow := SYSTEMTIME_TO_TOD(timeNow);\ndNow := DT_TO_DATE(SYSTEMTIME_TO_DT(timeNow));\n`
       : "";
 
-    return `IF NOT bRunOnlyOnce THEN\n    ADSLOGSTR(\n      msgCtrlMask := ADSLOG_MSGTYPE_LOG,\n      msgFmtStr   := 'Program started %s',\n      strArg      := 'successfully!'\n    );\n    bRunOnlyOnce := TRUE;\nEND_IF;\n${boilerplateInit}\n${mainBody}`;
+    return `IF NOT bRunOnlyOnce THEN\n    ADSLOGSTR(\n      msgCtrlMask := ADSLOG_MSGTYPE_LOG,\n      msgFmtStr   := 'Program started %s',\n      strArg      := 'successfully!'\n    );\n    bRunOnlyOnce := TRUE;\nEND_IF;${boilerplateInit}\n${mainBody}`;
   }
 
   extractHardwareDatapoints(): HardwareDatapointsResult {

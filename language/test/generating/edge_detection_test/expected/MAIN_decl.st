@@ -8,9 +8,9 @@ VAR
     TestEdgeDetection_toggleOutput: BOOL;
     TestEdgeDetection_pulseOutput: BOOL := FALSE;
     r_TRIGInstance1: R_TRIG; (* Function block instance *)
-    r_TRIGInstance2: R_TRIG; (* Function block instance *)
+    f_TRIGInstance2: F_TRIG; (* Function block instance *)
     r_TRIGInstance3: R_TRIG; (* Function block instance *)
-    f_TRIGInstance4: F_TRIG; (* Function block instance *)
+    r_TRIGInstance4: R_TRIG; (* Function block instance *)
     f_TRIGInstance5: F_TRIG; (* Function block instance *)
     bRunOnlyOnce: BOOL := FALSE;
 END_VAR

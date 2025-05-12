@@ -6,13 +6,5 @@ VAR
     TestSwitch_coolingValue: REAL;
     TestSwitch_statusMsg: STRING;
     switchFBInstance1: SwitchFB; (* Function block instance *)
-    fbLocalTime: FB_LocalSystemTime := (
-      sNetID := '',
-      bEnable := TRUE,
-      dwCycle := 5
-    );
-    timeNow: TIMESTRUCT;
-    todNow: TIME_OF_DAY;
-    dNow: DATE;
     bRunOnlyOnce: BOOL := FALSE;
 END_VAR
