@@ -35,6 +35,7 @@ VAR
     f_TRIGInstance7: F_TRIG; (* Function block instance *)
     TurnOnLightsScheduled_hasRun: BOOL := FALSE;
     TurnOnLightsScheduled_lastRunDay: DATE;
+    DelayedStartup_hasRun: BOOL := FALSE;
     bRunOnlyOnce: BOOL := FALSE;
     fbLocalTime: FB_LocalSystemTime := (
       sNetID := '',

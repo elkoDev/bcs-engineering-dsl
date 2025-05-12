@@ -14,6 +14,18 @@ control InvalidStructTestController {
         x: BOOL
     }
 
+    functionblock TestFunctionBlock {
+        inputs {
+            var i: REAL;
+        }
+        outputs {
+            var o: REAL;
+        }
+        logic {
+            o = i + 1;
+        }
+    }
+
 
     unit TestStructUnit {
         // 1. Unexpected field
@@ -55,6 +67,10 @@ control InvalidStructTestController {
             { x: 1.0, y: 2.0 },
             { x: 3.0, y: 4.0, z: 5.0 } // Unexpected z
         ];
+
+        // Use struct decl as input
+        var ouput: REAL;
+        use TestFunctionBlock(i: Rectangle.x) -> ouput;
     }
 
     // TODO: test invalid struct of structs

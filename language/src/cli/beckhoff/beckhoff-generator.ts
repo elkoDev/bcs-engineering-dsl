@@ -752,7 +752,8 @@ class BeckhoffGeneratorContext {
       mainVars,
       loopVarsToDeclare,
       fbInstanceDecls,
-      scheduled
+      scheduled,
+      conditional
     );
     const implContent = this.generateMainImplContent(
       scheduled,
@@ -864,7 +865,8 @@ class BeckhoffGeneratorContext {
     mainVars: EmittedVarDecl[],
     loopVarsToDeclare: [string, { type: string; init?: Expr }][],
     fbInstanceDecls: Array<{ instanceName: string; fbType: string }>,
-    scheduled: ScheduledControlUnit[]
+    scheduled: ScheduledControlUnit[],
+    conditional: ConditionalControlUnit[]
   ): string {
     return toString(
       expandToNode`
@@ -929,6 +931,13 @@ class BeckhoffGeneratorContext {
               (unit) => expandToNode`
                 ${unit.name}_hasRun: BOOL := FALSE;
                 ${unit.name}_lastRunDay: DATE;
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+            ${joinToNode(
+              conditional.filter((unit) => unit.runOnce),
+              (unit) => expandToNode`
+                ${unit.name}_hasRun: BOOL := FALSE;
               `,
               { appendNewLineIfNotEmpty: true }
             )}
