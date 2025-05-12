@@ -809,9 +809,7 @@ class BeckhoffGeneratorContext {
         "DALI communication moduleType not found in hardware. Please declare a portgroup with a supported DALI moduleType (e.g., KL6811, KL6821, EL6821) to use FB_DALI function blocks."
       );
     }
-    // Add to fbInstanceMap if needed
     const fbType = daliComType;
-    // Use a synthetic key for this special instance
     const key = `daliCom_${fbType}`;
     if (!this.fbInstanceMap.has(key)) {
       const instanceName = this.createUniqueFBInstanceName(fbType);
@@ -971,12 +969,9 @@ class BeckhoffGeneratorContext {
     conditional: ConditionalControlUnit[],
     regular: RegularControlUnit[]
   ): string {
-    // for any “free‐floating” edge-detectors after units, we still need them;
-    // but here we only emit per‐unit, so nested edges get handled by convertStatementToST
     const units = this.controlModel.controlBlock.items.filter(isControlUnit);
 
     return toString(expandToNode`
-    // --- System code --- 
     IF NOT bRunOnlyOnce THEN
         ADSLOGSTR(
           msgCtrlMask := ADSLOG_MSGTYPE_LOG,
@@ -986,19 +981,17 @@ class BeckhoffGeneratorContext {
         bRunOnlyOnce := TRUE;
     END_IF;
     fbLocalTime();
-    timeNow   := fbLocalTime.systemTime;
-    todNow    := SYSTEMTIME_TO_TOD(timeNow);
+    timeNow := fbLocalTime.systemTime;
+    todNow := SYSTEMTIME_TO_TOD(timeNow);
     dNow := DT_TO_DATE(SYSTEMTIME_TO_DT(timeNow));
 
-    // --- User code ---
     ${joinToNode(
       units,
       (unit) => {
-        // find which bucket this unit lives in
         const sch = scheduled.find((u) => u.name === unit.name);
         if (sch) {
           return expandToNode`
-          // Scheduled unit '${sch.name}' @ ${sch.timeLiteral}
+          // Scheduled Control Unit '${sch.name}' @ ${sch.timeLiteral}
           IF dNow <> ${sch.name}_lastRunDay THEN
               ${sch.name}_hasRun := FALSE;
           END_IF;
@@ -1020,7 +1013,7 @@ class BeckhoffGeneratorContext {
         if (cond) {
           if (cond.runOnce) {
             return expandToNode`
-            // Conditional unit '${cond.name}' (runOnce)
+            // Conditional Control Unit '${cond.name}' (runOnce)
             IF NOT (${this.convertExprToST(cond.condition)}) THEN
                 ${cond.name}_hasRun := FALSE;
             END_IF;
@@ -1039,7 +1032,7 @@ class BeckhoffGeneratorContext {
           `;
           } else {
             return expandToNode`
-            // Conditional unit '${cond.name}'
+            // Conditional Control Unit '${cond.name}'
             IF ${this.convertExprToST(cond.condition)} THEN
                 ${joinToNode(
                   cond.stmts.filter((s) => !isVarDecl(s)),
@@ -1053,10 +1046,9 @@ class BeckhoffGeneratorContext {
           }
         }
 
-        // otherwise it's a regular unit
         const reg = regular.find((u) => u.name === unit.name)!;
         return expandToNode`
-        // Regular unit '${reg.name}'
+        // Control Unit '${reg.name}'
         ${joinToNode(
           reg.stmts.filter((s) => !isVarDecl(s)),
           (stmt) => expandToNode`
@@ -1066,7 +1058,7 @@ class BeckhoffGeneratorContext {
         )}
       `;
       },
-      { appendNewLineIfNotEmpty: true }
+      { appendNewLineIfNotEmpty: true, prefix: "\n" }
     )}
   `);
   }
