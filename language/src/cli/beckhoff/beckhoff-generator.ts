@@ -998,21 +998,39 @@ class BeckhoffGeneratorContext {
 
         const cond = conditional.find((u) => u.name === unit.name);
         if (cond) {
-          return expandToNode`
-          // Conditional unit '${cond.name}'
-          IF ${
-            cond.runOnce ? `NOT ${cond.name}_hasRun AND ` : ``
-          }${this.convertExprToST(cond.condition)} THEN
-              ${joinToNode(
-                cond.stmts,
-                (stmt) => expandToNode`
-                  ${this.convertStatementToST(stmt, 0)}
-              `,
-                { appendNewLineIfNotEmpty: true }
-              )}
-              ${cond.runOnce ? `${cond.name}_hasRun := TRUE;` : ``}
-          END_IF;
-        `;
+          if (cond.runOnce) {
+            return expandToNode`
+            // Conditional unit '${cond.name}' (runOnce)
+            IF NOT ${this.convertExprToST(cond.condition)} THEN
+                ${cond.name}_hasRun := FALSE;
+            END_IF;
+            IF (NOT ${cond.name}_hasRun) AND (${this.convertExprToST(
+              cond.condition
+            )}) THEN
+                ${joinToNode(
+                  cond.stmts,
+                  (stmt) => expandToNode`
+                    ${this.convertStatementToST(stmt, 0)}
+                `,
+                  { appendNewLineIfNotEmpty: true }
+                )}
+                ${cond.name}_hasRun := TRUE;
+            END_IF;
+          `;
+          } else {
+            return expandToNode`
+            // Conditional unit '${cond.name}'
+            IF ${this.convertExprToST(cond.condition)} THEN
+                ${joinToNode(
+                  cond.stmts,
+                  (stmt) => expandToNode`
+                    ${this.convertStatementToST(stmt, 0)}
+                `,
+                  { appendNewLineIfNotEmpty: true }
+                )}
+            END_IF;
+          `;
+          }
         }
 
         // otherwise it's a regular unit

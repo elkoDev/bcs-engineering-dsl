@@ -47,7 +47,6 @@ IF mode <> OperatingMode.OFF THEN
         EXIT;
     END_IF;
 END_WHILE;
-    
 END_IF;
 // Regular unit 'DimLightsGradually'
 FOR i := 0 TO 5 BY 1 DO
@@ -74,8 +73,11 @@ END_CASE;
 IF todNow >= 'TOD#07:00:00' THEN
     Lights_Room2 := TRUE;
 END_IF;
-// Conditional unit 'DelayedStartup'
-IF NOT DelayedStartup_hasRun AND todNow >= 'TOD#07:05:00' THEN
+// Conditional unit 'DelayedStartup' (runOnce)
+IF NOT todNow >= 'TOD#07:05:00' THEN
+    DelayedStartup_hasRun := FALSE;
+END_IF;
+IF (NOT DelayedStartup_hasRun) AND (todNow >= 'TOD#07:05:00') THEN
     // Wait statements are not directly supported in ST - using equivalent timer logic
     heater := TRUE;
     Lights_Room1 := FALSE;
