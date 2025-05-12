@@ -39,13 +39,13 @@ END_IF;
 // Conditional Control Unit 'RetryHeaterStartup'
 IF mode <> OperatingMode.OFF THEN
     WHILE RetryHeaterStartup_retries < 3 DO
-    heater := TRUE;
-    RetryHeaterStartup_retries := RetryHeaterStartup_retries + 1;
-    // Wait statements are not directly supported in ST - using equivalent timer logic
-    IF RetryHeaterStartup_retries = 2 THEN
-        EXIT;
-    END_IF;
-END_WHILE;
+        heater := TRUE;
+        RetryHeaterStartup_retries := RetryHeaterStartup_retries + 1;
+        // Wait statements are not directly supported in ST - using equivalent timer logic
+        IF RetryHeaterStartup_retries = 2 THEN
+            EXIT;
+        END_IF;
+    END_WHILE;
 END_IF;
 
 // Control Unit 'DimLightsGradually'

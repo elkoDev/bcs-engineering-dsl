@@ -996,13 +996,13 @@ class BeckhoffGeneratorContext {
               ${sch.name}_hasRun := FALSE;
           END_IF;
           IF (NOT ${sch.name}_hasRun) AND (todNow >= ${sch.timeLiteral}) THEN
-              ${joinToNode(
-                sch.stmts.filter((s) => !isVarDecl(s)),
-                (stmt) => expandToNode`
-                  ${this.convertStatementToST(stmt, 0)}
-              `,
-                { appendNewLineIfNotEmpty: true }
-              )}
+          ${joinToNode(
+            sch.stmts.filter((s) => !isVarDecl(s)),
+            (stmt) => expandToNode`
+              ${this.convertStatementToST(stmt, 1)}
+          `,
+            { appendNewLineIfNotEmpty: true }
+          )}
               ${sch.name}_hasRun      := TRUE;
               ${sch.name}_lastRunDay := dNow;
           END_IF;
@@ -1020,13 +1020,13 @@ class BeckhoffGeneratorContext {
             IF (NOT ${cond.name}_hasRun) AND (${this.convertExprToST(
               cond.condition
             )}) THEN
-                ${joinToNode(
-                  cond.stmts.filter((s) => !isVarDecl(s)),
-                  (stmt) => expandToNode`
-                    ${this.convertStatementToST(stmt, 0)}
-                `,
-                  { appendNewLineIfNotEmpty: true }
-                )}
+            ${joinToNode(
+              cond.stmts.filter((s) => !isVarDecl(s)),
+              (stmt) => expandToNode`
+                ${this.convertStatementToST(stmt, 1)}
+            `,
+              { appendNewLineIfNotEmpty: true }
+            )}
                 ${cond.name}_hasRun := TRUE;
             END_IF;
           `;
@@ -1034,13 +1034,13 @@ class BeckhoffGeneratorContext {
             return expandToNode`
             // Conditional Control Unit '${cond.name}'
             IF ${this.convertExprToST(cond.condition)} THEN
-                ${joinToNode(
-                  cond.stmts.filter((s) => !isVarDecl(s)),
-                  (stmt) => expandToNode`
-                    ${this.convertStatementToST(stmt, 0)}
-                `,
-                  { appendNewLineIfNotEmpty: true }
-                )}
+            ${joinToNode(
+              cond.stmts.filter((s) => !isVarDecl(s)),
+              (stmt) => expandToNode`
+                ${this.convertStatementToST(stmt, 1)}
+            `,
+              { appendNewLineIfNotEmpty: true }
+            )}
             END_IF;
           `;
           }
