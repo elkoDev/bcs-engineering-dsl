@@ -984,7 +984,7 @@ class BeckhoffGeneratorContext {
           END_IF;
           IF (NOT ${sch.name}_hasRun) AND (todNow >= ${sch.timeLiteral}) THEN
               ${joinToNode(
-                sch.stmts,
+                sch.stmts.filter((s) => !isVarDecl(s)),
                 (stmt) => expandToNode`
                   ${this.convertStatementToST(stmt, 0)}
               `,
@@ -1008,7 +1008,7 @@ class BeckhoffGeneratorContext {
               cond.condition
             )}) THEN
                 ${joinToNode(
-                  cond.stmts,
+                  cond.stmts.filter((s) => !isVarDecl(s)),
                   (stmt) => expandToNode`
                     ${this.convertStatementToST(stmt, 0)}
                 `,
@@ -1022,7 +1022,7 @@ class BeckhoffGeneratorContext {
             // Conditional unit '${cond.name}'
             IF ${this.convertExprToST(cond.condition)} THEN
                 ${joinToNode(
-                  cond.stmts,
+                  cond.stmts.filter((s) => !isVarDecl(s)),
                   (stmt) => expandToNode`
                     ${this.convertStatementToST(stmt, 0)}
                 `,
@@ -1038,7 +1038,7 @@ class BeckhoffGeneratorContext {
         return expandToNode`
         // Regular unit '${reg.name}'
         ${joinToNode(
-          reg.stmts,
+          reg.stmts.filter((s) => !isVarDecl(s)), 
           (stmt) => expandToNode`
             ${this.convertStatementToST(stmt, 0)}
         `,

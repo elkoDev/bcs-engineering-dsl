@@ -38,7 +38,6 @@ IF (NOT TurnOnLightsScheduled_hasRun) AND (todNow >= TOD#06:30:00) THEN
 END_IF;
 // Conditional unit 'RetryHeaterStartup'
 IF mode <> OperatingMode.OFF THEN
-    retries: INT := 0;
     WHILE RetryHeaterStartup_retries < 3 DO
     heater := TRUE;
     RetryHeaterStartup_retries := RetryHeaterStartup_retries + 1;
@@ -84,12 +83,6 @@ IF (NOT DelayedStartup_hasRun) AND (todNow >= 'TOD#07:05:00') THEN
     DelayedStartup_hasRun := TRUE;
 END_IF;
 // Regular unit 'UseDaliLibrary'
-daliAddress: E_DALIAddressType;
-daliPriority: E_DALICommandPriority := E_DALICommandPriority.High;
-addressList: ST_DALIChangeAddressList := (nOldAddress:=1, nNewAddress:=2, nRandomAddress:=3, nErrors:=0);
-status: BOOL;
-resultMessage: I_TcMessage;
-failureStatus: BYTE;
 fB_DALI207QueryFailureStatusInstance3(bStart:=TRUE, nAddress:=1, eAddressType:=UseDaliLibrary_daliAddress, eCommandPriority:=UseDaliLibrary_daliPriority);
 UseDaliLibrary_status := fB_DALI207QueryFailureStatusInstance3.bBusy;
 UseDaliLibrary_status := fB_DALI207QueryFailureStatusInstance3.bError;
@@ -108,7 +101,6 @@ IF f_TRIGInstance7.Q THEN
     Lights_Room2 := FALSE;
 END_IF;
 // Regular unit 'ValidateSensorDistance'
-distance: INT := UltrasonicSensor_Distance;
 IF UltrasonicSensor_Valid THEN
     lightLevel := ValidateSensorDistance_distance;
 END_IF;
