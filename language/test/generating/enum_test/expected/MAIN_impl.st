@@ -1,12 +1,14 @@
-// Initialize code - runs only once
 IF NOT bRunOnlyOnce THEN
-    ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_LOG,  
-             msgFmtStr := 'Program started %s', 
-             strArg := 'successfully!');
+    ADSLOGSTR(
+      msgCtrlMask := ADSLOG_MSGTYPE_LOG,
+      msgFmtStr   := 'Program started %s',
+      strArg      := 'successfully!'
+    );
     bRunOnlyOnce := TRUE;
-END_IF
+END_IF;
 
-// Main program logic
+// Control Unit 'TestUnit'
 IF TestUnit_currentMode = Mode.ECO THEN
+    previousMode := TestUnit_currentMode;
     TestUnit_currentMode := Mode.COMFORT;
 END_IF;

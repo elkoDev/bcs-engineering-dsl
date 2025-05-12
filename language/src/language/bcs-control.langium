@@ -11,7 +11,7 @@ entry ControlModel:
 ;
 
 ImportDecl:
-    'import' 'library' libName=ID ';'
+    'import' 'library' name=ID ';'
 ;
 
 
@@ -36,10 +36,15 @@ Declaration:
     | StructDecl
     | VarDecl
     | FunctionBlockDecl
+    | TypeAlias
 ;
 
 TypeDecl:
-    (isExtern?='extern')? (EnumDecl | StructDecl | FunctionBlockDecl)
+    (isExtern='extern')? (EnumDecl | StructDecl | FunctionBlockDecl | TypeAlias)
+;
+
+TypeAlias:
+    'type' name=ID 'as' primitive=PrimitiveType ';'
 ;
 
 // ---------- ENUM ----------
@@ -66,7 +71,7 @@ StructFieldDecl:
 
 // ---------- FUNCTION BLOCK ----------
 FunctionBlockDecl:
-    'functionblock' name=ID '{'
+    'functionblock' name=ID ('from' libRef=[ImportDecl:ID])?  '{'
         members+=FunctionBlockMember*
     '}'
 ;
@@ -115,7 +120,7 @@ TypeRef:
 // ==========================================================================
 ControlUnit:
     // Future Note: Support on `event` and raise `event` stmt
-    'unit' name=ID (('once'? 'when' '(' condition=Expr ')') | ('at' time=TodLiteral))? Block
+    'unit' name=ID (((isOnce='once')? 'when' '(' condition=Expr ')') | ('at' time=TodLiteral))? Block
 ;
 
 
@@ -306,7 +311,7 @@ Mult infers Expr:
 ;
 
 Primary:
-    'now'   
+    isNow='now'   
   | ParenExpr
   | NegExpr
   | NotExpr

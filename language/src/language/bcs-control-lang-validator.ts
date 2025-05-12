@@ -24,8 +24,10 @@ import {
   isFunctionBlockLogic,
   isFunctionBlockOutputs,
   isPrimary,
+  isRef,
   isStructDecl,
   isStructLiteral,
+  isTypeAlias,
   isVarDecl,
   Primary,
   StructDecl,
@@ -60,6 +62,7 @@ export function registerBCSControlValidationChecks(
     FunctionBlockDecl: [
       validator.checkUniqueVarNamesInFunctionBlock,
       validator.checkSingleBlockSectionsInFunctionBlock,
+      validator.checkRequiredLibraryReferenceForExternFBs,
     ],
     ControlUnit: [
       validator.checkUniqueVarNamesInUnit,
@@ -81,6 +84,19 @@ export function registerBCSControlValidationChecks(
 }
 
 export class BCSControlLangValidator {
+  checkRequiredLibraryReferenceForExternFBs(
+    fb: FunctionBlockDecl,
+    accept: ValidationAcceptor
+  ) {
+    if (fb.isExtern && !fb.libRef) {
+      accept(
+        "error",
+        `Extern function block '${fb.name}' must have a library reference.`,
+        { node: fb, property: "libRef" }
+      );
+    }
+  }
+
   checkToExprType(stmt: ForStmt, accept: ValidationAcceptor) {
     const toExpr = stmt.toExpr;
     if (!toExpr) return;
@@ -310,6 +326,16 @@ export class BCSControlLangValidator {
       const paramDecl = getInputs(fb).find((i) => i.name === inputVarName);
       const expectedType = this.inferVarDeclType(paramDecl);
       const actualType = this.inferType(arg.value, accept);
+
+      // Check for struct type misuse
+      if (isRef(arg.value) && isStructDecl(arg.value.ref.ref)) {
+        accept(
+          "error",
+          `Cannot use struct declaration '${arg.value.ref?.ref.name}' as a value for input '${inputVarName}'.`,
+          { node: arg.value }
+        );
+        continue;
+      }
 
       if (
         expectedType &&
@@ -1067,6 +1093,9 @@ export class BCSControlLangValidator {
       }
       if (isStructDecl(typeDecl)) {
         baseType = `STRUCT:${typeDecl.name}`;
+      }
+      if (isTypeAlias(typeDecl)) {
+        baseType = typeDecl.primitive;
       }
     }
 
