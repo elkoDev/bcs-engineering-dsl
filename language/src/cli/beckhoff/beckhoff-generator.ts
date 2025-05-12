@@ -959,7 +959,7 @@ class BeckhoffGeneratorContext {
             )}
             bRunOnlyOnce: BOOL := FALSE;${
               usesBoilerplate
-                ? expandToNode`
+                ? expandToNode`\n
             fbLocalTime: FB_LocalSystemTime := (
               sNetID := '',
               bEnable := TRUE,
@@ -1068,10 +1068,12 @@ class BeckhoffGeneratorContext {
 
     // Emit init code only if needed
     let boilerplateInit = usesBoilerplate
-      ? `fbLocalTime();\ntimeNow := fbLocalTime.systemTime;\ntodNow := SYSTEMTIME_TO_TOD(timeNow);\ndNow := DT_TO_DATE(SYSTEMTIME_TO_DT(timeNow));\n`
+      ? `fbLocalTime();\ntimeNow := fbLocalTime.systemTime;\ntodNow := SYSTEMTIME_TO_TOD(timeNow);\ndNow := DT_TO_DATE(SYSTEMTIME_TO_DT(timeNow));`
       : "";
 
-    return `IF NOT bRunOnlyOnce THEN\n    ADSLOGSTR(\n      msgCtrlMask := ADSLOG_MSGTYPE_LOG,\n      msgFmtStr   := 'Program started %s',\n      strArg      := 'successfully!'\n    );\n    bRunOnlyOnce := TRUE;\nEND_IF;${boilerplateInit}\n${mainBody}`;
+    return `IF NOT bRunOnlyOnce THEN\n    ADSLOGSTR(\n      msgCtrlMask := ADSLOG_MSGTYPE_LOG,\n      msgFmtStr   := 'Program started %s',\n      strArg      := 'successfully!'\n    );\n    bRunOnlyOnce := TRUE;\nEND_IF;${
+      boilerplateInit.length == 0 ? "" : "\n"
+    }${boilerplateInit}\n${mainBody}`;
   }
 
   extractHardwareDatapoints(): HardwareDatapointsResult {

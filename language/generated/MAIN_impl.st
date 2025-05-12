@@ -11,7 +11,6 @@ timeNow := fbLocalTime.systemTime;
 todNow := SYSTEMTIME_TO_TOD(timeNow);
 dNow := DT_TO_DATE(SYSTEMTIME_TO_DT(timeNow));
 
-
 // Control Unit 'ToggleLightsOnButtonPress'
 r_TRIGInstance5(CLK := Buttons_Room1);
 IF r_TRIGInstance5.Q THEN
