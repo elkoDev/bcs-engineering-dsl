@@ -70,14 +70,14 @@ CASE mode OF
         lightLevel := 0;
 END_CASE;
 // Regular unit 'MorningPresenceCheck'
-IF todNow >= 'TOD#07:00:00' THEN
+IF todNow >= TOD#07:00:00 THEN
     Lights_Room2 := TRUE;
 END_IF;
 // Conditional unit 'DelayedStartup' (runOnce)
-IF NOT todNow >= 'TOD#07:05:00' THEN
+IF NOT (todNow >= TOD#07:05:00) THEN
     DelayedStartup_hasRun := FALSE;
 END_IF;
-IF (NOT DelayedStartup_hasRun) AND (todNow >= 'TOD#07:05:00') THEN
+IF (NOT DelayedStartup_hasRun) AND (todNow >= TOD#07:05:00) THEN
     // Wait statements are not directly supported in ST - using equivalent timer logic
     heater := TRUE;
     Lights_Room1 := FALSE;

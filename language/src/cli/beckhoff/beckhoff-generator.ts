@@ -293,7 +293,14 @@ class BeckhoffGeneratorContext {
   }
 
   primitiveToST(val: any): string {
-    if (typeof val === "string") return `'${val.replaceAll('"', "")}'`;
+    if (typeof val === "string") {
+      const isTodString = RegExp(/TOD#[0-9:]+/).exec(val);
+      if (isTodString) {
+        return val;
+      } else {
+        return `'${val.replaceAll('"', "")}'`;
+      }
+    }
     if (typeof val === "boolean") return val ? "TRUE" : "FALSE";
     if (val !== undefined) return val.toString();
     return "";
@@ -1014,7 +1021,7 @@ class BeckhoffGeneratorContext {
           if (cond.runOnce) {
             return expandToNode`
             // Conditional unit '${cond.name}' (runOnce)
-            IF NOT ${this.convertExprToST(cond.condition)} THEN
+            IF NOT (${this.convertExprToST(cond.condition)}) THEN
                 ${cond.name}_hasRun := FALSE;
             END_IF;
             IF (NOT ${cond.name}_hasRun) AND (${this.convertExprToST(
