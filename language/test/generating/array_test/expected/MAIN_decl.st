@@ -17,6 +17,6 @@ VAR
     TestArrayOperations_resultArray2: ARRAY [0..4] OF INT;
     i: INT := 0;
     j: INT := 0;
-    arrayTestFBInstance: ArrayTestFB; (* Function block instance *)
+    arrayTestFBInstance1: ArrayTestFB; (* Function block instance *)
     bRunOnlyOnce: BOOL := FALSE;
 END_VAR

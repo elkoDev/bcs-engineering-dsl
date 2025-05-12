@@ -76,7 +76,7 @@ describe("Beckhoff Generator Tests", () => {
   // Clean up output directory after tests
   afterAll(() => {
     if (fs.existsSync(TEST_OUTPUT_DIR)) {
-      fs.rmSync(TEST_OUTPUT_DIR, { recursive: true, force: true });
+      //fs.rmSync(TEST_OUTPUT_DIR, { recursive: true, force: true });
     }
   });
 
@@ -520,6 +520,79 @@ describe("Beckhoff Generator Tests", () => {
       expectedFilePath: path.join(expectedDir, "NestedControlsFB_impl.st"),
     });
 
+    compareGeneratedWithExpected({
+      generatedFilePath: path.join(outputDir, "MAIN_decl.st"),
+      expectedFilePath: path.join(expectedDir, "MAIN_decl.st"),
+    });
+
+    compareGeneratedWithExpected({
+      generatedFilePath: path.join(outputDir, "MAIN_impl.st"),
+      expectedFilePath: path.join(expectedDir, "MAIN_impl.st"),
+    });
+  });
+
+  test("Generate library call correctly", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    // Test case directories
+    const testCaseName = "library_call_test";
+    const { inputDir, expectedDir, outputDir } =
+      setupTestDirectories(testCaseName);
+
+    // Parse the test files
+    const [controlModel, hardwareModels] =
+      await extractControlModelWithHardwareModels(
+        path.join(inputDir, "library_call_test.bcsctrl"),
+        services.bcsControl
+      );
+
+    // Generate code
+    const result = generateBeckhoffCode(
+      controlModel,
+      hardwareModels[0],
+      outputDir
+    );
+
+    // Verify the generated files
+    expect(Object.keys(result.csharpStrings).length).toBe(1);
+
+    // Compare each expected file with the generated file
+    compareGeneratedWithExpected({
+      generatedFilePath: path.join(outputDir, "MAIN_decl.st"),
+      expectedFilePath: path.join(expectedDir, "MAIN_decl.st"),
+    });
+
+    compareGeneratedWithExpected({
+      generatedFilePath: path.join(outputDir, "MAIN_impl.st"),
+      expectedFilePath: path.join(expectedDir, "MAIN_impl.st"),
+    });
+  });
+
+  test("Generate scheduled and conditional units correctly", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    // Test case directories
+    const testCaseName = "when_test";
+    const { inputDir, expectedDir, outputDir } =
+      setupTestDirectories(testCaseName);
+
+    // Parse the test files
+    const [controlModel, hardwareModels] =
+      await extractControlModelWithHardwareModels(
+        path.join(inputDir, "when_test.bcsctrl"),
+        services.bcsControl
+      );
+
+    // Generate code
+    const result = generateBeckhoffCode(
+      controlModel,
+      hardwareModels[0],
+      outputDir
+    );
+
+    expect(Object.keys(result.csharpStrings).length).toBe(1);
+
+    // Compare each expected file with the generated file
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "MAIN_decl.st"),
       expectedFilePath: path.join(expectedDir, "MAIN_decl.st"),

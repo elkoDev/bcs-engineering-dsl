@@ -1,0 +1,44 @@
+// A library call test file
+import library Tc3_DALI;
+
+extern type BYTE as INT;
+extern enum E_DALIAddressType { Short, Group, Broadcast, BroadcastUnaddr }
+extern enum E_DALICommandPriority { High, MiddleHigh, Middle, MiddleLow, Low, Unknown }
+extern struct I_TcMessage {
+    dummy : BOOL // Placeholder for actual message structure
+}
+
+extern functionblock FB_DALI102DirectArcPowerControl from Tc3_DALI {
+    inputs {
+        var bStart : BOOL;
+        var nAddress : BYTE;
+        var eAddressType : E_DALIAddressType;
+        var eCommandPriority : E_DALICommandPriority;
+        var nArcPowerLevel : BYTE;    
+    }
+    outputs {
+        var bError : BOOL;
+        var ipResultMessage : I_TcMessage;
+        var bBusy : BOOL;
+    }
+}
+
+control LibraryCallTestController {
+    unit TestDaliLight {
+        var hasError : BOOL;
+        var resultMessage : I_TcMessage;
+        var isBusy : BOOL;
+
+        use FB_DALI102DirectArcPowerControl(
+            bStart: true,
+            nAddress: 0,
+            eAddressType: E_DALIAddressType.Short,
+            eCommandPriority: E_DALICommandPriority.High, 
+            nArcPowerLevel: 100
+        ) -> {
+            bError: hasError,
+            ipResultMessage: resultMessage,
+            bBusy: isBusy
+        };
+    }
+}

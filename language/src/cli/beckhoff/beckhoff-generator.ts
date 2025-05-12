@@ -54,6 +54,13 @@ import {
   getLogic,
 } from "../../language/utils/function-block-utils.js";
 import { Reference } from "langium";
+import {
+  ConditionalControlUnit,
+  detectDaliComType,
+  extractControlUnits,
+  RegularControlUnit,
+  ScheduledControlUnit,
+} from "./beckhoff-utils.js";
 
 // Helper function to check if a node is a primitive value
 function isPrimitive(expr: Primary): boolean {
@@ -107,13 +114,30 @@ function translateOperator(op: string): string {
   }
 }
 
+interface FBInstanceInfo {
+  instanceName: string;
+  fbType: string;
+}
+
+interface HardwareDatapoint {
+  name: string;
+  type: string;
+  ioBinding: string;
+}
+
+interface HardwareDatapointsResult {
+  inputs: HardwareDatapoint[];
+  outputs: HardwareDatapoint[];
+}
+
 class BeckhoffGeneratorContext {
-  hardwareChannelFlatNames: Set<string>;
-  usedInstanceNames: Set<string>;
-  edgeDetectionInstanceMap: Map<string, string>;
   controlModel: ControlModel;
   hardwareModel: HardwareModel;
   destination: string;
+
+  hardwareChannelFlatNames: Set<string>;
+  fbInstanceMap: Map<any, FBInstanceInfo>; // Key: UseStmt or edge key, Value: FBInstanceInfo
+  fbInstanceCounter: number;
 
   constructor(
     controlModel: ControlModel,
@@ -124,8 +148,62 @@ class BeckhoffGeneratorContext {
     this.hardwareModel = hardwareModel;
     this.destination = destination;
     this.hardwareChannelFlatNames = new Set();
-    this.usedInstanceNames = new Set();
-    this.edgeDetectionInstanceMap = new Map();
+    this.fbInstanceMap = new Map();
+    this.fbInstanceCounter = 1;
+    // Removed addRequiredAdditionalFBInstances from constructor
+  }
+
+  // Generate a globally unique FB instance name
+  createUniqueFBInstanceName(fbType: string): string {
+    const name = `${fbType.charAt(0).toLowerCase()}${fbType.slice(1)}Instance${
+      this.fbInstanceCounter
+    }`;
+    this.fbInstanceCounter++;
+    return name;
+  }
+
+  // Assign or get a unique FB instance for a UseStmt
+  getOrAssignFBInstance(useStmt: UseStmt): FBInstanceInfo {
+    if (this.fbInstanceMap.has(useStmt)) {
+      return this.fbInstanceMap.get(useStmt)!;
+    }
+    const fbType = useStmt.functionBlockRef.ref?.name ?? "UNKNOWN_FB";
+    const instanceName = this.createUniqueFBInstanceName(fbType);
+    const info: FBInstanceInfo = { instanceName, fbType };
+    this.fbInstanceMap.set(useStmt, info);
+    return info;
+  }
+
+  // Assign or get a unique FB instance for edge detection
+  getOrAssignEdgeFBInstance(
+    stmt: Statement,
+    type: "rising" | "falling",
+    fbType: string
+  ): FBInstanceInfo {
+    if (this.fbInstanceMap.has(stmt)) {
+      return this.fbInstanceMap.get(stmt)!;
+    }
+    const instanceName = this.createUniqueFBInstanceName(fbType);
+    const info: FBInstanceInfo = { instanceName, fbType };
+    this.fbInstanceMap.set(stmt, info);
+    return info;
+  }
+
+  // Get all instance declarations for main program
+  getAllFBInstanceDeclarations(): Array<{
+    instanceName: string;
+    fbType: string;
+  }> {
+    // Use a Set to avoid duplicates if the same instance is referenced by multiple keys
+    const seen = new Set<string>();
+    const result: Array<{ instanceName: string; fbType: string }> = [];
+    for (const { instanceName, fbType } of this.fbInstanceMap.values()) {
+      if (!seen.has(instanceName)) {
+        seen.add(instanceName);
+        result.push({ instanceName, fbType });
+      }
+    }
+    return result;
   }
 
   getQualifiedReferenceName(ref: Reference<NamedElement>): string {
@@ -144,7 +222,8 @@ class BeckhoffGeneratorContext {
     return "UNKNOWN_EXPR";
   }
 
-  private convertPrimaryExprToST(expr: any): string {
+  private convertPrimaryExprToST(expr: Primary): string {
+    if (expr.isNow) return "todNow";
     if (isRef(expr)) return this.handleRefExpr(expr);
     if (isParenExpr(expr)) return this.handleParenExpr(expr);
     if (isNegExpr(expr)) return this.handleNegExpr(expr);
@@ -171,7 +250,9 @@ class BeckhoffGeneratorContext {
     // For multi-dimensional arrays, we need to flatten the array elements
     const flatElements = expr.val.elements.flatMap((e: any) => {
       if (isPrimary(e) && isArrayLiteral(e.val)) {
-        return e.val.elements.map((nestedE: any) => this.convertExprToST(nestedE));
+        return e.val.elements.map((nestedE: any) =>
+          this.convertExprToST(nestedE)
+        );
       }
       return [this.convertExprToST(e)];
     });
@@ -186,7 +267,9 @@ class BeckhoffGeneratorContext {
 
   private handleBinExpr(expr: any): string {
     const op = translateOperator(expr.op);
-    return `${this.convertExprToST(expr.e1)} ${op} ${this.convertExprToST(expr.e2)}`;
+    return `${this.convertExprToST(expr.e1)} ${op} ${this.convertExprToST(
+      expr.e2
+    )}`;
   }
 
   handleRefExpr(expr: Ref): string {
@@ -210,19 +293,20 @@ class BeckhoffGeneratorContext {
   }
 
   primitiveToST(val: any): string {
-    if (typeof val === "string") return `'${val.replaceAll('"', "")}'`;
+    if (typeof val === "string") {
+      const isTodString = RegExp(/TOD#[0-9:]+/).exec(val);
+      if (isTodString) {
+        return val;
+      } else {
+        return `'${val.replaceAll('"', "")}'`;
+      }
+    }
     if (typeof val === "boolean") return val ? "TRUE" : "FALSE";
     if (val !== undefined) return val.toString();
     return "";
   }
 
-  convertStatementToST(
-    stmt: Statement,
-    edgeMetadata?: [string, number],
-    indent: number = 0,
-    fbInstanceTracker?: Map<string, Map<number, string>>,
-    mainStatements?: Statement[]
-  ): string {
+  convertStatementToST(stmt: Statement, indent: number = 0): string {
     const pad = (level: number) => "    ".repeat(level);
     if (isAssignmentStmt(stmt))
       return (
@@ -244,11 +328,9 @@ class BeckhoffGeneratorContext {
     if (isContinueStmt(stmt)) return pad(indent) + `CONTINUE;`;
     if (isExpressionStmt(stmt))
       return pad(indent) + `${this.convertExprToST(stmt.expr)};`;
-    if (isUseStmt(stmt)) return this.stUse(stmt, indent, fbInstanceTracker);
-    if (isOnRisingEdgeStmt(stmt))
-      return this.stEdge(stmt, edgeMetadata, indent, true, mainStatements);
-    if (isOnFallingEdgeStmt(stmt))
-      return this.stEdge(stmt, edgeMetadata, indent, false, mainStatements);
+    if (isUseStmt(stmt)) return this.stUse(stmt, indent);
+    if (isOnRisingEdgeStmt(stmt)) return this.stEdge(stmt, indent, true);
+    if (isOnFallingEdgeStmt(stmt)) return this.stEdge(stmt, indent, false);
     if (isVarDecl(stmt))
       return (
         pad(indent) +
@@ -267,7 +349,7 @@ class BeckhoffGeneratorContext {
       pad(indent) + `IF ${this.convertExprToST(stmt.condition)} THEN\n`;
     result +=
       stmt.stmts
-        .map((s: any) => this.convertStatementToST(s, undefined, indent + 1))
+        .map((s: any) => this.convertStatementToST(s, indent + 1))
         .join("\n") + "\n";
     for (const elseIfStmt of stmt.elseIfStmts) {
       result +=
@@ -275,14 +357,14 @@ class BeckhoffGeneratorContext {
         `ELSIF ${this.convertExprToST(elseIfStmt.condition)} THEN\n`;
       result +=
         elseIfStmt.stmts
-          .map((s: any) => this.convertStatementToST(s, undefined, indent + 1))
+          .map((s: any) => this.convertStatementToST(s, indent + 1))
           .join("\n") + "\n";
     }
     if (stmt.elseStmt) {
       result += pad(indent) + `ELSE\n`;
       result +=
         (stmt.elseStmt.stmts || [])
-          .map((s: any) => this.convertStatementToST(s, undefined, indent + 1))
+          .map((s: any) => this.convertStatementToST(s, indent + 1))
           .join("\n") + "\n";
     }
     result += pad(indent) + `END_IF;`;
@@ -291,10 +373,13 @@ class BeckhoffGeneratorContext {
 
   stWhile(stmt: WhileStmt, indent: number): string {
     const pad = (level: number) => "    ".repeat(level);
-    let result = `${pad(indent)}WHILE ${this.convertExprToST(stmt.condition)} DO\n`;
-    result += stmt.stmts
-      .map((subStmt: any) => this.convertStatementToST(subStmt, undefined, indent + 1))
-      .join("\n") + "\n";
+    let result = `${pad(indent)}WHILE ${this.convertExprToST(
+      stmt.condition
+    )} DO\n`;
+    result +=
+      stmt.stmts
+        .map((subStmt: any) => this.convertStatementToST(subStmt, indent + 1))
+        .join("\n") + "\n";
     result += `${pad(indent)}END_WHILE;`;
     return result;
   }
@@ -308,7 +393,7 @@ class BeckhoffGeneratorContext {
     } DO\n`;
     result +=
       stmt.stmts
-        .map((s: any) => this.convertStatementToST(s, undefined, indent + 1))
+        .map((s: any) => this.convertStatementToST(s, indent + 1))
         .join("\n") + "\n";
     result += `${pad(indent)}END_FOR;`;
     return result;
@@ -326,179 +411,106 @@ class BeckhoffGeneratorContext {
         )
         .join(", ");
       result += `${pad(indent + 1)}${literals}:\n`;
-      result += caseOption.stmts
-        .map((subStmt: any) => this.convertStatementToST(subStmt, undefined, indent + 2))
-        .join("\n") + "\n";
+      result +=
+        caseOption.stmts
+          .map((subStmt: any) => this.convertStatementToST(subStmt, indent + 2))
+          .join("\n") + "\n";
     }
     if (stmt.default) {
       result += `${pad(indent + 1)}ELSE\n`;
-      result += stmt.default.stmts
-        .map((subStmt: any) => this.convertStatementToST(subStmt, undefined, indent + 2))
-        .join("\n") + "\n";
+      result +=
+        stmt.default.stmts
+          .map((subStmt: any) => this.convertStatementToST(subStmt, indent + 2))
+          .join("\n") + "\n";
     }
     result += `${pad(indent)}END_CASE;`;
     return result;
   }
 
-  stUse(
-    stmt: any,
-    indent: number,
-    fbInstanceTracker?: Map<string, Map<number, string>>
-  ): string {
-    if (fbInstanceTracker) {
-      return this.convertUseStmtToST(stmt, fbInstanceTracker);
+  stUse(stmt: UseStmt, indent: number): string {
+    const pad = (level: number) => "    ".repeat(level);
+    let useContent = "";
+    const { instanceName } = this.getOrAssignFBInstance(stmt);
+    const inputMappings = stmt.inputArgs
+      .map(
+        (arg) => `${arg.inputVar.ref?.name}:=${this.convertExprToST(arg.value)}`
+      )
+      .join(", ");
+    // Handle output mapping
+    if (stmt.useOutput.singleOutput) {
+      // Get the FB's only output variable name
+      const fb = stmt.functionBlockRef.ref;
+      const outputs = fb ? getOutputs(fb) : [];
+      const fbOutputVarName = outputs.length === 1 ? outputs[0].name : "output";
+      const targetOutputVarRef = stmt.useOutput.singleOutput.targetOutputVar;
+      const targetOutputVarName =
+        this.getQualifiedReferenceName(targetOutputVarRef);
+      useContent += `${pad(indent)}${instanceName}(${inputMappings});\n`;
+      useContent += `${pad(
+        indent
+      )}${targetOutputVarName} := ${instanceName}.${fbOutputVarName};\n`;
+    } else if (stmt.useOutput.mappingOutputs.length > 0) {
+      useContent += `${pad(indent)}${instanceName}(${inputMappings});\n`;
+      for (const outMapping of stmt.useOutput.mappingOutputs) {
+        const targetOutputVarRef = outMapping.targetOutputVar;
+        const targetOutputVarName =
+          this.getQualifiedReferenceName(targetOutputVarRef);
+        const fbOutputVarName = outMapping.fbOutputVar.ref?.name ?? "output";
+        useContent += `${pad(
+          indent
+        )}${targetOutputVarName} := ${instanceName}.${fbOutputVarName};\n`;
+      }
+    } else {
+      useContent += `${pad(indent)}${instanceName}(${inputMappings});\n`;
     }
-    return this.convertStatementToST(stmt, undefined, indent);
+    return useContent;
   }
 
-  stEdge(
-    stmt: any,
-    edgeMetadata: [string, number] | undefined,
-    indent: number,
-    rising: boolean,
-    mainStatements?: Statement[]
-  ): string {
+  stEdge(stmt: any, indent: number, rising: boolean): string {
     const type = rising ? "rising" : "falling";
-    const edgeStatements = (mainStatements ?? []).filter(
-      rising ? isOnRisingEdgeStmt : isOnFallingEdgeStmt
-    );
-    const statementIndex = edgeStatements.indexOf(stmt);
-    if (statementIndex !== -1) {
-      return this.convertEdgeDetectionToST(stmt, statementIndex, type, indent);
-    }
-    return this.convertStatementToST(stmt, edgeMetadata, indent);
+    return this.convertEdgeDetectionToST(stmt, type, indent);
   }
 
   convertEdgeDetectionToST(
     stmt: Statement,
-    index: number,
     type: "rising" | "falling",
     indent: number = 0
   ): string {
     const pad = (level: number) => "    ".repeat(level);
     if (type === "rising" && isOnRisingEdgeStmt(stmt)) {
       const signalExpr = this.convertExprToST(stmt.signal);
-      const key = `${type}_${signalExpr}_${index}`;
-      const instanceName = this.edgeDetectionInstanceMap.get(key);
-      if (!instanceName) {
-        console.warn(`Could not find instance name for rising edge: ${key}`);
-        return "// ERROR: Missing edge detection instance";
-      }
-      let risingContent = `${pad(
-        indent
-      )}// Rising edge detection for ${signalExpr}\n`;
+      const { instanceName } = this.getOrAssignEdgeFBInstance(
+        stmt,
+        "rising",
+        "R_TRIG"
+      );
+      let risingContent = `${pad(indent)}`;
       risingContent += `${pad(indent)}${instanceName}(CLK := ${signalExpr});\n`;
       risingContent += `${pad(indent)}IF ${instanceName}.Q THEN\n`;
       for (const subStmt of stmt.stmts) {
-        risingContent +=
-          this.convertStatementToST(subStmt, undefined, indent + 1) + "\n";
+        risingContent += this.convertStatementToST(subStmt, indent + 1) + "\n";
       }
       risingContent += `${pad(indent)}END_IF;`;
       return risingContent;
     } else if (type === "falling" && isOnFallingEdgeStmt(stmt)) {
       const signalExpr = this.convertExprToST(stmt.signal);
-      const key = `${type}_${signalExpr}_${index}`;
-      const instanceName = this.edgeDetectionInstanceMap.get(key);
-      if (!instanceName) {
-        console.warn(`Could not find instance name for falling edge: ${key}`);
-        return "// ERROR: Missing edge detection instance";
-      }
-      let fallingContent = `${pad(
-        indent
-      )}// Falling edge detection for ${signalExpr}\n`;
+      const { instanceName } = this.getOrAssignEdgeFBInstance(
+        stmt,
+        "falling",
+        "F_TRIG"
+      );
+      let fallingContent = `${pad(indent)}`;
       fallingContent += `${pad(
         indent
       )}${instanceName}(CLK := ${signalExpr});\n`;
       fallingContent += `${pad(indent)}IF ${instanceName}.Q THEN\n`;
       for (const subStmt of stmt.stmts) {
-        fallingContent +=
-          this.convertStatementToST(subStmt, undefined, indent + 1) + "\n";
+        fallingContent += this.convertStatementToST(subStmt, indent + 1) + "\n";
       }
       fallingContent += `${pad(indent)}END_IF;`;
       return fallingContent;
     }
     return "// Error: Invalid edge detection statement";
-  }
-
-  convertUseStmtToST(
-    stmt: UseStmt,
-    fbInstanceTracker: Map<string, Map<number, string>>
-  ): string {
-    let useContent = "";
-
-    // Get the function block type
-    const fbType = stmt.functionBlockRef.ref?.name ?? "UNKNOWN_FB";
-
-    // Find the instances map for this FB type
-    const instanceMap = fbInstanceTracker.get(fbType);
-
-    if (!instanceMap) {
-      console.warn(`No instance map found for FB type: ${fbType}`);
-      return "// ERROR: Missing function block instance tracking";
-    }
-
-    // Find all existing use statements of this type to determine the index
-    const fbTypeInstances = Array.from(instanceMap.entries());
-
-    // Find the appropriate instance - use the pre-assigned instance name
-    // We're finding the first instance that hasn't been used yet
-    let fbInstanceName = "";
-    for (const [_, name] of fbTypeInstances) {
-      if (!this.usedInstanceNames.has(`used_${fbType}_${name}`)) {
-        fbInstanceName = name;
-        // Mark this specific instance as used
-        this.usedInstanceNames.add(`used_${fbType}_${name}`);
-        break;
-      }
-    }
-
-    // If no unused instance found, use the first one (fallback)
-    if (!fbInstanceName && fbTypeInstances.length > 0) {
-      fbInstanceName = fbTypeInstances[0][1];
-    }
-
-    // If still no instance, create a new one (emergency fallback)
-    if (!fbInstanceName) {
-      fbInstanceName = `${fbType.charAt(0).toLowerCase()}${fbType.slice(
-        1
-      )}Instance`;
-      console.warn(`Using emergency fallback instance: ${fbInstanceName}`);
-    }
-
-    // Map inputs
-    const inputMappings = stmt.inputArgs
-      .map((arg) => {
-        return `${arg.inputVar.ref?.name}:=${this.convertExprToST(arg.value)}`;
-      })
-      .join(", ");
-
-    // Handle output mapping
-    if (stmt.useOutput.singleOutput) {
-      const targetOutputVarRef = stmt.useOutput.singleOutput.targetOutputVar;
-      const targetOutputVarName =
-        this.getQualifiedReferenceName(targetOutputVarRef);
-
-      // Using direct access for single output case, which returns directly from FB call
-      useContent += `${fbInstanceName} := ${fbType}(${inputMappings});\n`;
-      useContent += `${targetOutputVarName} := ${fbInstanceName};`;
-    } else if (stmt.useOutput.mappingOutputs.length > 0) {
-      // First initialize the instance with input values
-      useContent += `${fbInstanceName}(${inputMappings});\n`;
-
-      // Map outputs from instance properties
-      for (const outMapping of stmt.useOutput.mappingOutputs) {
-        const targetOutputVarRef = outMapping.targetOutputVar;
-        const targetOutputVarName =
-          this.getQualifiedReferenceName(targetOutputVarRef);
-
-        const fbOutputVarName = outMapping.fbOutputVar.ref?.name ?? "output";
-        useContent += `${targetOutputVarName} := ${fbInstanceName}.${fbOutputVarName};\n`;
-      }
-    } else {
-      useContent += `${fbInstanceName}(${inputMappings});\n`;
-    }
-
-    return useContent;
   }
 
   generateBeckhoffArtifacts(): string[] {
@@ -507,7 +519,6 @@ class BeckhoffGeneratorContext {
     const files: string[] = [];
 
     for (const item of this.controlModel.controlBlock.items) {
-      // Skip items marked as extern
       if (isEnumDecl(item) || isStructDecl(item) || isFunctionBlockDecl(item)) {
         if (item.isExtern) continue;
       }
@@ -647,7 +658,7 @@ class BeckhoffGeneratorContext {
     // Write implementation file
     const implFilePath = path.join(this.destination, `${fbDecl.name}_impl.st`);
     const implContent = (logic?.stmts || [])
-      .map((stmt) => this.convertStatementToST(stmt, undefined, 0).trimEnd())
+      .map((stmt) => this.convertStatementToST(stmt, 0).trimEnd())
       .join("\n");
     fs.writeFileSync(implFilePath, implContent);
     files.push(implFilePath);
@@ -675,7 +686,10 @@ class BeckhoffGeneratorContext {
     }
   }
 
-  private handleForLoopVar(stmt: any, found: Map<string, { type: string; init?: Expr }>) {
+  private handleForLoopVar(
+    stmt: any,
+    found: Map<string, { type: string; init?: Expr }>
+  ) {
     if (!found.has(stmt.loopVar.name)) {
       found.set(stmt.loopVar.name, {
         type: stmt.loopVar.typeRef.type ?? "INT",
@@ -685,7 +699,10 @@ class BeckhoffGeneratorContext {
     this.collectLoopVars(stmt.stmts, found);
   }
 
-  private handleIfLoopVar(stmt: any, found: Map<string, { type: string; init?: Expr }>) {
+  private handleIfLoopVar(
+    stmt: any,
+    found: Map<string, { type: string; init?: Expr }>
+  ) {
     this.collectLoopVars(stmt.stmts, found);
     for (const elseIf of stmt.elseIfStmts) {
       this.collectLoopVars(elseIf.stmts, found);
@@ -695,7 +712,10 @@ class BeckhoffGeneratorContext {
     }
   }
 
-  private handleSwitchLoopVar(stmt: any, found: Map<string, { type: string; init?: Expr }>) {
+  private handleSwitchLoopVar(
+    stmt: any,
+    found: Map<string, { type: string; init?: Expr }>
+  ) {
     for (const c of stmt.cases) {
       this.collectLoopVars(c.stmts, found);
     }
@@ -705,15 +725,15 @@ class BeckhoffGeneratorContext {
   }
 
   writeProgramMain(): string {
-    this.usedInstanceNames.clear();
-    this.edgeDetectionInstanceMap.clear();
+    this.fbInstanceMap.clear();
+    this.fbInstanceCounter = 1;
+    this.addRequiredAdditionalFBInstances();
 
     const mainVars: EmittedVarDecl[] = [];
-    const fbInstancesMap = new Map<string, string>();
-    const fbInstanceTracker = new Map<string, Map<number, string>>();
     const mainStatements: Statement[] = [];
 
-    this.processControlUnits(mainVars, fbInstancesMap, fbInstanceTracker, mainStatements);
+    this.collectGlobalVarDecls(mainVars);
+    this.processControlUnits(mainVars, mainStatements);
 
     const loopVars = new Map<string, { type: string; init?: Expr }>();
     this.collectLoopVars(mainStatements, loopVars);
@@ -728,23 +748,45 @@ class BeckhoffGeneratorContext {
       ...outputs.map((o) => o.name),
     ]);
 
-    const edgeDetectionFBMap = new Map<string, string>();
-    this.assignEdgeDetectionInstances(mainStatements, edgeDetectionFBMap);
+    this.assignEdgeDetectionInstances(mainStatements);
+    const fbInstanceDecls = this.getAllFBInstanceDeclarations();
+    const { scheduled, conditional, regular } = extractControlUnits(
+      this.controlModel
+    );
 
-    const declContent = this.generateMainDeclContent(inputs, outputs, mainVars, loopVarsToDeclare, fbInstancesMap, edgeDetectionFBMap);
-    const implContent = this.generateMainImplContent(mainStatements, fbInstanceTracker);
+    // --- Patch: generate impl first, check for usage, then generate decl ---
+    let implContent = this.generateMainImplContent(
+      scheduled,
+      conditional,
+      regular
+    );
+    // Check if any of the boilerplate variables are used
+    const boilerplateVars = ["fbLocalTime", "timeNow", "todNow", "dNow"];
+    const usesBoilerplate = boilerplateVars.some((v) =>
+      implContent.includes(v)
+    );
+
+    // Patch declContent to only include boilerplate if used
+    const declContent = this.generateMainDeclContent(
+      inputs,
+      outputs,
+      mainVars,
+      loopVarsToDeclare,
+      fbInstanceDecls,
+      scheduled,
+      conditional,
+      usesBoilerplate // pass as extra arg
+    );
 
     const declFilePath = path.join(this.destination, `MAIN_decl.st`);
     fs.writeFileSync(declFilePath, declContent);
     const implFilePath = path.join(this.destination, `MAIN_impl.st`);
-    fs.writeFileSync(implFilePath, implContent);
+    fs.writeFileSync(implFilePath, implContent.trimEnd());
     return implFilePath;
   }
 
   private processControlUnits(
     mainVars: EmittedVarDecl[],
-    fbInstancesMap: Map<string, string>,
-    fbInstanceTracker: Map<string, Map<number, string>>,
     mainStatements: Statement[]
   ) {
     for (const item of this.controlModel.controlBlock.items) {
@@ -752,105 +794,95 @@ class BeckhoffGeneratorContext {
       const controlUnit = item;
       mainStatements.push(...controlUnit.stmts);
       this.addVarDeclsFromControlUnit(controlUnit, mainVars);
-      this.assignFBInstancesFromControlUnit(controlUnit, fbInstancesMap, fbInstanceTracker);
+      this.assignFBInstancesFromControlUnit(controlUnit);
     }
   }
 
-  private addVarDeclsFromControlUnit(controlUnit: ControlUnit, mainVars: EmittedVarDecl[]) {
-    const varDecls = controlUnit.stmts.filter(isVarDecl);
-    mainVars.push(
-      ...varDecls.map((varDecl) => new EmittedVarDecl(controlUnit, varDecl))
+  private addRequiredAdditionalFBInstances() {
+    // Check if any extern function block from Tc3_DALI is used
+    const hasExternDaliFB = this.controlModel.externTypeDecls.some(
+      (item) =>
+        isFunctionBlockDecl(item) &&
+        item.isExtern &&
+        item.name.startsWith("FB_DALI")
+    );
+    if (!hasExternDaliFB) return;
+
+    // Try to detect the DALI communication FB type from hardware
+    const daliComType = detectDaliComType(this.hardwareModel);
+    if (!daliComType) {
+      throw new Error(
+        "DALI communication moduleType not found in hardware. Please declare a portgroup with a supported DALI moduleType (e.g., KL6811, KL6821, EL6821) to use FB_DALI function blocks."
+      );
+    }
+    const fbType = daliComType;
+    const key = `daliCom_${fbType}`;
+    if (!this.fbInstanceMap.has(key)) {
+      const instanceName = this.createUniqueFBInstanceName(fbType);
+      this.fbInstanceMap.set(key, { instanceName, fbType });
+    }
+  }
+
+  private collectGlobalVarDecls(mainVars: EmittedVarDecl[]) {
+    const globalVarDecls =
+      this.controlModel.controlBlock.items.filter(isVarDecl);
+    globalVarDecls.forEach((varDecl) =>
+      mainVars.push(new EmittedVarDecl(varDecl))
     );
   }
 
-  private assignFBInstancesFromControlUnit(
+  private addVarDeclsFromControlUnit(
     controlUnit: ControlUnit,
-    fbInstancesMap: Map<string, string>,
-    fbInstanceTracker: Map<string, Map<number, string>>
+    mainVars: EmittedVarDecl[]
   ) {
+    const varDecls = controlUnit.stmts.filter(isVarDecl);
+    mainVars.push(
+      ...varDecls.map((varDecl) => new EmittedVarDecl(varDecl, controlUnit))
+    );
+  }
+
+  private assignFBInstancesFromControlUnit(controlUnit: ControlUnit) {
     const useStmts = controlUnit.stmts.filter(isUseStmt);
-    const fbTypeToUseStmts = this.groupUseStmtsByFBType(useStmts);
-    for (const [fbType, stmts] of fbTypeToUseStmts.entries()) {
-      if (!fbInstanceTracker.has(fbType)) {
-        fbInstanceTracker.set(fbType, new Map());
-      }
-      stmts.forEach((useStmt, index) => {
-        const instanceName = this.createFBInstanceName(fbType, index);
-        fbInstancesMap.set(instanceName, fbType);
-        this.usedInstanceNames.add(instanceName);
-        fbInstanceTracker.get(fbType)?.set(index, instanceName);
-      });
-    }
-  }
-
-  private groupUseStmtsByFBType(useStmts: UseStmt[]): Map<string, UseStmt[]> {
-    const fbTypeToUseStmts = new Map<string, UseStmt[]>();
     for (const useStmt of useStmts) {
-      const fbType = useStmt.functionBlockRef.ref?.name ?? "UNKNOWN_FB";
-      if (!fbTypeToUseStmts.has(fbType)) {
-        fbTypeToUseStmts.set(fbType, []);
-      }
-      fbTypeToUseStmts.get(fbType)?.push(useStmt);
+      this.getOrAssignFBInstance(useStmt);
     }
-    return fbTypeToUseStmts;
   }
 
-  private createFBInstanceName(fbType: string, index: number): string {
-    let baseInstanceName = fbType.charAt(0).toLowerCase() + fbType.slice(1) + "Instance";
-    if (index > 0) {
-      return `${baseInstanceName}${index + 1}`;
-    }
-    return baseInstanceName;
-  }
-
-  private assignEdgeDetectionInstances(mainStatements: Statement[], edgeDetectionFBMap: Map<string, string>) {
-    const risingEdgeStatements = mainStatements.filter(isOnRisingEdgeStmt);
-    const fallingEdgeStatements = mainStatements.filter(isOnFallingEdgeStmt);
-    risingEdgeStatements.forEach((stmt, index) => {
-      const signalExpr = this.convertExprToST(stmt.signal);
-      const signalPath = signalExpr.replace(/\./g, "_");
-      let baseInstanceName = `r_TRIG_${signalPath}_Instance`;
-      let instanceName = baseInstanceName;
-      if (
-        index > 0 ||
-        Array.from(edgeDetectionFBMap.keys()).some(
-          (key) => key === baseInstanceName
-        )
-      ) {
-        instanceName = `${baseInstanceName}${index + 1}`;
+  private assignEdgeDetectionInstances(mainStatements: Statement[]) {
+    const walk = (stmts: Statement[]) => {
+      for (const stmt of stmts) {
+        if (isOnRisingEdgeStmt(stmt)) {
+          this.getOrAssignEdgeFBInstance(stmt, "rising", "R_TRIG");
+          walk(stmt.stmts);
+        } else if (isOnFallingEdgeStmt(stmt)) {
+          this.getOrAssignEdgeFBInstance(stmt, "falling", "F_TRIG");
+          walk(stmt.stmts);
+        } else if (isIfStmt(stmt)) {
+          walk(stmt.stmts);
+          for (const elseIf of stmt.elseIfStmts) walk(elseIf.stmts);
+          if (stmt.elseStmt) walk(stmt.elseStmt.stmts);
+        } else if (isWhileStmt(stmt)) {
+          walk(stmt.stmts);
+        } else if (isForStmt(stmt)) {
+          walk(stmt.stmts);
+        } else if (isSwitchStmt(stmt)) {
+          for (const c of stmt.cases) walk(c.stmts);
+          if (stmt.default) walk(stmt.default.stmts);
+        }
       }
-      edgeDetectionFBMap.set(instanceName, "R_TRIG");
-      this.usedInstanceNames.add(instanceName);
-      const key = `rising_${signalExpr}_${index}`;
-      this.edgeDetectionInstanceMap.set(key, instanceName);
-    });
-    fallingEdgeStatements.forEach((stmt, index) => {
-      const signalExpr = this.convertExprToST(stmt.signal);
-      const signalPath = signalExpr.replace(/\./g, "_");
-      let baseInstanceName = `f_TRIG_${signalPath}_Instance`;
-      let instanceName = baseInstanceName;
-      if (
-        index > 0 ||
-        Array.from(edgeDetectionFBMap.keys()).some(
-          (key) => key === baseInstanceName
-        )
-      ) {
-        instanceName = `${baseInstanceName}${index + 1}`;
-      }
-      edgeDetectionFBMap.set(instanceName, "F_TRIG");
-      this.usedInstanceNames.add(instanceName);
-      const key = `falling_${signalExpr}_${index}`;
-      this.edgeDetectionInstanceMap.set(key, instanceName);
-    });
+    };
+    walk(mainStatements);
   }
 
-  private generateMainDeclContent(
-    inputs: Array<{ name: string; type: string; ioBinding: string }>,
-    outputs: Array<{ name: string; type: string; ioBinding: string }>,
+  generateMainDeclContent(
+    inputs: HardwareDatapoint[],
+    outputs: HardwareDatapoint[],
     mainVars: EmittedVarDecl[],
     loopVarsToDeclare: [string, { type: string; init?: Expr }][],
-    fbInstancesMap: Map<string, string>,
-    edgeDetectionFBMap: Map<string, string>
+    fbInstanceDecls: Array<{ instanceName: string; fbType: string }>,
+    scheduled: ScheduledControlUnit[],
+    conditional: ConditionalControlUnit[],
+    usesBoilerplate: boolean = true // new optional arg
   ): string {
     return toString(
       expandToNode`
@@ -895,90 +927,167 @@ class BeckhoffGeneratorContext {
               { appendNewLineIfNotEmpty: true }
             )}
             ${joinToNode(
-              Array.from(fbInstancesMap.entries()),
-              ([instanceName, fbType]) => expandToNode`
-                ${instanceName}: ${fbType}; (* Function block instance *)
+              fbInstanceDecls,
+              ({ instanceName, fbType }) => {
+                // Library special handling for constructor
+                const special = handleLibrarySpecials(fbType, "", this);
+                if (special.constructorArgs) {
+                  return expandToNode`
+                    ${instanceName}: ${fbType}(${special.constructorArgs}); (* Function block instance *)
+                  `;
+                }
+                return expandToNode`
+                  ${instanceName}: ${fbType}; (* Function block instance *)
+                `;
+              },
+              { appendNewLineIfNotEmpty: true }
+            )}
+            ${joinToNode(
+              scheduled,
+              (unit) => expandToNode`
+                ${unit.name}_hasRun: BOOL := FALSE;
+                ${unit.name}_lastRunDay: DATE;
               `,
               { appendNewLineIfNotEmpty: true }
             )}
             ${joinToNode(
-              Array.from(edgeDetectionFBMap.entries()),
-              ([instanceName, fbType]) => expandToNode`
-                ${instanceName}: ${fbType}; (* Edge detection instance *)
+              conditional.filter((unit) => unit.runOnce),
+              (unit) => expandToNode`
+                ${unit.name}_hasRun: BOOL := FALSE;
               `,
               { appendNewLineIfNotEmpty: true }
             )}
-            bRunOnlyOnce: BOOL := FALSE;
+            bRunOnlyOnce: BOOL := FALSE;${
+              usesBoilerplate
+                ? expandToNode`\n
+            fbLocalTime: FB_LocalSystemTime := (
+              sNetID := '',
+              bEnable := TRUE,
+              dwCycle := 5
+            );
+            timeNow: TIMESTRUCT;
+            todNow: TIME_OF_DAY;
+            dNow: DATE;
+            `
+                : ""
+            }
         END_VAR
       `
     );
   }
 
-  private generateMainImplContent(
-    mainStatements: Statement[],
-    fbInstanceTracker: Map<string, Map<number, string>>
+  generateMainImplContent(
+    scheduled: ScheduledControlUnit[],
+    conditional: ConditionalControlUnit[],
+    regular: RegularControlUnit[]
   ): string {
-    const risingEdgeStatements = mainStatements.filter(isOnRisingEdgeStmt);
-    const fallingEdgeStatements = mainStatements.filter(isOnFallingEdgeStmt);
-    return toString(
-      expandToNode`
-        // Initialize code - runs only once
-        IF NOT bRunOnlyOnce THEN
-            ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_LOG,  
-                     msgFmtStr := 'Program started %s', 
-                     strArg := 'successfully!');
-            bRunOnlyOnce := TRUE;
-        END_IF
+    const units = this.controlModel.controlBlock.items.filter(isControlUnit);
 
-        // Main program logic
+    // Patch: Only emit boilerplate if used in any statement
+    let mainBody = toString(expandToNode`
+    ${joinToNode(
+      units,
+      (unit) => {
+        const sch = scheduled.find((u) => u.name === unit.name);
+        if (sch) {
+          return expandToNode`
+          // Scheduled Control Unit '${sch.name}' @ ${sch.timeLiteral}
+          IF dNow <> ${sch.name}_lastRunDay THEN
+              ${sch.name}_hasRun := FALSE;
+          END_IF;
+          IF (NOT ${sch.name}_hasRun) AND (todNow >= ${sch.timeLiteral}) THEN
+          ${joinToNode(
+            sch.stmts.filter((s) => !isVarDecl(s)),
+            (stmt) => expandToNode`
+              ${this.convertStatementToST(stmt, 1)}
+          `,
+            { appendNewLineIfNotEmpty: true }
+          )}
+              ${sch.name}_hasRun      := TRUE;
+              ${sch.name}_lastRunDay := dNow;
+          END_IF;
+        `;
+        }
+
+        const cond = conditional.find((u) => u.name === unit.name);
+        if (cond) {
+          if (cond.runOnce) {
+            return expandToNode`
+            // Conditional Control Unit '${cond.name}' (runOnce)
+            IF NOT (${this.convertExprToST(cond.condition)}) THEN
+                ${cond.name}_hasRun := FALSE;
+            END_IF;
+            IF (NOT ${cond.name}_hasRun) AND (${this.convertExprToST(
+              cond.condition
+            )}) THEN
+            ${joinToNode(
+              cond.stmts.filter((s) => !isVarDecl(s)),
+              (stmt) => expandToNode`
+                ${this.convertStatementToST(stmt, 1)}
+            `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+                ${cond.name}_hasRun := TRUE;
+            END_IF;
+          `;
+          } else {
+            return expandToNode`
+            // Conditional Control Unit '${cond.name}'
+            IF ${this.convertExprToST(cond.condition)} THEN
+            ${joinToNode(
+              cond.stmts.filter((s) => !isVarDecl(s)),
+              (stmt) => expandToNode`
+                ${this.convertStatementToST(stmt, 1)}
+            `,
+              { appendNewLineIfNotEmpty: true }
+            )}
+            END_IF;
+          `;
+          }
+        }
+
+        const reg = regular.find((u) => u.name === unit.name)!;
+        return expandToNode`
+        // Control Unit '${reg.name}'
         ${joinToNode(
-          mainStatements.filter((stmt) => !isVarDecl(stmt)),
-          (stmt, index) => {
-            if (isOnRisingEdgeStmt(stmt)) {
-              const statementIndex = risingEdgeStatements.indexOf(stmt);
-              if (statementIndex !== -1) {
-                return this.convertEdgeDetectionToST(
-                  stmt,
-                  statementIndex,
-                  "rising"
-                );
-              }
-            } else if (isOnFallingEdgeStmt(stmt)) {
-              const statementIndex = fallingEdgeStatements.indexOf(stmt);
-              if (statementIndex !== -1) {
-                return this.convertEdgeDetectionToST(
-                  stmt,
-                  statementIndex,
-                  "falling"
-                );
-              }
-            } else if (isUseStmt(stmt)) {
-              return this.convertUseStmtToST(stmt, fbInstanceTracker);
-            }
-            return this.convertStatementToST(
-              stmt,
-              undefined,
-              0,
-              fbInstanceTracker,
-              mainStatements
-            );
-          },
+          reg.stmts.filter((s) => !isVarDecl(s)),
+          (stmt) => expandToNode`
+            ${this.convertStatementToST(stmt, 0)}
+        `,
           { appendNewLineIfNotEmpty: true }
         )}
-      `
-    );
+      `;
+      },
+      { appendNewLineIfNotEmpty: true, prefix: "\n" }
+    )}
+    `);
+
+    // Check if boilerplate is needed
+    const boilerplateVars = ["fbLocalTime", "timeNow", "todNow", "dNow"];
+    const usesBoilerplate = boilerplateVars.some((v) => mainBody.includes(v));
+
+    // Emit init code only if needed
+    let boilerplateInit = usesBoilerplate
+      ? `fbLocalTime();\ntimeNow := fbLocalTime.systemTime;\ntodNow := SYSTEMTIME_TO_TOD(timeNow);\ndNow := DT_TO_DATE(SYSTEMTIME_TO_DT(timeNow));`
+      : "";
+
+    return `IF NOT bRunOnlyOnce THEN\n    ADSLOGSTR(\n      msgCtrlMask := ADSLOG_MSGTYPE_LOG,\n      msgFmtStr   := 'Program started %s',\n      strArg      := 'successfully!'\n    );\n    bRunOnlyOnce := TRUE;\nEND_IF;${
+      boilerplateInit.length == 0 ? "" : "\n"
+    }${boilerplateInit}\n${mainBody}`;
   }
 
-  extractHardwareDatapoints(): {
-    inputs: Array<{ name: string; type: string; ioBinding: string }>;
-    outputs: Array<{ name: string; type: string; ioBinding: string }>;
-  } {
-    const inputs: Array<{ name: string; type: string; ioBinding: string }> = [];
-    const outputs: Array<{ name: string; type: string; ioBinding: string }> = [];
+  extractHardwareDatapoints(): HardwareDatapointsResult {
+    const inputs: HardwareDatapoint[] = [];
+    const outputs: HardwareDatapoint[] = [];
     for (const controller of this.hardwareModel.controllers) {
       if (controller.platform !== "Beckhoff") continue;
       const portGroups = this.collectPortGroups(controller.components);
-      this.processDatapoints(controller.components, portGroups, inputs, outputs);
+      this.processDatapoints(
+        controller.components,
+        portGroups,
+        inputs,
+        outputs
+      );
     }
     return { inputs, outputs };
   }
@@ -1145,16 +1254,19 @@ export function generateBeckhoffCode(
 }
 
 class EmittedVarDecl {
-  controlUnit: ControlUnit;
   varDecl: VarDecl;
+  controlUnit?: ControlUnit;
 
-  constructor(controlUnit: ControlUnit, varDecl: VarDecl) {
-    this.controlUnit = controlUnit;
+  constructor(varDecl: VarDecl, controlUnit?: ControlUnit) {
     this.varDecl = varDecl;
+    this.controlUnit = controlUnit;
   }
 
   get name(): string {
-    return `${this.controlUnit.name}_${this.varDecl.name}`;
+    if (this.controlUnit) {
+      return `${this.controlUnit.name}_${this.varDecl.name}`;
+    }
+    return `${this.varDecl.name}`;
   }
 }
 
@@ -1169,7 +1281,6 @@ function convertTypeRefToST(typeRef: TypeRef): string {
             return `0..${size.val - 1}`;
           }
           return "0..?";
-
         })
         .join(", ")}] OF ${typeRef.type}`;
     }
@@ -1185,10 +1296,41 @@ function convertTypeRefToST(typeRef: TypeRef): string {
             return `0..${size.val - 1}`;
           }
           return "0..?";
-
         })
         .join(", ")}] OF ${typeName}`;
     }
   }
   return "UNKNOWN_TYPE";
+}
+
+/**
+ * Handles special input mapping and constructor logic for Beckhoff libraries (e.g., DALI, others in future).
+ * Returns an object with possibly modified inputMappings and constructorArgs for declaration.
+ */
+function handleLibrarySpecials(
+  fbType: string,
+  inputMappings: string,
+  context: BeckhoffGeneratorContext
+): { inputMappings: string; constructorArgs?: string } {
+  // DALI special handling
+  if (fbType.startsWith("FB_DALI")) {
+    const daliComType = detectDaliComType(context.hardwareModel);
+    if (!daliComType) {
+      throw new Error(
+        "DALI communication moduleType not found in hardware. Please declare a portgroup with a supported DALI moduleType (e.g., KL6811, KL6821, EL6821) to use FB_DALI function blocks."
+      );
+    }
+    const key = `daliCom_${daliComType}`;
+    const daliComInstance = context.fbInstanceMap.get(key);
+    if (!daliComInstance) {
+      throw new Error("DALI communication FB instance was not generated.");
+    }
+    // Only set constructorArgs, do NOT prepend to inputMappings
+    return {
+      inputMappings,
+      constructorArgs: daliComInstance.instanceName,
+    };
+  }
+  // Add more library-specific handling here as needed
+  return { inputMappings };
 }

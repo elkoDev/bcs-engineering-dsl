@@ -1,12 +1,13 @@
-// Initialize code - runs only once
 IF NOT bRunOnlyOnce THEN
-    ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_LOG,  
-             msgFmtStr := 'Program started %s', 
-             strArg := 'successfully!');
+    ADSLOGSTR(
+      msgCtrlMask := ADSLOG_MSGTYPE_LOG,
+      msgFmtStr   := 'Program started %s',
+      strArg      := 'successfully!'
+    );
     bRunOnlyOnce := TRUE;
-END_IF
+END_IF;
 
-// Main program logic
+// Control Unit 'TestHardwareIOLogic'
 TestHardwareIOLogic_distance := UltrasonicSensor_Distance;
 TestHardwareIOLogic_valid := UltrasonicSensor_Valid;
 TestHardwareIOLogic_temp1 := Temperatures_Room1;

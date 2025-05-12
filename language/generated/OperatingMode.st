@@ -1,6 +1,6 @@
 {attribute 'qualified_only'}
 {attribute 'strict'}
-TYPE Mode :
+TYPE OperatingMode :
 (
     OFF := 0,
     ECO := 1,

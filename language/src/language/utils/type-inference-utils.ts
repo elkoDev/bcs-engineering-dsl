@@ -2,12 +2,15 @@ import { AstUtils, ValidationAcceptor } from "langium";
 import {
   ArrayLiteral,
   StructDecl,
+  VarDecl,
   isChannel,
   isControlModel,
   isEnumDecl,
   isEnumMemberLiteral,
+  isFunctionBlockDecl,
   isPrimary,
   isStructDecl,
+  isTypeAlias,
   isVarDecl,
 } from "../generated/ast.js";
 
@@ -159,6 +162,8 @@ export function inferStructPropertyType(
       return `STRUCT:${refTypeDecl.name}`;
     } else if (isEnumDecl(refTypeDecl)) {
       return `ENUM:${refTypeDecl.name}`;
+    } else if (isTypeAlias(refTypeDecl)) {
+      return refTypeDecl.primitive;
     }
   }
 
@@ -419,7 +424,7 @@ export function isTypeAssignable(
  * @param varDecl The variable declaration
  * @returns The inferred type or undefined
  */
-export function inferVarDeclType(varDecl: any): string | undefined {
+export function inferVarDeclType(varDecl: VarDecl): string | undefined {
   if (!varDecl) return undefined;
   if (!varDecl.typeRef) return undefined;
 
@@ -437,11 +442,14 @@ export function inferVarDeclType(varDecl: any): string | undefined {
     if (isEnumDecl(typeDecl)) {
       baseType = `ENUM:${typeDecl.name}`;
     }
-    if (isVarDecl(typeDecl)) {
+    if (isFunctionBlockDecl(typeDecl)) {
       baseType = `FB:${typeDecl.name}`;
     }
     if (isStructDecl(typeDecl)) {
       baseType = `STRUCT:${typeDecl.name}`;
+    }
+    if (isTypeAlias(typeDecl)) {
+      baseType = typeDecl.primitive;
     }
   }
 

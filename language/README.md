@@ -30,3 +30,11 @@ The code generation is done by the `bcs-engineering-dsl` CLI. The command is as 
 ```bash
 node .\bin\cli.js generate .\example\control.bcsctrl
 ```
+
+# Supported Target Platforms
+
+## Beckhoff TwinCAT 3
+
+In addition to the standard libraries provided by Beckhoff, the following libraries are supported:
+
+- `Tc3_DALI`

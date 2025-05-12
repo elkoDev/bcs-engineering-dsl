@@ -4,10 +4,13 @@ control EnumTestController {
         OFF, ECO, COMFORT
     }
 
+    var previousMode: Mode = Mode.OFF;
+
     unit TestUnit {
         var currentMode: Mode = Mode.OFF;
         
         if (currentMode == Mode.ECO) {
+            previousMode = currentMode;
             currentMode = Mode.COMFORT;
         }
     }
