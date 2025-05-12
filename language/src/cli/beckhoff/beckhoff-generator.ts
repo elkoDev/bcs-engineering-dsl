@@ -733,7 +733,6 @@ class BeckhoffGeneratorContext {
     const mainStatements: Statement[] = [];
 
     this.collectGlobalVarDecls(mainVars);
-
     this.processControlUnits(mainVars, mainStatements);
 
     const loopVars = new Map<string, { type: string; init?: Expr }>();
@@ -750,13 +749,24 @@ class BeckhoffGeneratorContext {
     ]);
 
     this.assignEdgeDetectionInstances(mainStatements);
-
     const fbInstanceDecls = this.getAllFBInstanceDeclarations();
-
     const { scheduled, conditional, regular } = extractControlUnits(
       this.controlModel
     );
 
+    // --- Patch: generate impl first, check for usage, then generate decl ---
+    let implContent = this.generateMainImplContent(
+      scheduled,
+      conditional,
+      regular
+    );
+    // Check if any of the boilerplate variables are used
+    const boilerplateVars = ["fbLocalTime", "timeNow", "todNow", "dNow"];
+    const usesBoilerplate = boilerplateVars.some((v) =>
+      implContent.includes(v)
+    );
+
+    // Patch declContent to only include boilerplate if used
     const declContent = this.generateMainDeclContent(
       inputs,
       outputs,
@@ -764,12 +774,8 @@ class BeckhoffGeneratorContext {
       loopVarsToDeclare,
       fbInstanceDecls,
       scheduled,
-      conditional
-    );
-    const implContent = this.generateMainImplContent(
-      scheduled,
       conditional,
-      regular
+      usesBoilerplate // pass as extra arg
     );
 
     const declFilePath = path.join(this.destination, `MAIN_decl.st`);
@@ -875,7 +881,8 @@ class BeckhoffGeneratorContext {
     loopVarsToDeclare: [string, { type: string; init?: Expr }][],
     fbInstanceDecls: Array<{ instanceName: string; fbType: string }>,
     scheduled: ScheduledControlUnit[],
-    conditional: ConditionalControlUnit[]
+    conditional: ConditionalControlUnit[],
+    usesBoilerplate: boolean = true // new optional arg
   ): string {
     return toString(
       expandToNode`
@@ -950,7 +957,9 @@ class BeckhoffGeneratorContext {
               `,
               { appendNewLineIfNotEmpty: true }
             )}
-            bRunOnlyOnce: BOOL := FALSE;
+            bRunOnlyOnce: BOOL := FALSE;${
+              usesBoilerplate
+                ? expandToNode`
             fbLocalTime: FB_LocalSystemTime := (
               sNetID := '',
               bEnable := TRUE,
@@ -959,6 +968,9 @@ class BeckhoffGeneratorContext {
             timeNow: TIMESTRUCT;
             todNow: TIME_OF_DAY;
             dNow: DATE;
+            `
+                : ""
+            }
         END_VAR
       `
     );
@@ -971,20 +983,8 @@ class BeckhoffGeneratorContext {
   ): string {
     const units = this.controlModel.controlBlock.items.filter(isControlUnit);
 
-    return toString(expandToNode`
-    IF NOT bRunOnlyOnce THEN
-        ADSLOGSTR(
-          msgCtrlMask := ADSLOG_MSGTYPE_LOG,
-          msgFmtStr   := 'Program started %s',
-          strArg      := 'successfully!'
-        );
-        bRunOnlyOnce := TRUE;
-    END_IF;
-    fbLocalTime();
-    timeNow := fbLocalTime.systemTime;
-    todNow := SYSTEMTIME_TO_TOD(timeNow);
-    dNow := DT_TO_DATE(SYSTEMTIME_TO_DT(timeNow));
-
+    // Patch: Only emit boilerplate if used in any statement
+    let mainBody = toString(expandToNode`
     ${joinToNode(
       units,
       (unit) => {
@@ -1061,6 +1061,17 @@ class BeckhoffGeneratorContext {
       { appendNewLineIfNotEmpty: true, prefix: "\n" }
     )}
   `);
+
+    // Check if boilerplate is needed
+    const boilerplateVars = ["fbLocalTime", "timeNow", "todNow", "dNow"];
+    const usesBoilerplate = boilerplateVars.some((v) => mainBody.includes(v));
+
+    // Emit init code only if needed
+    let boilerplateInit = usesBoilerplate
+      ? `fbLocalTime();\ntimeNow := fbLocalTime.systemTime;\ntodNow := SYSTEMTIME_TO_TOD(timeNow);\ndNow := DT_TO_DATE(SYSTEMTIME_TO_DT(timeNow));\n`
+      : "";
+
+    return `IF NOT bRunOnlyOnce THEN\n    ADSLOGSTR(\n      msgCtrlMask := ADSLOG_MSGTYPE_LOG,\n      msgFmtStr   := 'Program started %s',\n      strArg      := 'successfully!'\n    );\n    bRunOnlyOnce := TRUE;\nEND_IF;\n${boilerplateInit}\n${mainBody}`;
   }
 
   extractHardwareDatapoints(): HardwareDatapointsResult {

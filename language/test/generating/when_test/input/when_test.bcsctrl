@@ -1,0 +1,16 @@
+control WhenTestController {
+    var x: INT;
+    var y: BOOL;
+
+    unit ScheduledUnit at TOD#08:00:00 {
+        x = 1;
+    }
+
+    unit ConditionalUnit when (x > 0) {
+        y = true;
+    }
+
+    unit OnceConditionalUnit once when (y) {
+        x = 2;
+    }
+}
