@@ -26,11 +26,22 @@ VAR
     UseDaliLibrary_failureStatus: BYTE;
     ValidateSensorDistance_distance: INT := UltrasonicSensor_Distance;
     i: INT := 0;
-    heatingLogicInstance: HeatingLogic; (* Function block instance *)
-    fB_DALI207QueryFailureStatusInstance: FB_DALI207QueryFailureStatus; (* Function block instance *)
-    fB_DALI207QueryFailureStatusInstance2: FB_DALI207QueryFailureStatus; (* Function block instance *)
-    r_TRIG_Buttons_Room1_Instance: R_TRIG; (* Edge detection instance *)
-    r_TRIG_Buttons_Room2_Instance2: R_TRIG; (* Edge detection instance *)
-    f_TRIG_Buttons_Room2_Instance: F_TRIG; (* Edge detection instance *)
+    fB_KL6811CommunicationInstance1: FB_KL6811Communication; (* Function block instance *)
+    heatingLogicInstance2: HeatingLogic; (* Function block instance *)
+    fB_DALI207QueryFailureStatusInstance3: FB_DALI207QueryFailureStatus(fB_KL6811CommunicationInstance1); (* Function block instance *)
+    fB_DALI207QueryFailureStatusInstance4: FB_DALI207QueryFailureStatus(fB_KL6811CommunicationInstance1); (* Function block instance *)
+    r_TRIGInstance5: R_TRIG; (* Function block instance *)
+    r_TRIGInstance6: R_TRIG; (* Function block instance *)
+    f_TRIGInstance7: F_TRIG; (* Function block instance *)
+    TurnOnLightsScheduled_hasRun: BOOL := FALSE;
+    TurnOnLightsScheduled_lastRunDay: DATE;
     bRunOnlyOnce: BOOL := FALSE;
+    fbLocalTime: FB_LocalSystemTime := (
+      sNetID := '',
+      bEnable := TRUE,
+      dwCycle := 5
+    );
+    timeNow: TIMESTRUCT;
+    todNow: TIME_OF_DAY;
+    dateToday: DATE;
 END_VAR

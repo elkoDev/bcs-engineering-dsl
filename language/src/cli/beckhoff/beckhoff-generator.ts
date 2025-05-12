@@ -54,7 +54,13 @@ import {
   getLogic,
 } from "../../language/utils/function-block-utils.js";
 import { Reference } from "langium";
-import { detectDaliComType } from "./beckhoff-utils.js";
+import {
+  ConditionalControlUnit,
+  detectDaliComType,
+  extractControlUnits,
+  RegularControlUnit,
+  ScheduledControlUnit,
+} from "./beckhoff-utils.js";
 
 // Helper function to check if a node is a primitive value
 function isPrimitive(expr: Primary): boolean {
@@ -125,12 +131,13 @@ interface HardwareDatapointsResult {
 }
 
 class BeckhoffGeneratorContext {
-  hardwareChannelFlatNames: Set<string>;
-  fbInstanceMap: Map<any, FBInstanceInfo>; // Key: UseStmt or edge key, Value: FBInstanceInfo
-  fbInstanceCounter: number;
   controlModel: ControlModel;
   hardwareModel: HardwareModel;
   destination: string;
+
+  hardwareChannelFlatNames: Set<string>;
+  fbInstanceMap: Map<any, FBInstanceInfo>; // Key: UseStmt or edge key, Value: FBInstanceInfo
+  fbInstanceCounter: number;
 
   constructor(
     controlModel: ControlModel,
@@ -169,18 +176,16 @@ class BeckhoffGeneratorContext {
 
   // Assign or get a unique FB instance for edge detection
   getOrAssignEdgeFBInstance(
+    stmt: Statement,
     type: "rising" | "falling",
-    signalExpr: string,
-    index: number,
     fbType: string
   ): FBInstanceInfo {
-    const key = `${type}_${signalExpr}_${index}`;
-    if (this.fbInstanceMap.has(key)) {
-      return this.fbInstanceMap.get(key)!;
+    if (this.fbInstanceMap.has(stmt)) {
+      return this.fbInstanceMap.get(stmt)!;
     }
     const instanceName = this.createUniqueFBInstanceName(fbType);
     const info: FBInstanceInfo = { instanceName, fbType };
-    this.fbInstanceMap.set(key, info);
+    this.fbInstanceMap.set(stmt, info);
     return info;
   }
 
@@ -217,7 +222,8 @@ class BeckhoffGeneratorContext {
     return "UNKNOWN_EXPR";
   }
 
-  private convertPrimaryExprToST(expr: any): string {
+  private convertPrimaryExprToST(expr: Primary): string {
+    if (expr.isNow) return "todNow";
     if (isRef(expr)) return this.handleRefExpr(expr);
     if (isParenExpr(expr)) return this.handleParenExpr(expr);
     if (isNegExpr(expr)) return this.handleNegExpr(expr);
@@ -293,12 +299,7 @@ class BeckhoffGeneratorContext {
     return "";
   }
 
-  convertStatementToST(
-    stmt: Statement,
-    edgeMetadata?: [string, number],
-    indent: number = 0,
-    mainStatements?: Statement[]
-  ): string {
+  convertStatementToST(stmt: Statement, indent: number = 0): string {
     const pad = (level: number) => "    ".repeat(level);
     if (isAssignmentStmt(stmt))
       return (
@@ -321,10 +322,8 @@ class BeckhoffGeneratorContext {
     if (isExpressionStmt(stmt))
       return pad(indent) + `${this.convertExprToST(stmt.expr)};`;
     if (isUseStmt(stmt)) return this.stUse(stmt, indent);
-    if (isOnRisingEdgeStmt(stmt))
-      return this.stEdge(stmt, edgeMetadata, indent, true, mainStatements);
-    if (isOnFallingEdgeStmt(stmt))
-      return this.stEdge(stmt, edgeMetadata, indent, false, mainStatements);
+    if (isOnRisingEdgeStmt(stmt)) return this.stEdge(stmt, indent, true);
+    if (isOnFallingEdgeStmt(stmt)) return this.stEdge(stmt, indent, false);
     if (isVarDecl(stmt))
       return (
         pad(indent) +
@@ -343,7 +342,7 @@ class BeckhoffGeneratorContext {
       pad(indent) + `IF ${this.convertExprToST(stmt.condition)} THEN\n`;
     result +=
       stmt.stmts
-        .map((s: any) => this.convertStatementToST(s, undefined, indent + 1))
+        .map((s: any) => this.convertStatementToST(s, indent + 1))
         .join("\n") + "\n";
     for (const elseIfStmt of stmt.elseIfStmts) {
       result +=
@@ -351,14 +350,14 @@ class BeckhoffGeneratorContext {
         `ELSIF ${this.convertExprToST(elseIfStmt.condition)} THEN\n`;
       result +=
         elseIfStmt.stmts
-          .map((s: any) => this.convertStatementToST(s, undefined, indent + 1))
+          .map((s: any) => this.convertStatementToST(s, indent + 1))
           .join("\n") + "\n";
     }
     if (stmt.elseStmt) {
       result += pad(indent) + `ELSE\n`;
       result +=
         (stmt.elseStmt.stmts || [])
-          .map((s: any) => this.convertStatementToST(s, undefined, indent + 1))
+          .map((s: any) => this.convertStatementToST(s, indent + 1))
           .join("\n") + "\n";
     }
     result += pad(indent) + `END_IF;`;
@@ -372,9 +371,7 @@ class BeckhoffGeneratorContext {
     )} DO\n`;
     result +=
       stmt.stmts
-        .map((subStmt: any) =>
-          this.convertStatementToST(subStmt, undefined, indent + 1)
-        )
+        .map((subStmt: any) => this.convertStatementToST(subStmt, indent + 1))
         .join("\n") + "\n";
     result += `${pad(indent)}END_WHILE;`;
     return result;
@@ -389,7 +386,7 @@ class BeckhoffGeneratorContext {
     } DO\n`;
     result +=
       stmt.stmts
-        .map((s: any) => this.convertStatementToST(s, undefined, indent + 1))
+        .map((s: any) => this.convertStatementToST(s, indent + 1))
         .join("\n") + "\n";
     result += `${pad(indent)}END_FOR;`;
     return result;
@@ -409,18 +406,14 @@ class BeckhoffGeneratorContext {
       result += `${pad(indent + 1)}${literals}:\n`;
       result +=
         caseOption.stmts
-          .map((subStmt: any) =>
-            this.convertStatementToST(subStmt, undefined, indent + 2)
-          )
+          .map((subStmt: any) => this.convertStatementToST(subStmt, indent + 2))
           .join("\n") + "\n";
     }
     if (stmt.default) {
       result += `${pad(indent + 1)}ELSE\n`;
       result +=
         stmt.default.stmts
-          .map((subStmt: any) =>
-            this.convertStatementToST(subStmt, undefined, indent + 2)
-          )
+          .map((subStmt: any) => this.convertStatementToST(subStmt, indent + 2))
           .join("\n") + "\n";
     }
     result += `${pad(indent)}END_CASE;`;
@@ -431,27 +424,13 @@ class BeckhoffGeneratorContext {
     return this.convertUseStmtToST(stmt);
   }
 
-  stEdge(
-    stmt: any,
-    edgeMetadata: [string, number] | undefined,
-    indent: number,
-    rising: boolean,
-    mainStatements?: Statement[]
-  ): string {
+  stEdge(stmt: any, indent: number, rising: boolean): string {
     const type = rising ? "rising" : "falling";
-    const edgeStatements = (mainStatements ?? []).filter(
-      rising ? isOnRisingEdgeStmt : isOnFallingEdgeStmt
-    );
-    const statementIndex = edgeStatements.indexOf(stmt);
-    if (statementIndex !== -1) {
-      return this.convertEdgeDetectionToST(stmt, statementIndex, type, indent);
-    }
-    return this.convertStatementToST(stmt, edgeMetadata, indent);
+    return this.convertEdgeDetectionToST(stmt, type, indent);
   }
 
   convertEdgeDetectionToST(
     stmt: Statement,
-    index: number,
     type: "rising" | "falling",
     indent: number = 0
   ): string {
@@ -459,40 +438,32 @@ class BeckhoffGeneratorContext {
     if (type === "rising" && isOnRisingEdgeStmt(stmt)) {
       const signalExpr = this.convertExprToST(stmt.signal);
       const { instanceName } = this.getOrAssignEdgeFBInstance(
+        stmt,
         "rising",
-        signalExpr,
-        index,
         "R_TRIG"
       );
-      let risingContent = `${pad(
-        indent
-      )}// Rising edge detection for ${signalExpr}\n`;
+      let risingContent = `${pad(indent)}`;
       risingContent += `${pad(indent)}${instanceName}(CLK := ${signalExpr});\n`;
       risingContent += `${pad(indent)}IF ${instanceName}.Q THEN\n`;
       for (const subStmt of stmt.stmts) {
-        risingContent +=
-          this.convertStatementToST(subStmt, undefined, indent + 1) + "\n";
+        risingContent += this.convertStatementToST(subStmt, indent + 1) + "\n";
       }
       risingContent += `${pad(indent)}END_IF;`;
       return risingContent;
     } else if (type === "falling" && isOnFallingEdgeStmt(stmt)) {
       const signalExpr = this.convertExprToST(stmt.signal);
       const { instanceName } = this.getOrAssignEdgeFBInstance(
+        stmt,
         "falling",
-        signalExpr,
-        index,
         "F_TRIG"
       );
-      let fallingContent = `${pad(
-        indent
-      )}// Falling edge detection for ${signalExpr}\n`;
+      let fallingContent = `${pad(indent)}`;
       fallingContent += `${pad(
         indent
       )}${instanceName}(CLK := ${signalExpr});\n`;
       fallingContent += `${pad(indent)}IF ${instanceName}.Q THEN\n`;
       for (const subStmt of stmt.stmts) {
-        fallingContent +=
-          this.convertStatementToST(subStmt, undefined, indent + 1) + "\n";
+        fallingContent += this.convertStatementToST(subStmt, indent + 1) + "\n";
       }
       fallingContent += `${pad(indent)}END_IF;`;
       return fallingContent;
@@ -537,7 +508,6 @@ class BeckhoffGeneratorContext {
     const files: string[] = [];
 
     for (const item of this.controlModel.controlBlock.items) {
-      // Skip items marked as extern
       if (isEnumDecl(item) || isStructDecl(item) || isFunctionBlockDecl(item)) {
         if (item.isExtern) continue;
       }
@@ -677,7 +647,7 @@ class BeckhoffGeneratorContext {
     // Write implementation file
     const implFilePath = path.join(this.destination, `${fbDecl.name}_impl.st`);
     const implContent = (logic?.stmts || [])
-      .map((stmt) => this.convertStatementToST(stmt, undefined, 0).trimEnd())
+      .map((stmt) => this.convertStatementToST(stmt, 0).trimEnd())
       .join("\n");
     fs.writeFileSync(implFilePath, implContent);
     files.push(implFilePath);
@@ -772,14 +742,23 @@ class BeckhoffGeneratorContext {
 
     const fbInstanceDecls = this.getAllFBInstanceDeclarations();
 
+    const { scheduled, conditional, regular } = extractControlUnits(
+      this.controlModel
+    );
+
     const declContent = this.generateMainDeclContent(
       inputs,
       outputs,
       mainVars,
       loopVarsToDeclare,
-      fbInstanceDecls
+      fbInstanceDecls,
+      scheduled
     );
-    const implContent = this.generateMainImplContent(mainStatements);
+    const implContent = this.generateMainImplContent(
+      scheduled,
+      conditional,
+      regular
+    );
 
     const declFilePath = path.join(this.destination, `MAIN_decl.st`);
     fs.writeFileSync(declFilePath, declContent);
@@ -854,24 +833,38 @@ class BeckhoffGeneratorContext {
   }
 
   private assignEdgeDetectionInstances(mainStatements: Statement[]) {
-    const risingEdgeStatements = mainStatements.filter(isOnRisingEdgeStmt);
-    const fallingEdgeStatements = mainStatements.filter(isOnFallingEdgeStmt);
-    risingEdgeStatements.forEach((stmt, index) => {
-      const signalExpr = this.convertExprToST(stmt.signal);
-      this.getOrAssignEdgeFBInstance("rising", signalExpr, index, "R_TRIG");
-    });
-    fallingEdgeStatements.forEach((stmt, index) => {
-      const signalExpr = this.convertExprToST(stmt.signal);
-      this.getOrAssignEdgeFBInstance("falling", signalExpr, index, "F_TRIG");
-    });
+    const walk = (stmts: Statement[]) => {
+      for (const stmt of stmts) {
+        if (isOnRisingEdgeStmt(stmt)) {
+          this.getOrAssignEdgeFBInstance(stmt, "rising", "R_TRIG");
+          walk(stmt.stmts);
+        } else if (isOnFallingEdgeStmt(stmt)) {
+          this.getOrAssignEdgeFBInstance(stmt, "falling", "F_TRIG");
+          walk(stmt.stmts);
+        } else if (isIfStmt(stmt)) {
+          walk(stmt.stmts);
+          for (const elseIf of stmt.elseIfStmts) walk(elseIf.stmts);
+          if (stmt.elseStmt) walk(stmt.elseStmt.stmts);
+        } else if (isWhileStmt(stmt)) {
+          walk(stmt.stmts);
+        } else if (isForStmt(stmt)) {
+          walk(stmt.stmts);
+        } else if (isSwitchStmt(stmt)) {
+          for (const c of stmt.cases) walk(c.stmts);
+          if (stmt.default) walk(stmt.default.stmts);
+        }
+      }
+    };
+    walk(mainStatements);
   }
 
-  private generateMainDeclContent(
+  generateMainDeclContent(
     inputs: HardwareDatapoint[],
     outputs: HardwareDatapoint[],
     mainVars: EmittedVarDecl[],
     loopVarsToDeclare: [string, { type: string; init?: Expr }][],
-    fbInstanceDecls: Array<{ instanceName: string; fbType: string }>
+    fbInstanceDecls: Array<{ instanceName: string; fbType: string }>,
+    scheduled: ScheduledControlUnit[]
   ): string {
     return toString(
       expandToNode`
@@ -931,61 +924,113 @@ class BeckhoffGeneratorContext {
               },
               { appendNewLineIfNotEmpty: true }
             )}
+            ${joinToNode(
+              scheduled,
+              (unit) => expandToNode`
+                ${unit.name}_hasRun: BOOL := FALSE;
+                ${unit.name}_lastRunDay: DATE;
+              `,
+              { appendNewLineIfNotEmpty: true }
+            )}
             bRunOnlyOnce: BOOL := FALSE;
+            fbLocalTime: FB_LocalSystemTime := (
+              sNetID := '',
+              bEnable := TRUE,
+              dwCycle := 5
+            );
+            timeNow: TIMESTRUCT;
+            todNow: TIME_OF_DAY;
+            dateToday: DATE;
         END_VAR
       `
     );
   }
 
-  private generateMainImplContent(mainStatements: Statement[]): string {
-    const risingEdgeStatements = mainStatements.filter(isOnRisingEdgeStmt);
-    const fallingEdgeStatements = mainStatements.filter(isOnFallingEdgeStmt);
-    return toString(
-      expandToNode`
-        // Initialize code - runs only once
-        IF NOT bRunOnlyOnce THEN
-            ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_LOG,  
-                     msgFmtStr := 'Program started %s', 
-                     strArg := 'successfully!');
-            bRunOnlyOnce := TRUE;
-        END_IF
+  generateMainImplContent(
+    scheduled: ScheduledControlUnit[],
+    conditional: ConditionalControlUnit[],
+    regular: RegularControlUnit[]
+  ): string {
+    // for any “free‐floating” edge-detectors after units, we still need them;
+    // but here we only emit per‐unit, so nested edges get handled by convertStatementToST
+    const units = this.controlModel.controlBlock.items.filter(isControlUnit);
 
-        // Main program logic
+    return toString(expandToNode`
+    // --- System code --- 
+    IF NOT bRunOnlyOnce THEN
+        ADSLOGSTR(
+          msgCtrlMask := ADSLOG_MSGTYPE_LOG,
+          msgFmtStr   := 'Program started %s',
+          strArg      := 'successfully!'
+        );
+        bRunOnlyOnce := TRUE;
+    END_IF;
+    fbLocalTime();
+    timeNow   := fbLocalTime.systemTime;
+    todNow    := SYSTEMTIME_TO_TOD(timeNow);
+    dateToday := SYSTEMTIME_TO_DATE(timeNow);
+
+    // --- User code ---
+    ${joinToNode(
+      units,
+      (unit) => {
+        // find which bucket this unit lives in
+        const sch = scheduled.find((u) => u.name === unit.name);
+        if (sch) {
+          return expandToNode`
+          // Scheduled unit '${sch.name}' @ ${sch.timeLiteral}
+          IF dateToday <> ${sch.name}_lastRunDay THEN
+              ${sch.name}_hasRun := FALSE;
+          END_IF;
+          IF (NOT ${sch.name}_hasRun) AND (todNow >= ${sch.timeLiteral}) THEN
+              ${joinToNode(
+                sch.stmts,
+                (stmt) => expandToNode`
+                  ${this.convertStatementToST(stmt, 0)}
+              `,
+                { appendNewLineIfNotEmpty: true }
+              )}
+              ${sch.name}_hasRun      := TRUE;
+              ${sch.name}_lastRunDay := dateToday;
+          END_IF;
+        `;
+        }
+
+        const cond = conditional.find((u) => u.name === unit.name);
+        if (cond) {
+          return expandToNode`
+          // Conditional unit '${cond.name}'
+          IF ${
+            cond.runOnce ? `NOT ${cond.name}_hasRun AND ` : ``
+          }${this.convertExprToST(cond.condition)} THEN
+              ${joinToNode(
+                cond.stmts,
+                (stmt) => expandToNode`
+                  ${this.convertStatementToST(stmt, 0)}
+              `,
+                { appendNewLineIfNotEmpty: true }
+              )}
+              ${cond.runOnce ? `${cond.name}_hasRun := TRUE;` : ``}
+          END_IF;
+        `;
+        }
+
+        // otherwise it's a regular unit
+        const reg = regular.find((u) => u.name === unit.name)!;
+        return expandToNode`
+        // Regular unit '${reg.name}'
         ${joinToNode(
-          mainStatements.filter((stmt) => !isVarDecl(stmt)),
-          (stmt, index) => {
-            if (isOnRisingEdgeStmt(stmt)) {
-              const statementIndex = risingEdgeStatements.indexOf(stmt);
-              if (statementIndex !== -1) {
-                return this.convertEdgeDetectionToST(
-                  stmt,
-                  statementIndex,
-                  "rising"
-                );
-              }
-            } else if (isOnFallingEdgeStmt(stmt)) {
-              const statementIndex = fallingEdgeStatements.indexOf(stmt);
-              if (statementIndex !== -1) {
-                return this.convertEdgeDetectionToST(
-                  stmt,
-                  statementIndex,
-                  "falling"
-                );
-              }
-            } else if (isUseStmt(stmt)) {
-              return this.convertUseStmtToST(stmt);
-            }
-            return this.convertStatementToST(
-              stmt,
-              undefined,
-              0,
-              mainStatements
-            );
-          },
+          reg.stmts,
+          (stmt) => expandToNode`
+            ${this.convertStatementToST(stmt, 0)}
+        `,
           { appendNewLineIfNotEmpty: true }
         )}
-      `
-    );
+      `;
+      },
+      { appendNewLineIfNotEmpty: true }
+    )}
+  `);
   }
 
   extractHardwareDatapoints(): HardwareDatapointsResult {
