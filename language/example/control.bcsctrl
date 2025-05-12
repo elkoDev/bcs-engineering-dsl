@@ -107,8 +107,7 @@ control MainController {
     }
 
     unit ControlHeating {
-        var iTemp: REAL = temperaturesArray[0].Room1;
-        use HeatingLogic(iTemp: Temperatures.Room1, iMode: mode) -> heatingEnabled; // should throw an error
+        use HeatingLogic(iTemp: temperaturesArray[0].Room1, iMode: mode) -> heatingEnabled;
         heater = heatingEnabled;
     }
 

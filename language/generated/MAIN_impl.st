@@ -56,8 +56,9 @@ FOR i := 0 TO 5 BY 1 DO
     // Wait statements are not directly supported in ST - using equivalent timer logic
 END_FOR;
 // Regular unit 'ControlHeating'
-heatingLogicInstance2 := HeatingLogic(iTemp:=Temperatures_Room1, iMode:=mode);
-heatingEnabled := heatingLogicInstance2;
+heatingLogicInstance2(iTemp:=temperaturesArray[0].Room1, iMode:=mode);
+heatingEnabled := heatingLogicInstance2.oHeating;
+
 heater := heatingEnabled;
 // Regular unit 'AdjustLightLevelByMode'
 CASE mode OF

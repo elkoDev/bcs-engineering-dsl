@@ -420,8 +420,43 @@ class BeckhoffGeneratorContext {
     return result;
   }
 
-  stUse(stmt: any, indent: number): string {
-    return this.convertUseStmtToST(stmt);
+  stUse(stmt: UseStmt, indent: number): string {
+    const pad = (level: number) => "    ".repeat(level);
+    let useContent = "";
+    const { instanceName } = this.getOrAssignFBInstance(stmt);
+    const inputMappings = stmt.inputArgs
+      .map(
+        (arg) => `${arg.inputVar.ref?.name}:=${this.convertExprToST(arg.value)}`
+      )
+      .join(", ");
+    // Handle output mapping
+    if (stmt.useOutput.singleOutput) {
+      // Get the FB's only output variable name
+      const fb = stmt.functionBlockRef.ref;
+      const outputs = fb ? getOutputs(fb) : [];
+      const fbOutputVarName = outputs.length === 1 ? outputs[0].name : "output";
+      const targetOutputVarRef = stmt.useOutput.singleOutput.targetOutputVar;
+      const targetOutputVarName =
+        this.getQualifiedReferenceName(targetOutputVarRef);
+      useContent += `${pad(indent)}${instanceName}(${inputMappings});\n`;
+      useContent += `${pad(
+        indent
+      )}${targetOutputVarName} := ${instanceName}.${fbOutputVarName};\n`;
+    } else if (stmt.useOutput.mappingOutputs.length > 0) {
+      useContent += `${pad(indent)}${instanceName}(${inputMappings});\n`;
+      for (const outMapping of stmt.useOutput.mappingOutputs) {
+        const targetOutputVarRef = outMapping.targetOutputVar;
+        const targetOutputVarName =
+          this.getQualifiedReferenceName(targetOutputVarRef);
+        const fbOutputVarName = outMapping.fbOutputVar.ref?.name ?? "output";
+        useContent += `${pad(
+          indent
+        )}${targetOutputVarName} := ${instanceName}.${fbOutputVarName};\n`;
+      }
+    } else {
+      useContent += `${pad(indent)}${instanceName}(${inputMappings});\n`;
+    }
+    return useContent;
   }
 
   stEdge(stmt: any, indent: number, rising: boolean): string {
@@ -469,37 +504,6 @@ class BeckhoffGeneratorContext {
       return fallingContent;
     }
     return "// Error: Invalid edge detection statement";
-  }
-
-  convertUseStmtToST(stmt: UseStmt): string {
-    let useContent = "";
-    const { instanceName, fbType } = this.getOrAssignFBInstance(stmt);
-    // Map inputs
-    const inputMappings = stmt.inputArgs
-      .map((arg) => {
-        return `${arg.inputVar.ref?.name}:=${this.convertExprToST(arg.value)}`;
-      })
-      .join(", ");
-    // Handle output mapping
-    if (stmt.useOutput.singleOutput) {
-      const targetOutputVarRef = stmt.useOutput.singleOutput.targetOutputVar;
-      const targetOutputVarName =
-        this.getQualifiedReferenceName(targetOutputVarRef);
-      useContent += `${instanceName} := ${fbType}(${inputMappings});\n`;
-      useContent += `${targetOutputVarName} := ${instanceName};`;
-    } else if (stmt.useOutput.mappingOutputs.length > 0) {
-      useContent += `${instanceName}(${inputMappings});\n`;
-      for (const outMapping of stmt.useOutput.mappingOutputs) {
-        const targetOutputVarRef = outMapping.targetOutputVar;
-        const targetOutputVarName =
-          this.getQualifiedReferenceName(targetOutputVarRef);
-        const fbOutputVarName = outMapping.fbOutputVar.ref?.name ?? "output";
-        useContent += `${targetOutputVarName} := ${instanceName}.${fbOutputVarName};\n`;
-      }
-    } else {
-      useContent += `${instanceName}(${inputMappings});\n`;
-    }
-    return useContent;
   }
 
   generateBeckhoffArtifacts(): string[] {
