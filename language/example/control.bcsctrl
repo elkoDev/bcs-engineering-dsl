@@ -89,7 +89,6 @@ control MainController {
         while (retries < 3) {
             heater = true;
             retries = retries + 1;
-            wait T#1s;
             if (retries == 2) {
                 break;
             }
@@ -102,7 +101,6 @@ control MainController {
             if (i == 2) {
                 continue;
             }
-            wait T#1s;
         }
     }
 
@@ -132,9 +130,10 @@ control MainController {
     }
 
     unit DelayedStartup once when (now >= TOD#07:05:00) {
-        wait T#5s;
-        heater = true;
-        Lights.Room1 = false;
+        after T#5m if (true) then {
+            heater = true;
+            Lights.Room1 = false;
+        }
     }
 
     unit UseDaliLibrary {

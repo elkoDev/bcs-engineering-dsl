@@ -24,7 +24,6 @@ import {
   isForStmt,
   isSwitchStmt,
   isUseStmt,
-  isWaitStmt,
   isExpressionStmt,
   isOnRisingEdgeStmt,
   isOnFallingEdgeStmt,
@@ -43,6 +42,8 @@ import {
   ForStmt,
   IfStmt,
   WhileStmt,
+  isAfterStmt,
+  AfterStmt,
 } from "../../language/generated/ast.js";
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
@@ -115,9 +116,18 @@ function translateOperator(op: string): string {
 }
 
 interface FBInstanceInfo {
+  kind: "fb";
   instanceName: string;
   fbType: string;
 }
+
+interface AfterStmtInstanceInfo {
+  kind: "after";
+  tonName: string;
+  ptValue: string;
+}
+
+type InstanceInfo = FBInstanceInfo | AfterStmtInstanceInfo;
 
 interface HardwareDatapoint {
   name: string;
@@ -136,7 +146,7 @@ class BeckhoffGeneratorContext {
   destination: string;
 
   hardwareChannelFlatNames: Set<string>;
-  fbInstanceMap: Map<any, FBInstanceInfo>; // Key: UseStmt or edge key, Value: FBInstanceInfo
+  fbInstanceMap: Map<any, InstanceInfo>; // Key: UseStmt, edge, or AfterStmt, Value: InstanceInfo
   fbInstanceCounter: number;
 
   constructor(
@@ -165,11 +175,11 @@ class BeckhoffGeneratorContext {
   // Assign or get a unique FB instance for a UseStmt
   getOrAssignFBInstance(useStmt: UseStmt): FBInstanceInfo {
     if (this.fbInstanceMap.has(useStmt)) {
-      return this.fbInstanceMap.get(useStmt)!;
+      return this.fbInstanceMap.get(useStmt)! as FBInstanceInfo;
     }
     const fbType = useStmt.functionBlockRef.ref?.name ?? "UNKNOWN_FB";
     const instanceName = this.createUniqueFBInstanceName(fbType);
-    const info: FBInstanceInfo = { instanceName, fbType };
+    const info: FBInstanceInfo = { kind: "fb", instanceName, fbType };
     this.fbInstanceMap.set(useStmt, info);
     return info;
   }
@@ -181,10 +191,27 @@ class BeckhoffGeneratorContext {
     fbType: string
   ): FBInstanceInfo {
     if (this.fbInstanceMap.has(stmt)) {
-      return this.fbInstanceMap.get(stmt)!;
+      return this.fbInstanceMap.get(stmt)! as FBInstanceInfo;
     }
     const instanceName = this.createUniqueFBInstanceName(fbType);
-    const info: FBInstanceInfo = { instanceName, fbType };
+    const info: FBInstanceInfo = { kind: "fb", instanceName, fbType };
+    this.fbInstanceMap.set(stmt, info);
+    return info;
+  }
+
+  // Assign or get a unique AfterStmt instance (TON timer)
+  getOrAssignAfterStmtInstance(stmt: AfterStmt): AfterStmtInstanceInfo {
+    if (this.fbInstanceMap.has(stmt)) {
+      return this.fbInstanceMap.get(stmt)! as AfterStmtInstanceInfo;
+    }
+    const idx = this.fbInstanceCounter++;
+    const tonName = `tonAfter${idx}`;
+    const ptValue = stmt.time;
+    const info: AfterStmtInstanceInfo = {
+      kind: "after",
+      tonName,
+      ptValue,
+    };
     this.fbInstanceMap.set(stmt, info);
     return info;
   }
@@ -197,13 +224,20 @@ class BeckhoffGeneratorContext {
     // Use a Set to avoid duplicates if the same instance is referenced by multiple keys
     const seen = new Set<string>();
     const result: Array<{ instanceName: string; fbType: string }> = [];
-    for (const { instanceName, fbType } of this.fbInstanceMap.values()) {
-      if (!seen.has(instanceName)) {
-        seen.add(instanceName);
-        result.push({ instanceName, fbType });
+    for (const info of this.fbInstanceMap.values()) {
+      if (info.kind === "fb" && !seen.has(info.instanceName)) {
+        seen.add(info.instanceName);
+        result.push({ instanceName: info.instanceName, fbType: info.fbType });
       }
     }
     return result;
+  }
+
+  // Get all AfterStmt instance declarations for main program
+  getAllAfterStmtDeclarations(): AfterStmtInstanceInfo[] {
+    return Array.from(this.fbInstanceMap.values()).filter(
+      (info): info is AfterStmtInstanceInfo => info.kind === "after"
+    );
   }
 
   getQualifiedReferenceName(ref: Reference<NamedElement>): string {
@@ -319,11 +353,7 @@ class BeckhoffGeneratorContext {
     if (isWhileStmt(stmt)) return this.stWhile(stmt, indent);
     if (isForStmt(stmt)) return this.stFor(stmt, indent);
     if (isSwitchStmt(stmt)) return this.stSwitch(stmt, indent);
-    if (isWaitStmt(stmt))
-      return (
-        pad(indent) +
-        `// Wait statements are not directly supported in ST - using equivalent timer logic`
-      );
+    if (isAfterStmt(stmt)) return this.stAfter(stmt, indent);
     if (isBreakStmt(stmt)) return pad(indent) + `EXIT;`;
     if (isContinueStmt(stmt)) return pad(indent) + `CONTINUE;`;
     if (isExpressionStmt(stmt))
@@ -513,24 +543,21 @@ class BeckhoffGeneratorContext {
     return "// Error: Invalid edge detection statement";
   }
 
-  generateBeckhoffArtifacts(): string[] {
-    if (!fs.existsSync(this.destination))
-      fs.mkdirSync(this.destination, { recursive: true });
-    const files: string[] = [];
-
-    for (const item of this.controlModel.controlBlock.items) {
-      if (isEnumDecl(item) || isStructDecl(item) || isFunctionBlockDecl(item)) {
-        if (item.isExtern) continue;
-      }
-
-      if (isEnumDecl(item)) files.push(this.writeEnum(item));
-      else if (isStructDecl(item)) files.push(this.writeStruct(item));
-      else if (isFunctionBlockDecl(item))
-        files.push(...this.writeFunctionBlock(item));
-    }
-
-    files.push(this.writeProgramMain());
-    return files;
+  stAfter(stmt: AfterStmt, indent: number): string {
+    const pad = (level: number) => "    ".repeat(level);
+    const { tonName } = this.getOrAssignAfterStmtInstance(stmt);
+    const condition = this.convertExprToST((stmt as any).condition);
+    const blockStmts = (stmt as any).stmts ?? [];
+    // Generate more concise logic: TON is enabled by condition, actions run when Q and condition, TON reset after
+    return (
+      `${pad(indent)}${tonName}(IN := ${condition});\n` +
+      `${pad(indent)}IF ${tonName}.Q THEN\n` +
+      blockStmts
+        .map((s: any) => this.convertStatementToST(s, indent + 1))
+        .join("\n") +
+      `\n${pad(indent + 1)}${tonName}(IN := FALSE);\n` +
+      `${pad(indent)}END_IF\n`
+    );
   }
 
   writeEnum(enumDecl: EnumDecl): string {
@@ -724,6 +751,32 @@ class BeckhoffGeneratorContext {
     }
   }
 
+  // Walk statements to collect AfterStmt instances for unique TON/vars
+  private assignAfterStmtInstances(mainStatements: Statement[]) {
+    const walk = (stmts: Statement[]) => {
+      for (const stmt of stmts) {
+        if (isAfterStmt(stmt)) {
+          this.getOrAssignAfterStmtInstance(stmt);
+          walk((stmt as any).stmts ?? []);
+        } else if (isIfStmt(stmt)) {
+          walk(stmt.stmts);
+          for (const elseIf of stmt.elseIfStmts) walk(elseIf.stmts);
+          if (stmt.elseStmt) walk(stmt.elseStmt.stmts);
+        } else if (isWhileStmt(stmt)) {
+          walk(stmt.stmts);
+        } else if (isForStmt(stmt)) {
+          walk(stmt.stmts);
+        } else if (isSwitchStmt(stmt)) {
+          for (const c of stmt.cases) walk(c.stmts);
+          if (stmt.default) walk(stmt.default.stmts);
+        } else if (isOnRisingEdgeStmt(stmt) || isOnFallingEdgeStmt(stmt)) {
+          walk(stmt.stmts);
+        }
+      }
+    };
+    walk(mainStatements);
+  }
+
   writeProgramMain(): string {
     this.fbInstanceMap.clear();
     this.fbInstanceCounter = 1;
@@ -749,7 +802,9 @@ class BeckhoffGeneratorContext {
     ]);
 
     this.assignEdgeDetectionInstances(mainStatements);
+    this.assignAfterStmtInstances(mainStatements);
     const fbInstanceDecls = this.getAllFBInstanceDeclarations();
+    const afterStmtDecls = this.getAllAfterStmtDeclarations();
     const { scheduled, conditional, regular } = extractControlUnits(
       this.controlModel
     );
@@ -768,14 +823,13 @@ class BeckhoffGeneratorContext {
 
     // Patch declContent to only include boilerplate if used
     const declContent = this.generateMainDeclContent(
-      inputs,
-      outputs,
+      { inputs, outputs },
       mainVars,
       loopVarsToDeclare,
       fbInstanceDecls,
-      scheduled,
-      conditional,
-      usesBoilerplate // pass as extra arg
+      afterStmtDecls,
+      { scheduled, conditional },
+      usesBoilerplate
     );
 
     const declFilePath = path.join(this.destination, `MAIN_decl.st`);
@@ -819,7 +873,7 @@ class BeckhoffGeneratorContext {
     const key = `daliCom_${fbType}`;
     if (!this.fbInstanceMap.has(key)) {
       const instanceName = this.createUniqueFBInstanceName(fbType);
-      this.fbInstanceMap.set(key, { instanceName, fbType });
+      this.fbInstanceMap.set(key, { kind: "fb", instanceName, fbType });
     }
   }
 
@@ -875,15 +929,19 @@ class BeckhoffGeneratorContext {
   }
 
   generateMainDeclContent(
-    inputs: HardwareDatapoint[],
-    outputs: HardwareDatapoint[],
+    hardware: { inputs: HardwareDatapoint[]; outputs: HardwareDatapoint[] },
     mainVars: EmittedVarDecl[],
     loopVarsToDeclare: [string, { type: string; init?: Expr }][],
     fbInstanceDecls: Array<{ instanceName: string; fbType: string }>,
-    scheduled: ScheduledControlUnit[],
-    conditional: ConditionalControlUnit[],
+    afterStmtDecls: AfterStmtInstanceInfo[],
+    controlUnits: {
+      scheduled: ScheduledControlUnit[];
+      conditional: ConditionalControlUnit[];
+    },
     usesBoilerplate: boolean = true // new optional arg
   ): string {
+    const { inputs, outputs } = hardware;
+    const { scheduled, conditional } = controlUnits;
     return toString(
       expandToNode`
         PROGRAM MAIN
@@ -940,6 +998,13 @@ class BeckhoffGeneratorContext {
                   ${instanceName}: ${fbType}; (* Function block instance *)
                 `;
               },
+              { appendNewLineIfNotEmpty: true }
+            )}
+            ${joinToNode(
+              afterStmtDecls,
+              ({ tonName, ptValue }) => expandToNode`
+                ${tonName}: TON := (PT := ${ptValue});
+              `,
               { appendNewLineIfNotEmpty: true }
             )}
             ${joinToNode(
@@ -1190,7 +1255,21 @@ class BeckhoffGeneratorContext {
       { declaration: string; implementation?: string }
     >;
   } {
-    const files = this.generateBeckhoffArtifacts();
+    // Generate all files and collect their paths
+    const files: string[] = [];
+    // Write MAIN program
+    files.push(this.writeProgramMain());
+    // Write all enums, structs, and function blocks
+    for (const item of this.controlModel.controlBlock.items) {
+      if ("isExtern" in item && item.isExtern) continue;
+      if (isEnumDecl(item)) {
+        files.push(this.writeEnum(item));
+      } else if (isStructDecl(item)) {
+        files.push(this.writeStruct(item));
+      } else if (isFunctionBlockDecl(item)) {
+        files.push(...this.writeFunctionBlock(item));
+      }
+    }
 
     function createCSharpString(filePath: string): string {
       return fs.readFileSync(filePath, "utf8").replace(/\r\n/g, "\\r\\n");
@@ -1326,10 +1405,14 @@ function handleLibrarySpecials(
       throw new Error("DALI communication FB instance was not generated.");
     }
     // Only set constructorArgs, do NOT prepend to inputMappings
-    return {
-      inputMappings,
-      constructorArgs: daliComInstance.instanceName,
-    };
+    if (daliComInstance.kind === "fb") {
+      return {
+        inputMappings,
+        constructorArgs: daliComInstance.instanceName,
+      };
+    } else {
+      throw new Error("DALI communication FB instance is not of FB kind.");
+    }
   }
   // Add more library-specific handling here as needed
   return { inputMappings };

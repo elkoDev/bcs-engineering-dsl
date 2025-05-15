@@ -603,4 +603,40 @@ describe("Beckhoff Generator Tests", () => {
       expectedFilePath: path.join(expectedDir, "MAIN_impl.st"),
     });
   });
+
+    test("Generate after units correctly", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    // Test case directories
+    const testCaseName = "after_test";
+    const { inputDir, expectedDir, outputDir } =
+      setupTestDirectories(testCaseName);
+
+    // Parse the test files
+    const [controlModel, hardwareModels] =
+      await extractControlModelWithHardwareModels(
+        path.join(inputDir, "after_test.bcsctrl"),
+        services.bcsControl
+      );
+
+    // Generate code
+    const result = generateBeckhoffCode(
+      controlModel,
+      hardwareModels[0],
+      outputDir
+    );
+
+    expect(Object.keys(result.csharpStrings).length).toBe(1);
+
+    // Compare each expected file with the generated file
+    compareGeneratedWithExpected({
+      generatedFilePath: path.join(outputDir, "MAIN_decl.st"),
+      expectedFilePath: path.join(expectedDir, "MAIN_decl.st"),
+    });
+
+    compareGeneratedWithExpected({
+      generatedFilePath: path.join(outputDir, "MAIN_impl.st"),
+      expectedFilePath: path.join(expectedDir, "MAIN_impl.st"),
+    });
+  });
 });

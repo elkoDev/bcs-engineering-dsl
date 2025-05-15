@@ -5,6 +5,7 @@ import {
 } from "langium/lsp";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import {
+  isAfterStmt,
   isBinExpr,
   isCaseLiteral,
   isControlBlock,
@@ -25,7 +26,6 @@ import {
   isTypeRef,
   isUseStmt,
   isVarDecl,
-  isWaitStmt,
   Primary,
 } from "./generated/ast.js";
 import { Position, Range, SemanticTokenTypes } from "vscode-languageserver";
@@ -287,7 +287,7 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         });
       }
     }
-    if (isWaitStmt(node)) {
+    if (isAfterStmt(node)) {
       if (node.time && node.$cstNode) {
         const fullText = node.$cstNode.text;
         const match = RegExp(/T#\d+(ms|s|m|h|d)/).exec(fullText);
