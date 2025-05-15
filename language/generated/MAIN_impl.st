@@ -41,7 +41,6 @@ IF mode <> OperatingMode.OFF THEN
     WHILE RetryHeaterStartup_retries < 3 DO
         heater := TRUE;
         RetryHeaterStartup_retries := RetryHeaterStartup_retries + 1;
-        // Wait statements are not directly supported in ST - using equivalent timer logic
         IF RetryHeaterStartup_retries = 2 THEN
             EXIT;
         END_IF;
@@ -54,7 +53,6 @@ FOR i := 0 TO 5 BY 1 DO
     IF i = 2 THEN
         CONTINUE;
     END_IF;
-    // Wait statements are not directly supported in ST - using equivalent timer logic
 END_FOR;
 
 // Control Unit 'ControlHeating'
@@ -83,9 +81,22 @@ IF NOT (todNow >= TOD#07:05:00) THEN
     DelayedStartup_hasRun := FALSE;
 END_IF;
 IF (NOT DelayedStartup_hasRun) AND (todNow >= TOD#07:05:00) THEN
-    // Wait statements are not directly supported in ST - using equivalent timer logic
-    heater := TRUE;
-    Lights_Room1 := FALSE;
+    IF TRUE AND NOT afterBlock8_started THEN
+        tonAfter8(IN := TRUE);
+        afterBlock8_started := TRUE;
+    ELSIF NOT TRUE THEN
+        tonAfter8(IN := FALSE);
+        afterBlock8_started := FALSE;
+        afterBlock8_done := FALSE;
+    END_IF
+
+    tonAfter8();
+
+    IF tonAfter8.Q AND NOT afterBlock8_done THEN
+        heater := TRUE;
+        Lights_Room1 := FALSE;
+        afterBlock8_done := TRUE;
+    END_IF
     DelayedStartup_hasRun := TRUE;
 END_IF;
 

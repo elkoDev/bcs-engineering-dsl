@@ -139,7 +139,7 @@ Statement:
     | SwitchStmt
     | ExpressionStmt
     | LocalVarDeclStmt
-    | WaitStmt
+    | AfterStmt
     | EdgeStmt
     | UseStmt
     | ContinueStmt
@@ -224,8 +224,8 @@ MappingUseResult:
 // --------------------------------------------------------------------------
 // Timing and Edge Statements
 // --------------------------------------------------------------------------
-WaitStmt:
-    'wait' time=TimeLiteral ';'
+AfterStmt:
+    'after' time=TimeLiteral 'if' '(' condition=Expr ')' 'then' Block
 ;
 
 EdgeStmt:

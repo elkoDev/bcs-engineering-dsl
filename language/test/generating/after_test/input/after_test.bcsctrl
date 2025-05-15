@@ -1,0 +1,18 @@
+control AfterTestController {
+    var condition: BOOL;
+    var x: INT;
+    var y: BOOL = false;
+
+    unit AfterUnit {
+        condition = true;
+        after T#5s if (condition) then {
+            y = true;
+            condition = false;
+        }
+
+        after T#10s if (y == true) then {
+            y = false;
+            condition = true;
+        }
+    }
+}
