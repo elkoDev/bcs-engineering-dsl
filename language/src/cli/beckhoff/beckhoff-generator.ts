@@ -43,6 +43,7 @@ import {
   IfStmt,
   WhileStmt,
   isAfterStmt,
+  AfterStmt,
 } from "../../language/generated/ast.js";
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
@@ -123,8 +124,6 @@ interface FBInstanceInfo {
 interface AfterStmtInstanceInfo {
   kind: "after";
   tonName: string;
-  startedVar: string;
-  doneVar: string;
   ptValue: string;
 }
 
@@ -201,21 +200,16 @@ class BeckhoffGeneratorContext {
   }
 
   // Assign or get a unique AfterStmt instance (TON timer)
-  getOrAssignAfterStmtInstance(stmt: Statement): AfterStmtInstanceInfo {
+  getOrAssignAfterStmtInstance(stmt: AfterStmt): AfterStmtInstanceInfo {
     if (this.fbInstanceMap.has(stmt)) {
       return this.fbInstanceMap.get(stmt)! as AfterStmtInstanceInfo;
     }
     const idx = this.fbInstanceCounter++;
     const tonName = `tonAfter${idx}`;
-    const startedVar = `afterBlock${idx}_started`;
-    const doneVar = `afterBlock${idx}_done`;
-    // PT value from stmt.time (should be a TIME literal)
-    const ptValue = this.convertExprToST((stmt as any).time);
+    const ptValue = stmt.time;
     const info: AfterStmtInstanceInfo = {
       kind: "after",
       tonName,
-      startedVar,
-      doneVar,
       ptValue,
     };
     this.fbInstanceMap.set(stmt, info);
@@ -549,31 +543,21 @@ class BeckhoffGeneratorContext {
     return "// Error: Invalid edge detection statement";
   }
 
-  // Generate ST code for AfterStmt
-  stAfter(stmt: Statement, indent: number): string {
+  stAfter(stmt: AfterStmt, indent: number): string {
     const pad = (level: number) => "    ".repeat(level);
-    const { tonName, startedVar, doneVar } =
-      this.getOrAssignAfterStmtInstance(stmt);
+    const { tonName } = this.getOrAssignAfterStmtInstance(stmt);
     const condition = this.convertExprToST((stmt as any).condition);
-    // Block statements
     const blockStmts = (stmt as any).stmts ?? [];
-    return `${pad(indent)}IF ${condition} AND NOT ${startedVar} THEN
-${pad(indent + 1)}${tonName}(IN := TRUE);
-${pad(indent + 1)}${startedVar} := TRUE;
-${pad(indent)}ELSIF NOT ${condition} THEN
-${pad(indent + 1)}${tonName}(IN := FALSE);
-${pad(indent + 1)}${startedVar} := FALSE;
-${pad(indent + 1)}${doneVar} := FALSE;
-${pad(indent)}END_IF
-
-${pad(indent)}${tonName}();
-
-${pad(indent)}IF ${tonName}.Q AND NOT ${doneVar} THEN
-${blockStmts
-  .map((s: any) => this.convertStatementToST(s, indent + 1))
-  .join("\n")}
-${pad(indent + 1)}${doneVar} := TRUE;
-${pad(indent)}END_IF`;
+    // Generate more concise logic: TON is enabled by condition, actions run when Q and condition, TON reset after
+    return (
+      `${pad(indent)}${tonName}(IN := ${condition});\n` +
+      `${pad(indent)}IF ${tonName}.Q THEN\n` +
+      blockStmts
+        .map((s: any) => this.convertStatementToST(s, indent + 1))
+        .join("\n") +
+      `\n${pad(indent + 1)}${tonName}(IN := FALSE);\n` +
+      `${pad(indent)}END_IF\n`
+    );
   }
 
   writeEnum(enumDecl: EnumDecl): string {
@@ -1018,9 +1002,7 @@ ${pad(indent)}END_IF`;
             )}
             ${joinToNode(
               afterStmtDecls,
-              ({ tonName, ptValue, startedVar, doneVar }) => expandToNode`
-                ${startedVar}: BOOL := FALSE;
-                ${doneVar}: BOOL := FALSE;
+              ({ tonName, ptValue }) => expandToNode`
                 ${tonName}: TON := (PT := ${ptValue});
               `,
               { appendNewLineIfNotEmpty: true }
