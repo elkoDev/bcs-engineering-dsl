@@ -1,29 +1,29 @@
 import { ValidationAcceptor } from "langium";
 import {
-  ControlModel,
-  ControlUnit,
-  FunctionBlockDecl,
-  UseOutput,
-  UseStmt,
-  VarDecl,
-  isControlUnit,
-  isEnumDecl,
-  isForStmt,
-  isFunctionBlockDecl,
-  isIfStmt,
-  isOnFallingEdgeStmt,
-  isOnRisingEdgeStmt,
-  isStructDecl,
-  isSwitchStmt,
-  isVarDecl,
-  isWhileStmt,
-} from "../generated/ast.js";
-import {
   getInputs,
   getLogic,
   getLocals,
   getOutputs,
 } from "./function-block-utils.js";
+import {
+  ControlUnit,
+  isVarDecl,
+  VarDecl,
+  isForStmt,
+  isIfStmt,
+  isWhileStmt,
+  isOnRisingEdgeStmt,
+  isOnFallingEdgeStmt,
+  isSwitchStmt,
+  FunctionBlockDecl,
+  UseStmt,
+  UseOutput,
+  ControlModel,
+  isStructDecl,
+  isEnumDecl,
+  isFunctionBlockDecl,
+  isControlUnit,
+} from "../../generated/ast.js";
 
 /**
  * Utility class for checking duplications in various AST constructs.

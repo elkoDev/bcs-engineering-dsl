@@ -4,14 +4,15 @@ import {
   SemanticTokenAcceptor,
 } from "langium/lsp";
 import { BCSHardwareLangServices } from "./bcs-hardware-lang-module.js";
+
+import { SemanticTokenTypes } from "vscode-languageserver";
 import {
-  isBitRange,
-  isChannel,
   isController,
   isDatapoint,
+  isChannel,
   isPortGroup,
-} from "./generated/ast.js";
-import { SemanticTokenTypes } from "vscode-languageserver";
+  isBitRange,
+} from "../generated/ast.js";
 
 export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenProvider {
   constructor(services: BCSHardwareLangServices) {

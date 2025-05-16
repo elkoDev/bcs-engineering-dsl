@@ -5,9 +5,9 @@ import {
   CompletionAcceptor,
   NextFeature,
 } from "langium/lsp";
-import { isDatapoint, isEnumDecl, isRef } from "./generated/ast.js";
 import type { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import { MaybePromise } from "langium";
+import { isRef, isDatapoint, isEnumDecl } from "../generated/ast.js";
 
 export class BCSControlLangCompletionProvider extends DefaultCompletionProvider {
   constructor(services: BCSControlLangServices) {

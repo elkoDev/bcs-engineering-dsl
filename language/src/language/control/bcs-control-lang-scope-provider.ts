@@ -7,28 +7,29 @@ import {
   Scope,
 } from "langium";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
-import {
-  Datapoint,
-  isControlModel,
-  isControlUnit,
-  isDatapoint,
-  isEnumDecl,
-  isEnumMemberLiteral,
-  isForStmt,
-  isFunctionBlockDecl,
-  isInputMapping,
-  isMappingUseResult,
-  isRef,
-  isStructDecl,
-  isUseStmt,
-  isVarDecl,
-  VarDecl,
-} from "./generated/ast.js";
+
 import {
   getInputs,
   getLocals,
   getOutputs,
 } from "./utils/function-block-utils.js";
+import {
+  isRef,
+  isControlModel,
+  Datapoint,
+  isEnumDecl,
+  isStructDecl,
+  isFunctionBlockDecl,
+  isVarDecl,
+  isDatapoint,
+  isEnumMemberLiteral,
+  isInputMapping,
+  isUseStmt,
+  isMappingUseResult,
+  VarDecl,
+  isForStmt,
+  isControlUnit,
+} from "../generated/ast.js";
 
 export class BCSControlLangScopeProvider extends DefaultScopeProvider {
   constructor(services: BCSControlLangServices) {

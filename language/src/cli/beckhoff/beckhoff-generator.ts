@@ -48,12 +48,6 @@ import {
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import {
-  getInputs,
-  getOutputs,
-  getLocals,
-  getLogic,
-} from "../../language/utils/function-block-utils.js";
 import { Reference } from "langium";
 import {
   ConditionalControlUnit,
@@ -62,6 +56,12 @@ import {
   RegularControlUnit,
   ScheduledControlUnit,
 } from "./beckhoff-utils.js";
+import {
+  getOutputs,
+  getInputs,
+  getLocals,
+  getLogic,
+} from "../../language/control/utils/function-block-utils.js";
 
 // Helper function to check if a node is a primitive value
 function isPrimitive(expr: Primary): boolean {

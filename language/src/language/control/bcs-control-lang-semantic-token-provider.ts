@@ -4,31 +4,32 @@ import {
   SemanticTokenAcceptor,
 } from "langium/lsp";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
+
+import { Position, Range, SemanticTokenTypes } from "vscode-languageserver";
 import {
-  isAfterStmt,
-  isBinExpr,
-  isCaseLiteral,
+  isImportDecl,
   isControlBlock,
   isControlUnit,
-  isDatapoint,
+  isTypeRef,
+  isTypeAlias,
   isEnumDecl,
-  isEnumMemberLiteral,
-  isFunctionBlockDecl,
-  isImportDecl,
-  isInputMapping,
-  isMappingUseResult,
-  isPrimary,
   isRef,
-  isSimpleUseResult,
+  isVarDecl,
+  isDatapoint,
+  isFunctionBlockDecl,
   isStructDecl,
   isStructFieldDecl,
-  isTypeAlias,
-  isTypeRef,
   isUseStmt,
-  isVarDecl,
+  isMappingUseResult,
+  isSimpleUseResult,
+  isInputMapping,
+  isEnumMemberLiteral,
+  isCaseLiteral,
+  isPrimary,
+  isBinExpr,
+  isAfterStmt,
   Primary,
-} from "./generated/ast.js";
-import { Position, Range, SemanticTokenTypes } from "vscode-languageserver";
+} from "../generated/ast.js";
 
 export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenProvider {
   constructor(services: BCSControlLangServices) {

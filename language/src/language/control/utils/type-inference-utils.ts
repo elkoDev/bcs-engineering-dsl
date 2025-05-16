@@ -1,18 +1,18 @@
 import { AstUtils, ValidationAcceptor } from "langium";
 import {
-  ArrayLiteral,
-  StructDecl,
-  VarDecl,
-  isChannel,
   isControlModel,
-  isEnumDecl,
-  isEnumMemberLiteral,
-  isFunctionBlockDecl,
-  isPrimary,
+  StructDecl,
   isStructDecl,
+  isEnumDecl,
   isTypeAlias,
+  isPrimary,
+  ArrayLiteral,
   isVarDecl,
-} from "../generated/ast.js";
+  VarDecl,
+  isFunctionBlockDecl,
+  isChannel,
+  isEnumMemberLiteral,
+} from "../../generated/ast.js";
 
 /**
  * Infers the type of a binary expression by examining both operands and the operator.

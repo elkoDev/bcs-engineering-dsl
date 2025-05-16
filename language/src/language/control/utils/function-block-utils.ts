@@ -1,12 +1,12 @@
 import {
   FunctionBlockDecl,
-  FunctionBlockLogic,
   VarDecl,
   isFunctionBlockInputs,
-  isFunctionBlockLocals,
-  isFunctionBlockLogic,
   isFunctionBlockOutputs,
-} from "../generated/ast.js";
+  isFunctionBlockLocals,
+  FunctionBlockLogic,
+  isFunctionBlockLogic,
+} from "../../generated/ast.js";
 
 /**
  * Get all input variables from a function block.
