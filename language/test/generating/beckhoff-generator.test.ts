@@ -6,7 +6,6 @@ import { NodeFileSystem } from "langium/node";
 import * as fs from "node:fs";
 import { generateBeckhoffCode } from "../../src/cli/beckhoff/beckhoff-generator.js";
 
-// Directory for temporary output files during tests
 const TEST_OUTPUT_DIR = path.join(__dirname, "output");
 const TEST_DIR = path.join(__dirname);
 
@@ -22,11 +21,9 @@ function compareGeneratedWithExpected({
   generatedFilePath,
   expectedFilePath,
 }: CompareFilePaths): void {
-  // Check file exists
   expect(fs.existsSync(generatedFilePath)).toBe(true);
   expect(fs.existsSync(expectedFilePath)).toBe(true);
 
-  // Compare file contents (normalize line endings)
   const generatedContent: string = fs
     .readFileSync(generatedFilePath, "utf8")
     .replace(/\r\n/g, "\n");
@@ -34,7 +31,6 @@ function compareGeneratedWithExpected({
     .readFileSync(expectedFilePath, "utf8")
     .replace(/\r\n/g, "\n");
 
-  // This provides more detailed error messages when content doesn't match
   expect(generatedContent).toBe(expectedContent);
 }
 
@@ -52,7 +48,6 @@ function setupTestDirectories(testCaseName: string): {
   const expectedDir = path.join(testCaseDir, "expected");
   const outputDir = path.join(TEST_OUTPUT_DIR, testCaseName);
 
-  // Ensure output directory exists
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
@@ -61,22 +56,19 @@ function setupTestDirectories(testCaseName: string): {
 }
 
 describe("Beckhoff Generator Tests", () => {
-  // Create output directory before tests
   beforeAll(() => {
     if (!fs.existsSync(TEST_OUTPUT_DIR)) {
       fs.mkdirSync(TEST_OUTPUT_DIR, { recursive: true });
     }
 
-    // Create tests directory structure if it doesn't exist
     if (!fs.existsSync(TEST_DIR)) {
       fs.mkdirSync(TEST_DIR, { recursive: true });
     }
   });
 
-  // Clean up output directory after tests
   afterAll(() => {
     if (fs.existsSync(TEST_OUTPUT_DIR)) {
-      //fs.rmSync(TEST_OUTPUT_DIR, { recursive: true, force: true });
+      fs.rmSync(TEST_OUTPUT_DIR, { recursive: true, force: true });
     }
   });
 
