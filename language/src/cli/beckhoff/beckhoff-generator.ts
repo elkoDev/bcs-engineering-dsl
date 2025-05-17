@@ -44,6 +44,8 @@ import {
   WhileStmt,
   isAfterStmt,
   AfterStmt,
+  PortGroup,
+  Datapoint,
 } from "../../language/generated/ast.js";
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
@@ -1151,10 +1153,9 @@ class BeckhoffGeneratorContext {
     const outputs: HardwareDatapoint[] = [];
     for (const controller of getControllers(this.hardwareModel)) {
       if (controller.platform !== "Beckhoff") continue;
-      const portGroups = this.collectPortGroups(getPortGroups(controller));
       this.processDatapoints(
         getDatapoints(controller),
-        portGroups,
+        getPortGroups(controller),
         inputs,
         outputs
       );
@@ -1162,38 +1163,30 @@ class BeckhoffGeneratorContext {
     return { inputs, outputs };
   }
 
-  private collectPortGroups(components: any[]): Map<string, any> {
-    const portGroups = new Map();
-    for (const component of components) {
-      if ("moduleType" in component) {
-        portGroups.set(component.name, component);
-      }
-    }
-    return portGroups;
-  }
-
   private processDatapoints(
-    components: any[],
-    portGroups: Map<string, any>,
+    datapoints: Datapoint[],
+    portGroups: PortGroup[],
     inputs: Array<{ name: string; type: string; ioBinding: string }>,
     outputs: Array<{ name: string; type: string; ioBinding: string }>
   ) {
-    for (const component of components) {
-      if ("portgroup" in component) {
-        const datapoint = component;
-        const portgroup = portGroups.get(datapoint.portgroup.ref?.name);
-        if (!portgroup) continue;
-        const isInput =
-          portgroup.ioType === "DIGITAL_INPUT" ||
-          portgroup.ioType === "ANALOG_INPUT";
-        this.processChannels(datapoint, portgroup, isInput, inputs, outputs);
-      }
+    const portGroupsMap = new Map<string, PortGroup>(
+      portGroups.map((pg) => [pg.name, pg])
+    );
+    for (const datapoint of datapoints) {
+      const portgroup =
+        datapoint.portgroup?.ref &&
+        portGroupsMap.get(datapoint.portgroup.ref.name);
+      if (!portgroup) continue;
+      const isInput =
+        portgroup.ioType === "DIGITAL_INPUT" ||
+        portgroup.ioType === "ANALOG_INPUT";
+      this.processChannels(datapoint, portgroup, isInput, inputs, outputs);
     }
   }
 
   private processChannels(
-    datapoint: any,
-    portgroup: any,
+    datapoint: Datapoint,
+    portgroup: PortGroup,
     isInput: boolean,
     inputs: Array<{ name: string; type: string; ioBinding: string }>,
     outputs: Array<{ name: string; type: string; ioBinding: string }>
@@ -1214,15 +1207,17 @@ class BeckhoffGeneratorContext {
         default:
           plcType = "BYTE";
       }
-      const addrMatch = portgroup.startAddress?.match(
-        /([IQ])([XBWDL])?(\d+(\.\d+)?)?/
-      );
+      const addrRegex = /([IQ])([XBWDL])?(\d+(\.\d+)?)?/;
+      const addrMatch = portgroup.startAddress
+        ? addrRegex.exec(portgroup.startAddress)
+        : null;
       if (!addrMatch) continue;
       const ioPrefix = addrMatch[1];
-      const ioType = addrMatch[2] ?? this.getDefaultIOType(plcType);
       const ioBaseAddr = addrMatch[3] ? parseInt(addrMatch[3]) : 0;
       const offsetAddr = ioBaseAddr + channel.index;
-      const ioBinding = `%${ioPrefix}${ioType}${offsetAddr}`;
+      const ioBinding = `%${ioPrefix}${
+        addrMatch[2] ?? this.getDefaultIOType(plcType)
+      }${offsetAddr}`;
       if (isInput) {
         inputs.push({ name: varName, type: plcType, ioBinding });
       } else {
