@@ -1,37 +1,32 @@
 controller MainController for Beckhoff {
 
     portgroup AnalogInputs {
-        moduleType: KL3064
+        module: AI1
         ioType: ANALOG_INPUT
-        startAddress: %IW0
         channels: 4
     }
 
     portgroup DigitalInputs {
-        moduleType: EL1008
+        module: DI1
         ioType: DIGITAL_INPUT
-        startAddress: %IX8.0
         channels: 8
     }
 
     portgroup DigitalOutputs {
-        moduleType: KL2408
+        module: DO1
         ioType: DIGITAL_OUTPUT
-        startAddress: %QX0.0
         channels: 8
     }
 
     portgroup AnalogOutputs {
-        moduleType: KL3064
+        module: AO1
         ioType: ANALOG_OUTPUT
-        startAddress: %QW0
         channels: 4
     }
 
     portgroup DaliPort {
-        moduleType: KL6811
+        module: DALI
         ioType: ANALOG_OUTPUT
-        startAddress: %QW20
         channels: 8
     }
 
@@ -68,4 +63,36 @@ controller MainController for Beckhoff {
             channel Room2: BOOL at 1
         }
     }
+}    
+
+bus FieldBus type ETHERCAT {
+    masterDevice: "Device 1 (EtherCAT)"
+    box Coupler {
+        product: EK1100
+        module AI1 {
+            product: KL3064
+            position: 1
+        }
+        module DI1 {
+            product: EL1008
+            position: 2
+        }
+        module DO1 {
+            product: KL2408
+            position: 3
+        }
+        module AO1 {
+            product: KL3064
+            position: 4
+        }
+        module DALI {
+            product: KL6811
+            position: 5
+        }
+    }
+}
+
+network {
+    ipAddress: "0.0.0.0"
+    subnetMask: "0.0.0.0"
 }

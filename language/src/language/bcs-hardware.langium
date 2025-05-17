@@ -26,7 +26,6 @@ PortGroup:
     'portgroup' name=ID '{'
          'module:' module=[Module]
          'ioType:' ioType=IOType
-         'startAddress:' startAddress=IOBinding
          'channels:' channels=IntLiteral
     '}'
 ;
@@ -53,24 +52,20 @@ IOType returns string:
     'ANALOG_INPUT' | 'ANALOG_OUTPUT' | 'DIGITAL_INPUT' | 'DIGITAL_OUTPUT';
 
 
-terminal IOBinding: /%[IQ][XBWDL]?([0-9]+(\.[0-9]+)?)?/;
-
-
 // ----------------------------------------------------------------
 //  PHYSICAL / DEPLOYMENT VIEW
 // ----------------------------------------------------------------
 Bus:
     'bus' name=ID 'type' busType=BusType '{'
-        'masterDevice:' master=ID        // e.g. "Device 1 (EtherCAT)"
+        'masterDevice:' master=StringLiteral        // e.g. "Device 1 (EtherCAT)"
         boxes+=Box*
     '}'
 ;
 
 Box:
     'box' name=ID '{'
-        'product:' productCode=ID            // e.g. EK1100, CU1128
-        ('revision:' rev=ID)?               // optional explicit rev
-        ('branch:' port=ID)?                 // for CU1128 A/B branch
+        'product:' productCode=ID           // e.g. EK1100, CU1128
+        ('revision:' rev=StringLiteral)?               // optional explicit rev
         modules+=Module*
     '}'
 ;
@@ -78,15 +73,15 @@ Box:
 Module:
     'module' name=ID '{'
         'product:' productCode=ID            // e.g. EL1008, KL2408
-        ('revision:' rev=ID)?
+        ('revision:' rev=StringLiteral)?
         'position:' slot=IntLiteral         // term slot number
     '}'
 ;
 
 NetworkSettings:
     'network' '{'
-        'ipAddress:' ip=ID
-        'subnetMask:' mask=ID
+        'ipAddress:' ip=StringLiteral       // TODO: IPLiteral
+        'subnetMask:' mask=StringLiteral    // TODO: IPLiteral
         ('gateway:' gateway=ID)?
         ('httpPort:' httpPort=IntLiteral)?
         ('adsPort:'  adsPort=IntLiteral)?

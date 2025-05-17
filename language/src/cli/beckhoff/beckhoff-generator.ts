@@ -139,7 +139,6 @@ type InstanceInfo = FBInstanceInfo | AfterStmtInstanceInfo;
 interface HardwareDatapoint {
   name: string;
   type: string;
-  ioBinding: string;
 }
 
 interface HardwareDatapointsResult {
@@ -956,18 +955,14 @@ class BeckhoffGeneratorContext {
             ${joinToNode(
               inputs,
               (input) => expandToNode`
-                ${input.name} AT ${input.ioBinding.substring(0, 2)}*: ${
-                input.type
-              }; (* Input channel from hardware *)
+                ${input.name} AT %I*: ${input.type}; (* Input channel from hardware *)
               `,
               { appendNewLineIfNotEmpty: true }
             )}
             ${joinToNode(
               outputs,
               (output) => expandToNode`
-                ${output.name} AT ${output.ioBinding.substring(0, 2)}*: ${
-                output.type
-              }; (* Output channel to hardware *)
+                ${output.name} AT %Q*: ${output.type}; (* Output channel to hardware *)
               `,
               { appendNewLineIfNotEmpty: true }
             )}
@@ -1166,8 +1161,8 @@ class BeckhoffGeneratorContext {
   private processDatapoints(
     datapoints: Datapoint[],
     portGroups: PortGroup[],
-    inputs: Array<{ name: string; type: string; ioBinding: string }>,
-    outputs: Array<{ name: string; type: string; ioBinding: string }>
+    inputs: Array<HardwareDatapoint>,
+    outputs: Array<HardwareDatapoint>
   ) {
     const portGroupsMap = new Map<string, PortGroup>(
       portGroups.map((pg) => [pg.name, pg])
@@ -1180,48 +1175,36 @@ class BeckhoffGeneratorContext {
       const isInput =
         portgroup.ioType === "DIGITAL_INPUT" ||
         portgroup.ioType === "ANALOG_INPUT";
-      this.processChannels(datapoint, portgroup, isInput, inputs, outputs);
+      this.processChannels(datapoint, isInput, inputs, outputs);
     }
   }
 
   private processChannels(
     datapoint: Datapoint,
-    portgroup: PortGroup,
     isInput: boolean,
-    inputs: Array<{ name: string; type: string; ioBinding: string }>,
-    outputs: Array<{ name: string; type: string; ioBinding: string }>
+    inputs: Array<{ name: string; type: string }>,
+    outputs: Array<{ name: string; type: string }>
   ) {
     for (const channel of datapoint.channels) {
       const varName = `${datapoint.name}_${channel.name}`;
-      let plcType: string;
+      let channelDataType: string;
       switch (channel.dataType) {
         case "BOOL":
-          plcType = "BOOL";
+          channelDataType = "BOOL";
           break;
         case "INT":
-          plcType = "INT";
+          channelDataType = "INT";
           break;
         case "REAL":
-          plcType = "REAL";
+          channelDataType = "REAL";
           break;
         default:
-          plcType = "BYTE";
+          channelDataType = "BYTE";
       }
-      const addrRegex = /([IQ])([XBWDL])?(\d+(\.\d+)?)?/;
-      const addrMatch = portgroup.startAddress
-        ? addrRegex.exec(portgroup.startAddress)
-        : null;
-      if (!addrMatch) continue;
-      const ioPrefix = addrMatch[1];
-      const ioBaseAddr = addrMatch[3] ? parseInt(addrMatch[3]) : 0;
-      const offsetAddr = ioBaseAddr + channel.index;
-      const ioBinding = `%${ioPrefix}${
-        addrMatch[2] ?? this.getDefaultIOType(plcType)
-      }${offsetAddr}`;
       if (isInput) {
-        inputs.push({ name: varName, type: plcType, ioBinding });
+        inputs.push({ name: varName, type: channelDataType });
       } else {
-        outputs.push({ name: varName, type: plcType, ioBinding });
+        outputs.push({ name: varName, type: channelDataType });
       }
     }
   }

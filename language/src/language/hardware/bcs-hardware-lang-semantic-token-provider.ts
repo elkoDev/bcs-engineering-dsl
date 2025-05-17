@@ -12,6 +12,10 @@ import {
   isChannel,
   isPortGroup,
   isBitRange,
+  isBus,
+  isBox,
+  isModule,
+  isNetworkSettings,
 } from "../generated/ast.js";
 
 export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenProvider {
@@ -82,11 +86,6 @@ export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenP
       });
       acceptor({
         node,
-        property: "startAddress",
-        type: SemanticTokenTypes.string,
-      });
-      acceptor({
-        node,
         property: "channels",
         type: SemanticTokenTypes.number,
       });
@@ -101,6 +100,74 @@ export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenP
         node,
         property: "end",
         type: SemanticTokenTypes.number,
+      });
+    }
+    if (isBus(node)) {
+      acceptor({
+        node,
+        property: "name",
+        type: SemanticTokenTypes.class,
+      });
+      acceptor({
+        node,
+        property: "master",
+        type: SemanticTokenTypes.string,
+      });
+      acceptor({
+        node,
+        property: "busType",
+        type: SemanticTokenTypes.enumMember,
+      });
+    }
+    if (isBox(node)) {
+      acceptor({
+        node,
+        property: "name",
+        type: SemanticTokenTypes.class,
+      });
+      acceptor({
+        node,
+        property: "productCode",
+        type: SemanticTokenTypes.enumMember,
+      });
+      acceptor({
+        node,
+        property: "rev",
+        type: SemanticTokenTypes.string,
+      });
+    }
+    if (isModule(node)) {
+      acceptor({
+        node,
+        property: "name",
+        type: SemanticTokenTypes.class,
+      });
+      acceptor({
+        node,
+        property: "productCode",
+        type: SemanticTokenTypes.enumMember,
+      });
+      acceptor({
+        node,
+        property: "rev",
+        type: SemanticTokenTypes.string,
+      });
+      acceptor({
+        node,
+        property: "slot",
+        type: SemanticTokenTypes.number,
+      });
+    }
+    if (isNetworkSettings(node)) {
+      acceptor({
+        node,
+        property: "ip",
+        type: SemanticTokenTypes.string,
+      });
+      acceptor({
+        node,
+        property: "mask",
+        type: SemanticTokenTypes.string,
       });
     }
   }
