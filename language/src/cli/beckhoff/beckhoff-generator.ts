@@ -62,6 +62,11 @@ import {
   getLocals,
   getLogic,
 } from "../../language/control/utils/function-block-utils.js";
+import {
+  getPortGroups,
+  getDatapoints,
+} from "../../language/hardware/utils/component-utils.js";
+import { getControllers } from "../../language/hardware/utils/hardware-definition-utils.js";
 
 // Helper function to check if a node is a primitive value
 function isPrimitive(expr: Primary): boolean {
@@ -1144,11 +1149,11 @@ class BeckhoffGeneratorContext {
   extractHardwareDatapoints(): HardwareDatapointsResult {
     const inputs: HardwareDatapoint[] = [];
     const outputs: HardwareDatapoint[] = [];
-    for (const controller of this.hardwareModel.controllers) {
+    for (const controller of getControllers(this.hardwareModel)) {
       if (controller.platform !== "Beckhoff") continue;
-      const portGroups = this.collectPortGroups(controller.components);
+      const portGroups = this.collectPortGroups(getPortGroups(controller));
       this.processDatapoints(
-        controller.components,
+        getDatapoints(controller),
         portGroups,
         inputs,
         outputs
@@ -1255,11 +1260,10 @@ class BeckhoffGeneratorContext {
       { declaration: string; implementation?: string }
     >;
   } {
-    // Generate all files and collect their paths
     const files: string[] = [];
-    // Write MAIN program
+
     files.push(this.writeProgramMain());
-    // Write all enums, structs, and function blocks
+
     for (const item of this.controlModel.controlBlock.items) {
       if ("isExtern" in item && item.isExtern) continue;
       if (isEnumDecl(item)) {
@@ -1275,7 +1279,6 @@ class BeckhoffGeneratorContext {
       return fs.readFileSync(filePath, "utf8").replace(/\r\n/g, "\\r\\n");
     }
 
-    // Create C#-compatible strings for each POU
     const csharpStrings: Record<
       string,
       { declaration: string; implementation?: string }

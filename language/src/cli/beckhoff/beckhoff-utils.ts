@@ -6,6 +6,8 @@ import {
   isControlUnit,
   Statement,
 } from "../../language/generated/ast.js";
+import { getControllers } from "../../language/hardware/utils/hardware-definition-utils.js";
+import { getPortGroups } from "../../language/hardware/utils/component-utils.js";
 
 export interface RegularControlUnit {
   name: string;
@@ -28,36 +30,41 @@ export interface ConditionalControlUnit {
 export function detectDaliComType(
   hardwareModel: HardwareModel
 ): string | undefined {
-  // look at moduleType on any port-group – extend the map if you need more
   const mapping: Record<string, string> = {
     KL6811: "FB_KL6811Communication",
     KL6821: "FB_KL6821Communication",
     EL6821: "FB_EL6821Communication",
   };
 
-  for (const ctrl of hardwareModel.controllers) {
-    for (const comp of ctrl.components) {
-      if ("moduleType" in comp && mapping[comp.moduleType]) {
-        return mapping[comp.moduleType];
+  for (const ctrl of getControllers(hardwareModel)) {
+    for (const portGroup of getPortGroups(ctrl)) {
+      if (portGroup.module?.ref) {
+        const module = portGroup.module.ref;
+        if (module && mapping[module.productCode]) {
+          return mapping[module.productCode];
+        }
       }
     }
   }
   return undefined;
 }
 
-function isScheduledControlUnit(controlUnit: ControlUnit): boolean {
-  return !!controlUnit?.time;
+export function isScheduledControlUnit(
+  unit: ControlUnit
+): unit is ControlUnit & ScheduledControlUnit {
+  return !!unit.time;
 }
 
-function isConditionalControlUnit(controlUnit: ControlUnit): boolean {
-  return !!controlUnit?.condition;
+export function isConditionalControlUnit(
+  unit: ControlUnit
+): unit is ControlUnit & ConditionalControlUnit {
+  return !!unit.condition;
 }
 
-function isRegularControlUnit(controlUnit: ControlUnit): boolean {
-  return (
-    !isScheduledControlUnit(controlUnit) &&
-    !isConditionalControlUnit(controlUnit)
-  );
+export function isRegularControlUnit(
+  unit: ControlUnit
+): unit is ControlUnit & RegularControlUnit {
+  return !unit.time && !unit.condition;
 }
 
 export function extractControlUnits(controlModel: ControlModel): {
@@ -65,9 +72,7 @@ export function extractControlUnits(controlModel: ControlModel): {
   conditional: ConditionalControlUnit[];
   regular: RegularControlUnit[];
 } {
-  const controlUnits = controlModel.controlBlock.items.filter((item) =>
-    isControlUnit(item)
-  ) as ControlUnit[];
+  const controlUnits = controlModel.controlBlock.items.filter(isControlUnit);
 
   const scheduled: ScheduledControlUnit[] = [];
   const conditional: ConditionalControlUnit[] = [];
@@ -84,7 +89,7 @@ export function extractControlUnits(controlModel: ControlModel): {
       conditional.push({
         name: controlUnit.name,
         runOnce: !!controlUnit.isOnce,
-        condition: controlUnit.condition!,
+        condition: controlUnit.condition,
         stmts: controlUnit.stmts,
       });
     } else if (isRegularControlUnit(controlUnit)) {

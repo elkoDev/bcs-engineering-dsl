@@ -72,8 +72,8 @@ export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenP
       });
       acceptor({
         node,
-        property: "moduleType",
-        type: SemanticTokenTypes.string,
+        property: "module",
+        type: SemanticTokenTypes.type,
       });
       acceptor({
         node,
