@@ -9,6 +9,9 @@ HardwareDefinition:
     Controller | Bus | NetworkSettings
 ;
 
+// ----------------------------------------------------------------
+// LOGICAL / SIGNAL VIEW
+// ----------------------------------------------------------------
 Controller:
     'controller' name=ID 'for' platform=Platform '{'
         (components+=Component)*
@@ -65,14 +68,14 @@ Bus:
 Box:
     'box' name=ID '{'
         'product:' productCode=ID           // e.g. EK1100, CU1128
-        ('revision:' rev=StringLiteral)?               // optional explicit rev
+        ('revision:' rev=StringLiteral)?    // optional explicit rev
         modules+=Module*
     '}'
 ;
 
 Module:
     'module' name=ID '{'
-        'product:' productCode=ID            // e.g. EL1008, KL2408
+        'product:' productCode=ID           // e.g. EL1008, KL2408
         ('revision:' rev=StringLiteral)?
         'position:' slot=IntLiteral         // term slot number
     '}'

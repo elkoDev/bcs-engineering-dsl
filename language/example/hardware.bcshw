@@ -1,31 +1,58 @@
+bus FieldBus type ETHERCAT {
+    masterDevice: "Device 1 (EtherCAT)"
+    box Coupler {
+        product: EK1100
+        module IOModule_AI1 {
+            product: KL3064
+            position: 1
+        }
+        module IOModule_DI1 {
+            product: EL1008
+            position: 2
+        }
+        module IOModule_DO1 {
+            product: KL2408
+            position: 3
+        }
+        module IOModule_AO1 {
+            product: KL3064
+            position: 4
+        }
+        module IOModule_DALI {
+            product: KL6811
+            position: 5
+        }
+    }
+}
+
 controller MainController for Beckhoff {
 
     portgroup AnalogInputs {
-        module: AI1
+        module: IOModule_AI1
         ioType: ANALOG_INPUT
         channels: 4
     }
 
     portgroup DigitalInputs {
-        module: DI1
+        module: IOModule_DI1
         ioType: DIGITAL_INPUT
         channels: 8
     }
 
     portgroup DigitalOutputs {
-        module: DO1
+        module: IOModule_DO1
         ioType: DIGITAL_OUTPUT
         channels: 8
     }
 
     portgroup AnalogOutputs {
-        module: AO1
+        module: IOModule_AO1
         ioType: ANALOG_OUTPUT
         channels: 4
     }
 
     portgroup DaliPort {
-        module: DALI
+        module: IOModule_DALI
         ioType: ANALOG_OUTPUT
         channels: 8
     }
@@ -64,33 +91,6 @@ controller MainController for Beckhoff {
         }
     }
 }    
-
-bus FieldBus type ETHERCAT {
-    masterDevice: "Device 1 (EtherCAT)"
-    box Coupler {
-        product: EK1100
-        module AI1 {
-            product: KL3064
-            position: 1
-        }
-        module DI1 {
-            product: EL1008
-            position: 2
-        }
-        module DO1 {
-            product: KL2408
-            position: 3
-        }
-        module AO1 {
-            product: KL3064
-            position: 4
-        }
-        module DALI {
-            product: KL6811
-            position: 5
-        }
-    }
-}
 
 network {
     ipAddress: "0.0.0.0"
