@@ -1182,8 +1182,8 @@ class BeckhoffGeneratorContext {
   private processChannels(
     datapoint: Datapoint,
     isInput: boolean,
-    inputs: Array<{ name: string; type: string }>,
-    outputs: Array<{ name: string; type: string }>
+    inputs: Array<HardwareDatapoint>,
+    outputs: Array<HardwareDatapoint>
   ) {
     for (const channel of datapoint.channels) {
       const varName = `${datapoint.name}_${channel.name}`;
