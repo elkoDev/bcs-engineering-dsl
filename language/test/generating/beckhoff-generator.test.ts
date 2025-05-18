@@ -99,7 +99,7 @@ describe("Beckhoff Generator Tests", () => {
 
     // Compare each expected file with the generated file
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "Mode.st"),
+      generatedFilePath: path.join(outputDir, "Enums", "Mode.st"),
       expectedFilePath: path.join(expectedDir, "Mode.st"),
     });
 
@@ -140,17 +140,17 @@ describe("Beckhoff Generator Tests", () => {
 
     // Compare each expected file with the generated file
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "Circle.st"),
+      generatedFilePath: path.join(outputDir, "Structs", "Circle.st"),
       expectedFilePath: path.join(expectedDir, "Circle.st"),
     });
 
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "Point.st"),
+      generatedFilePath: path.join(outputDir, "Structs", "Point.st"),
       expectedFilePath: path.join(expectedDir, "Point.st"),
     });
 
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "Rectangle.st"),
+      generatedFilePath: path.join(outputDir, "Structs", "Rectangle.st"),
       expectedFilePath: path.join(expectedDir, "Rectangle.st"),
     });
 
@@ -191,12 +191,20 @@ describe("Beckhoff Generator Tests", () => {
 
     // Compare each expected file with the generated file
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "SimpleLogicFB_decl.st"),
+      generatedFilePath: path.join(
+        outputDir,
+        "FunctionBlocks",
+        "SimpleLogicFB_decl.st"
+      ),
       expectedFilePath: path.join(expectedDir, "SimpleLogicFB_decl.st"),
     });
 
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "SimpleLogicFB_impl.st"),
+      generatedFilePath: path.join(
+        outputDir,
+        "FunctionBlocks",
+        "SimpleLogicFB_impl.st"
+      ),
       expectedFilePath: path.join(expectedDir, "SimpleLogicFB_impl.st"),
     });
 
@@ -237,12 +245,20 @@ describe("Beckhoff Generator Tests", () => {
 
     // Compare each expected file with the generated file
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "IfLogicFB_decl.st"),
+      generatedFilePath: path.join(
+        outputDir,
+        "FunctionBlocks",
+        "IfLogicFB_decl.st"
+      ),
       expectedFilePath: path.join(expectedDir, "IfLogicFB_decl.st"),
     });
 
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "IfLogicFB_impl.st"),
+      generatedFilePath: path.join(
+        outputDir,
+        "FunctionBlocks",
+        "IfLogicFB_impl.st"
+      ),
       expectedFilePath: path.join(expectedDir, "IfLogicFB_impl.st"),
     });
 
@@ -319,12 +335,20 @@ describe("Beckhoff Generator Tests", () => {
 
     // Check declaration and implementation files
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "ArrayTestFB_decl.st"),
+      generatedFilePath: path.join(
+        outputDir,
+        "FunctionBlocks",
+        "ArrayTestFB_decl.st"
+      ),
       expectedFilePath: path.join(expectedDir, "ArrayTestFB_decl.st"),
     });
 
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "ArrayTestFB_impl.st"),
+      generatedFilePath: path.join(
+        outputDir,
+        "FunctionBlocks",
+        "ArrayTestFB_impl.st"
+      ),
       expectedFilePath: path.join(expectedDir, "ArrayTestFB_impl.st"),
     });
 
@@ -401,12 +425,20 @@ describe("Beckhoff Generator Tests", () => {
 
     // Check declaration and implementation files
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "LoopsFB_decl.st"),
+      generatedFilePath: path.join(
+        outputDir,
+        "FunctionBlocks",
+        "LoopsFB_decl.st"
+      ),
       expectedFilePath: path.join(expectedDir, "LoopsFB_decl.st"),
     });
 
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "LoopsFB_impl.st"),
+      generatedFilePath: path.join(
+        outputDir,
+        "FunctionBlocks",
+        "LoopsFB_impl.st"
+      ),
       expectedFilePath: path.join(expectedDir, "LoopsFB_impl.st"),
     });
 
@@ -447,17 +479,25 @@ describe("Beckhoff Generator Tests", () => {
 
     // Check declaration and implementation files
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "OperationMode.st"),
+      generatedFilePath: path.join(outputDir, "Enums", "OperationMode.st"),
       expectedFilePath: path.join(expectedDir, "OperationMode.st"),
     });
 
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "SwitchFB_decl.st"),
+      generatedFilePath: path.join(
+        outputDir,
+        "FunctionBlocks",
+        "SwitchFB_decl.st"
+      ),
       expectedFilePath: path.join(expectedDir, "SwitchFB_decl.st"),
     });
 
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "SwitchFB_impl.st"),
+      generatedFilePath: path.join(
+        outputDir,
+        "FunctionBlocks",
+        "SwitchFB_impl.st"
+      ),
       expectedFilePath: path.join(expectedDir, "SwitchFB_impl.st"),
     });
 
@@ -498,17 +538,25 @@ describe("Beckhoff Generator Tests", () => {
 
     // Check declaration and implementation files
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "ProcessState.st"),
+      generatedFilePath: path.join(outputDir, "Enums", "ProcessState.st"),
       expectedFilePath: path.join(expectedDir, "ProcessState.st"),
     });
 
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "NestedControlsFB_decl.st"),
+      generatedFilePath: path.join(
+        outputDir,
+        "FunctionBlocks",
+        "NestedControlsFB_decl.st"
+      ),
       expectedFilePath: path.join(expectedDir, "NestedControlsFB_decl.st"),
     });
 
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "NestedControlsFB_impl.st"),
+      generatedFilePath: path.join(
+        outputDir,
+        "FunctionBlocks",
+        "NestedControlsFB_impl.st"
+      ),
       expectedFilePath: path.join(expectedDir, "NestedControlsFB_impl.st"),
     });
 
@@ -596,7 +644,7 @@ describe("Beckhoff Generator Tests", () => {
     });
   });
 
-    test("Generate after units correctly", async () => {
+  test("Generate after units correctly", async () => {
     const services = createBcsEngineeringServices(NodeFileSystem);
 
     // Test case directories
