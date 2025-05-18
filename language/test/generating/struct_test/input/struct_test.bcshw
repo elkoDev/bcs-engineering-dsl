@@ -1,9 +1,35 @@
 // A minimal hardware definition to accompany struct_test.bcsctrl
+bus FieldBus type ETHERCAT {
+    masterDevice: "Device 1 (EtherCAT)"
+    box Coupler {
+        product: EK1100
+        module IOModule_AI1 {
+            product: KL3064
+            position: 1
+        }
+        module IOModule_DI1 {
+            product: EL1008
+            position: 2
+        }
+        module IOModule_DO1 {
+            product: KL2408
+            position: 3
+        }
+        module IOModule_AO1 {
+            product: KL3064
+            position: 4
+        }
+        module IOModule_DALI {
+            product: KL6811
+            position: 5
+        }
+    }
+}
+
 controller StructTestController for Beckhoff {
     portgroup DI {
-        moduleType: EL1008
+        module: IOModule_DI1
         ioType: DIGITAL_INPUT
-        startAddress: %IX0.0
         channels: 8
     }
 
