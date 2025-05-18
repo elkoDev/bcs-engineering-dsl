@@ -81,22 +81,13 @@ IF NOT (todNow >= TOD#07:05:00) THEN
     DelayedStartup_hasRun := FALSE;
 END_IF;
 IF (NOT DelayedStartup_hasRun) AND (todNow >= TOD#07:05:00) THEN
-    IF TRUE AND NOT afterBlock8_started THEN
-        tonAfter8(IN := TRUE);
-        afterBlock8_started := TRUE;
-    ELSIF NOT TRUE THEN
-        tonAfter8(IN := FALSE);
-        afterBlock8_started := FALSE;
-        afterBlock8_done := FALSE;
-    END_IF
-
-    tonAfter8();
-
-    IF tonAfter8.Q AND NOT afterBlock8_done THEN
+    tonAfter8(IN := TRUE);
+    IF tonAfter8.Q THEN
         heater := TRUE;
         Lights_Room1 := FALSE;
-        afterBlock8_done := TRUE;
+        tonAfter8(IN := FALSE);
     END_IF
+
     DelayedStartup_hasRun := TRUE;
 END_IF;
 

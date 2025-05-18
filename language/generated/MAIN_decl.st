@@ -33,9 +33,7 @@ VAR
     r_TRIGInstance5: R_TRIG; (* Function block instance *)
     r_TRIGInstance6: R_TRIG; (* Function block instance *)
     f_TRIGInstance7: F_TRIG; (* Function block instance *)
-    afterBlock8_started: BOOL := FALSE;
-    afterBlock8_done: BOOL := FALSE;
-    tonAfter8: TON := (PT := UNKNOWN_EXPR);
+    tonAfter8: TON := (PT := T#5m);
     TurnOnLightsScheduled_hasRun: BOOL := FALSE;
     TurnOnLightsScheduled_lastRunDay: DATE;
     DelayedStartup_hasRun: BOOL := FALSE;

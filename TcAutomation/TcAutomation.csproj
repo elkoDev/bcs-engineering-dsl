@@ -24,8 +24,4 @@
     <PackageReference Include="envdte80" Version="17.13.40008" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="generated\" />
-  </ItemGroup>
-
 </Project>

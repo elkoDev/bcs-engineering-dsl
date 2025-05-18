@@ -567,7 +567,14 @@ class BeckhoffGeneratorContext {
   }
 
   writeEnum(enumDecl: EnumDecl): string {
-    const filePath = path.join(this.destination, `${enumDecl.name}.st`);
+    const filePath = path.join(
+      this.destination,
+      "Enums",
+      `${enumDecl.name}.st`
+    );
+
+    // Ensure the Enums directory exists
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
 
     const enumContent = toString(
       expandToNode`
@@ -594,7 +601,14 @@ class BeckhoffGeneratorContext {
   }
 
   writeStruct(structDecl: StructDecl): string {
-    const filePath = path.join(this.destination, `${structDecl.name}.st`);
+    const filePath = path.join(
+      this.destination,
+      "Structs",
+      `${structDecl.name}.st`
+    );
+
+    // Ensure the Structs directory exists
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
 
     const structContent = toString(
       expandToNode`
@@ -637,7 +651,13 @@ class BeckhoffGeneratorContext {
     );
 
     // Write declaration file
-    const declFilePath = path.join(this.destination, `${fbDecl.name}_decl.st`);
+    const declFilePath = path.join(
+      this.destination,
+      "FunctionBlocks",
+      `${fbDecl.name}_decl.st`
+    );
+    // Ensure the FunctionBlocks directory exists
+    fs.mkdirSync(path.dirname(declFilePath), { recursive: true });
     const declContent = toString(
       expandToNode`
         FUNCTION_BLOCK ${fbDecl.name}
@@ -689,7 +709,11 @@ class BeckhoffGeneratorContext {
     files.push(declFilePath);
 
     // Write implementation file
-    const implFilePath = path.join(this.destination, `${fbDecl.name}_impl.st`);
+    const implFilePath = path.join(
+      this.destination,
+      "FunctionBlocks",
+      `${fbDecl.name}_impl.st`
+    );
     const implContent = (logic?.stmts || [])
       .map((stmt) => this.convertStatementToST(stmt, 0).trimEnd())
       .join("\n");
@@ -783,7 +807,7 @@ class BeckhoffGeneratorContext {
     walk(mainStatements);
   }
 
-  writeProgramMain(): string {
+  writeProgramMain(): string[] {
     this.fbInstanceMap.clear();
     this.fbInstanceCounter = 1;
     this.addRequiredAdditionalFBInstances();
@@ -815,7 +839,6 @@ class BeckhoffGeneratorContext {
       this.controlModel
     );
 
-    // --- Patch: generate impl first, check for usage, then generate decl ---
     let implContent = this.generateMainImplContent(
       scheduled,
       conditional,
@@ -827,7 +850,6 @@ class BeckhoffGeneratorContext {
       implContent.includes(v)
     );
 
-    // Patch declContent to only include boilerplate if used
     const declContent = this.generateMainDeclContent(
       { inputs, outputs },
       mainVars,
@@ -839,10 +861,12 @@ class BeckhoffGeneratorContext {
     );
 
     const declFilePath = path.join(this.destination, `MAIN_decl.st`);
+    // Ensure the destination directory exists
+    fs.mkdirSync(this.destination, { recursive: true });
     fs.writeFileSync(declFilePath, declContent);
     const implFilePath = path.join(this.destination, `MAIN_impl.st`);
     fs.writeFileSync(implFilePath, implContent.trimEnd());
-    return implFilePath;
+    return [declFilePath, implFilePath];
   }
 
   private processControlUnits(
@@ -1240,7 +1264,7 @@ class BeckhoffGeneratorContext {
   } {
     const files: string[] = [];
 
-    files.push(this.writeProgramMain());
+    files.push(...this.writeProgramMain());
 
     for (const item of this.controlModel.controlBlock.items) {
       if ("isExtern" in item && item.isExtern) continue;
@@ -1265,18 +1289,33 @@ class BeckhoffGeneratorContext {
     // Process each item in the control model to create C# ready strings
     for (const item of this.controlModel.controlBlock.items) {
       if ("isExtern" in item && item.isExtern) continue;
-      if (isEnumDecl(item) || isStructDecl(item)) {
-        const filePath = path.join(this.destination, `${item.name}.st`);
+      if (isEnumDecl(item)) {
+        const filePath = path.join(
+          this.destination,
+          "Enums",
+          `${item.name}.st`
+        );
+        csharpStrings[item.name] = {
+          declaration: createCSharpString(filePath),
+        };
+      } else if (isStructDecl(item)) {
+        const filePath = path.join(
+          this.destination,
+          "Structs",
+          `${item.name}.st`
+        );
         csharpStrings[item.name] = {
           declaration: createCSharpString(filePath),
         };
       } else if (isFunctionBlockDecl(item)) {
         const declFilePath = path.join(
           this.destination,
+          "FunctionBlocks",
           `${item.name}_decl.st`
         );
         const implFilePath = path.join(
           this.destination,
+          "FunctionBlocks",
           `${item.name}_impl.st`
         );
 
