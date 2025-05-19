@@ -22,7 +22,7 @@ export interface DeployOptions {
   solutionName: string;
   projectName: string;
   plcName: string;
-  templatePath: string;
+  templatePath?: string;
   tcExe?: string;
   // Siemens/KNX could have their options here
 }

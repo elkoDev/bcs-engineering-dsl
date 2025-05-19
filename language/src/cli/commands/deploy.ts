@@ -3,13 +3,13 @@ import chalk from "chalk";
 import { generateAction } from "./generate.js";
 import { deployTo, Platform } from "../platform/index.js";
 
-export async function buildAction(
+export async function deployAction(
   platform: Platform,
   file: string,
   opts: {
     destination?: string;
     quiet: boolean;
-    templatePath: string;
+    templatePath?: string;
     tcExe?: string;
     solutionName: string;
     projectName: string;

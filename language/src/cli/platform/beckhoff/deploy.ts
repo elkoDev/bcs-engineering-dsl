@@ -25,7 +25,7 @@ export function deploy(opts: DeployOptions) {
     opts.plcName,
     "--template-path",
     opts.templatePath,
-  ];
+  ].filter((arg): arg is string => typeof arg === "string");
 
   console.log(chalk.gray(`[beckhoff] ${tcPath} ${args.join(" ")}`));
   const res = spawnSync(tcPath, args, { stdio: "inherit" });

@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { Platform } from "../index.js";
-import { buildAction } from "../../commands/build.js";
+import { deployAction } from "../../commands/deploy.js";
 import { generateAction } from "../../commands/generate.js";
 
 export function defineBeckhoffSubcommands(): Command {
@@ -20,9 +20,9 @@ export function defineBeckhoffSubcommands(): Command {
     });
 
   beckhoff
-    .command("build")
+    .command("deploy")
     .argument("<file>", "BCS control file")
-    .requiredOption("--template-path <path>")
+    .option("--template-path <path>", "TwinCAT Template path")
     .option("--solution-name <name>", "Solution name", "MyGeneratedSolution")
     .option("--project-name <name>", "Project name", "MyTwinCATProject")
     .option("--plc-name <name>", "PLC project", "MyPlcProject")
@@ -30,7 +30,7 @@ export function defineBeckhoffSubcommands(): Command {
     .option("-d, --destination <dir>")
     .option("-q, --quiet", "suppress output", false)
     .action(async (file, opts) => {
-      await buildAction(platform, file, {
+      await deployAction(platform, file, {
         templatePath: opts.templatePath,
         solutionName: opts.solutionName,
         projectName: opts.projectName,
