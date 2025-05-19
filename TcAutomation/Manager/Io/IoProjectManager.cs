@@ -17,12 +17,16 @@ internal sealed class IoProjectManager
     /// </summary>
     public void CreateIoFromJson(string jsonPath)
     {
-        var hw = JsonSerializer.Deserialize<HardwareConfig>(File.ReadAllText(jsonPath))
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+        var hw = JsonSerializer.Deserialize<HardwareConfig>(File.ReadAllText(jsonPath), options)
                  ?? throw new InvalidDataException("hardware.json invalid or empty");
 
         foreach (var bus in hw.Buses)
         {
-            switch (bus.Type.ToUpperInvariant())
+            switch (bus.Type)
             {
                 case "EtherCAT":
                     CreateEthercatTopology(bus);
@@ -48,6 +52,7 @@ internal sealed class IoProjectManager
         {
             var boxSubType = IoMappings.GetEthercatSubType(box.Product);
             var boxItem = master.CreateChild(box.Product, boxSubType, "", box.Product);
+            Console.WriteLine($"Created box: {box.Name} ({box.Product})");
 
             // Step 3: Create Modules (e.g., EL1008, KL2408, etc.)
             foreach (var mod in box.Modules.OrderBy(m => m.Slot))
@@ -55,6 +60,7 @@ internal sealed class IoProjectManager
                 string moduleName = $"Term {mod.Slot} ({mod.Product})";
                 int modSubType = IoMappings.GetEthercatSubType(mod.Product);
                 boxItem.CreateChild(moduleName, modSubType, null, mod.Product);
+                Console.WriteLine($"Created module: {moduleName}");
             }
         }
 
