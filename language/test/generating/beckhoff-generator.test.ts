@@ -4,7 +4,7 @@ import { extractControlModelWithHardwareModels } from "../../src/cli/cli-util.js
 import * as path from "node:path";
 import { NodeFileSystem } from "langium/node";
 import * as fs from "node:fs";
-import { generateBeckhoffCode } from "../../src/cli/platform/beckhoff/beckhoff-generator.js";
+import { generate as genBeckhoff } from "../../src/cli/platform/beckhoff/generator.js";
 
 const TEST_OUTPUT_DIR = path.join(__dirname, "output");
 const TEST_DIR = path.join(__dirname);
@@ -68,7 +68,7 @@ describe("Beckhoff Generator Tests", () => {
 
   afterAll(() => {
     if (fs.existsSync(TEST_OUTPUT_DIR)) {
-      fs.rmSync(TEST_OUTPUT_DIR, { recursive: true, force: true });
+      //fs.rmSync(TEST_OUTPUT_DIR, { recursive: true, force: true });
     }
   });
 
@@ -88,14 +88,10 @@ describe("Beckhoff Generator Tests", () => {
       );
 
     // Generate code
-    const result = generateBeckhoffCode(
-      controlModel,
-      hardwareModels[0],
-      outputDir
-    );
+    const result = genBeckhoff(controlModel, hardwareModels[0], outputDir);
 
     // Verify the generated files
-    expect(Object.keys(result.csharpStrings).length).toBe(2);
+    expect(Object.keys(result.csharpStrings).length).toBe(3);
 
     // Compare each expected file with the generated file
     compareGeneratedWithExpected({
@@ -130,13 +126,9 @@ describe("Beckhoff Generator Tests", () => {
       );
 
     // Generate code
-    const result = generateBeckhoffCode(
-      controlModel,
-      hardwareModels[0],
-      outputDir
-    );
+    const result = genBeckhoff(controlModel, hardwareModels[0], outputDir);
 
-    expect(Object.keys(result.csharpStrings).length).toBe(4);
+    expect(Object.keys(result.csharpStrings).length).toBe(5);
 
     // Compare each expected file with the generated file
     compareGeneratedWithExpected({
@@ -181,13 +173,9 @@ describe("Beckhoff Generator Tests", () => {
       );
 
     // Generate code
-    const result = generateBeckhoffCode(
-      controlModel,
-      hardwareModels[0],
-      outputDir
-    );
+    const result = genBeckhoff(controlModel, hardwareModels[0], outputDir);
 
-    expect(Object.keys(result.csharpStrings).length).toBe(2);
+    expect(Object.keys(result.csharpStrings).length).toBe(3);
 
     // Compare each expected file with the generated file
     compareGeneratedWithExpected({
@@ -235,13 +223,9 @@ describe("Beckhoff Generator Tests", () => {
       );
 
     // Generate code
-    const result = generateBeckhoffCode(
-      controlModel,
-      hardwareModels[0],
-      outputDir
-    );
+    const result = genBeckhoff(controlModel, hardwareModels[0], outputDir);
 
-    expect(Object.keys(result.csharpStrings).length).toBe(2);
+    expect(Object.keys(result.csharpStrings).length).toBe(3);
 
     // Compare each expected file with the generated file
     compareGeneratedWithExpected({
@@ -289,13 +273,9 @@ describe("Beckhoff Generator Tests", () => {
       );
 
     // Generate code
-    const result = generateBeckhoffCode(
-      controlModel,
-      hardwareModels[0],
-      outputDir
-    );
+    const result = genBeckhoff(controlModel, hardwareModels[0], outputDir);
 
-    expect(Object.keys(result.csharpStrings).length).toBe(1);
+    expect(Object.keys(result.csharpStrings).length).toBe(2);
 
     // Check declaration and implementation files
     compareGeneratedWithExpected({
@@ -325,13 +305,9 @@ describe("Beckhoff Generator Tests", () => {
       );
 
     // Generate code
-    const result = generateBeckhoffCode(
-      controlModel,
-      hardwareModels[0],
-      outputDir
-    );
+    const result = genBeckhoff(controlModel, hardwareModels[0], outputDir);
 
-    expect(Object.keys(result.csharpStrings).length).toBe(2);
+    expect(Object.keys(result.csharpStrings).length).toBe(3);
 
     // Check declaration and implementation files
     compareGeneratedWithExpected({
@@ -379,13 +355,9 @@ describe("Beckhoff Generator Tests", () => {
       );
 
     // Generate code
-    const result = generateBeckhoffCode(
-      controlModel,
-      hardwareModels[0],
-      outputDir
-    );
+    const result = genBeckhoff(controlModel, hardwareModels[0], outputDir);
 
-    expect(Object.keys(result.csharpStrings).length).toBe(1);
+    expect(Object.keys(result.csharpStrings).length).toBe(2);
 
     // Check declaration and implementation files
     compareGeneratedWithExpected({
@@ -396,6 +368,11 @@ describe("Beckhoff Generator Tests", () => {
     compareGeneratedWithExpected({
       generatedFilePath: path.join(outputDir, "MAIN_impl.st"),
       expectedFilePath: path.join(expectedDir, "MAIN_impl.st"),
+    });
+
+    compareGeneratedWithExpected({
+      generatedFilePath: path.join(outputDir, "hardware.json"),
+      expectedFilePath: path.join(expectedDir, "hardware.json"),
     });
   });
 
@@ -415,13 +392,9 @@ describe("Beckhoff Generator Tests", () => {
       );
 
     // Generate code
-    const result = generateBeckhoffCode(
-      controlModel,
-      hardwareModels[0],
-      outputDir
-    );
+    const result = genBeckhoff(controlModel, hardwareModels[0], outputDir);
 
-    expect(Object.keys(result.csharpStrings).length).toBe(2);
+    expect(Object.keys(result.csharpStrings).length).toBe(3);
 
     // Check declaration and implementation files
     compareGeneratedWithExpected({
@@ -469,13 +442,9 @@ describe("Beckhoff Generator Tests", () => {
       );
 
     // Generate code
-    const result = generateBeckhoffCode(
-      controlModel,
-      hardwareModels[0],
-      outputDir
-    );
+    const result = genBeckhoff(controlModel, hardwareModels[0], outputDir);
 
-    expect(Object.keys(result.csharpStrings).length).toBe(3);
+    expect(Object.keys(result.csharpStrings).length).toBe(4);
 
     // Check declaration and implementation files
     compareGeneratedWithExpected({
@@ -528,13 +497,9 @@ describe("Beckhoff Generator Tests", () => {
       );
 
     // Generate code
-    const result = generateBeckhoffCode(
-      controlModel,
-      hardwareModels[0],
-      outputDir
-    );
+    const result = genBeckhoff(controlModel, hardwareModels[0], outputDir);
 
-    expect(Object.keys(result.csharpStrings).length).toBe(3);
+    expect(Object.keys(result.csharpStrings).length).toBe(4);
 
     // Check declaration and implementation files
     compareGeneratedWithExpected({
@@ -587,14 +552,10 @@ describe("Beckhoff Generator Tests", () => {
       );
 
     // Generate code
-    const result = generateBeckhoffCode(
-      controlModel,
-      hardwareModels[0],
-      outputDir
-    );
+    const result = genBeckhoff(controlModel, hardwareModels[0], outputDir);
 
     // Verify the generated files
-    expect(Object.keys(result.csharpStrings).length).toBe(1);
+    expect(Object.keys(result.csharpStrings).length).toBe(2);
 
     // Compare each expected file with the generated file
     compareGeneratedWithExpected({
@@ -624,13 +585,9 @@ describe("Beckhoff Generator Tests", () => {
       );
 
     // Generate code
-    const result = generateBeckhoffCode(
-      controlModel,
-      hardwareModels[0],
-      outputDir
-    );
+    const result = genBeckhoff(controlModel, hardwareModels[0], outputDir);
 
-    expect(Object.keys(result.csharpStrings).length).toBe(1);
+    expect(Object.keys(result.csharpStrings).length).toBe(2);
 
     // Compare each expected file with the generated file
     compareGeneratedWithExpected({
@@ -660,13 +617,9 @@ describe("Beckhoff Generator Tests", () => {
       );
 
     // Generate code
-    const result = generateBeckhoffCode(
-      controlModel,
-      hardwareModels[0],
-      outputDir
-    );
+    const result = genBeckhoff(controlModel, hardwareModels[0], outputDir);
 
-    expect(Object.keys(result.csharpStrings).length).toBe(1);
+    expect(Object.keys(result.csharpStrings).length).toBe(2);
 
     // Compare each expected file with the generated file
     compareGeneratedWithExpected({

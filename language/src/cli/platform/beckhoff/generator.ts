@@ -1434,7 +1434,7 @@ class BeckhoffGeneratorContext {
             box: moduleInfo?.box.name,
             module: moduleInfo?.module.name,
             moduleProduct: moduleInfo?.module.product,
-            source: `TIPC^PlcProj^PlcProj Instance^PlcTask ${
+            source: `TIPC^MyTwinCATProject^MyTwinCATProject Instance^PlcTask ${
               direction === "input" ? "Inputs" : "Outputs"
             }^${plcVar}`,
             destination,
