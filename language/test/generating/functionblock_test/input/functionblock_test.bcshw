@@ -1,5 +1,5 @@
 // A minimal hardware definition to accompany functionblock_test.bcsctrl
-bus FieldBus type ETHERCAT {
+bus FieldBus type EtherCAT {
     masterDevice: "Device 1 (EtherCAT)"
     box Coupler {
         product: EK1100

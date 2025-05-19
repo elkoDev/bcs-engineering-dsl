@@ -91,6 +91,6 @@ NetworkSettings:
     '}'
 ;
 
-type BusType = 'ETHERCAT' | 'PROFINET' | 'PROFIBUS'; 
+type BusType = 'EtherCAT' | 'Profinet' | 'Profibus'; 
 BusType returns string:
-    'ETHERCAT' | 'PROFINET' | 'PROFIBUS';
+    'EtherCAT' | 'Profinet' | 'Profibus';

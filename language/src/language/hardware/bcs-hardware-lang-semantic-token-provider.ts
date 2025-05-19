@@ -31,12 +31,12 @@ export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenP
       acceptor({
         node,
         property: "name",
-        type: SemanticTokenTypes.macro,
+        type: SemanticTokenTypes.class,
       });
       acceptor({
         node,
         property: "platform",
-        type: SemanticTokenTypes.macro,
+        type: SemanticTokenTypes.enumMember,
       });
     }
     if (isDatapoint(node)) {

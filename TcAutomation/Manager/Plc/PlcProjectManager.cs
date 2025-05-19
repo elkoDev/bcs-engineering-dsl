@@ -1,6 +1,6 @@
 ﻿using TCatSysManagerLib;
 
-namespace TcAutomation.Manager
+namespace TcAutomation.Manager.Plc
 {
     internal class PlcProjectManager
     {

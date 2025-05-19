@@ -1,4 +1,4 @@
-﻿namespace TcAutomation.Manager
+﻿namespace TcAutomation.Manager.Plc
 {
     public class PlcObjectType
     {
