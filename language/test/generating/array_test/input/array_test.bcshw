@@ -26,7 +26,7 @@ bus FieldBus type EtherCAT {
     }
 }
 
-controller ArrayTestController for Beckhoff {
+controller ArrayTestController {
     portgroup DI {
         module: IOModule_DI1
         ioType: DIGITAL_INPUT

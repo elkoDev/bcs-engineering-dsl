@@ -25,7 +25,7 @@ bus FieldBus type EtherCAT {
     }
 }
 
-controller MainController for Beckhoff {
+controller MainController {
 
     portgroup AnalogInputs {
         module: IOModule_AI1

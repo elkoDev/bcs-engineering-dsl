@@ -4,7 +4,7 @@ import { extractControlModelWithHardwareModels } from "../../src/cli/cli-util.js
 import * as path from "node:path";
 import { NodeFileSystem } from "langium/node";
 import * as fs from "node:fs";
-import { generateBeckhoffCode } from "../../src/cli/beckhoff/beckhoff-generator.js";
+import { generateBeckhoffCode } from "../../src/cli/platform/beckhoff/beckhoff-generator.js";
 
 const TEST_OUTPUT_DIR = path.join(__dirname, "output");
 const TEST_DIR = path.join(__dirname);

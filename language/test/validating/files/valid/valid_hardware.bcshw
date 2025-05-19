@@ -25,7 +25,7 @@ bus FieldBus type EtherCAT {
     }
 }
 
-controller ValidTestController for Beckhoff {
+controller ValidTestController {
     portgroup DigitalInputs {
         module: IOModule_DO1
         ioType: DIGITAL_INPUT

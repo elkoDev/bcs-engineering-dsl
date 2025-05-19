@@ -33,11 +33,6 @@ export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenP
         property: "name",
         type: SemanticTokenTypes.class,
       });
-      acceptor({
-        node,
-        property: "platform",
-        type: SemanticTokenTypes.enumMember,
-      });
     }
     if (isDatapoint(node)) {
       acceptor({

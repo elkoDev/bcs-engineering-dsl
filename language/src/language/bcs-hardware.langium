@@ -13,13 +13,9 @@ HardwareDefinition:
 // LOGICAL / SIGNAL VIEW
 // ----------------------------------------------------------------
 Controller:
-    'controller' name=ID 'for' platform=Platform '{'
+    'controller' name=ID '{'
         (components+=Component)*
     '}';
-
-type Platform = 'Beckhoff' | 'KNX' | 'Siemens';
-Platform returns string:
-    'Beckhoff' | 'KNX' | 'Siemens';  
 
 Component:
     PortGroup | Datapoint

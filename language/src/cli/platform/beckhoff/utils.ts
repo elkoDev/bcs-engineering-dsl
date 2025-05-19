@@ -5,9 +5,9 @@ import {
   HardwareModel,
   isControlUnit,
   Statement,
-} from "../../language/generated/ast.js";
-import { getControllers } from "../../language/hardware/utils/hardware-definition-utils.js";
-import { getPortGroups } from "../../language/hardware/utils/component-utils.js";
+} from "../../../language/generated/ast.js";
+import { getControllers } from "../../../language/hardware/utils/hardware-definition-utils.js";
+import { getPortGroups } from "../../../language/hardware/utils/component-utils.js";
 
 export interface RegularControlUnit {
   name: string;

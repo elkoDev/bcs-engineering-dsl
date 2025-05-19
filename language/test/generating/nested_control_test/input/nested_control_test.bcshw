@@ -26,7 +26,7 @@ bus FieldBus type EtherCAT {
     }
 }
 
-controller NestedControlTestController for Beckhoff {
+controller NestedControlTestController {
     portgroup DI {
         module: IOModule_DI1
         ioType: DIGITAL_INPUT

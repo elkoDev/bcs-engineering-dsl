@@ -26,7 +26,7 @@ bus FieldBus type EtherCAT {
     }
 }
 
-controller IOHardwareTestController for Beckhoff {
+controller IOHardwareTestController {
     portgroup AnalogInputs {
         module: IOModule_AI1
         ioType: ANALOG_INPUT

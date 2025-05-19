@@ -46,7 +46,7 @@ import {
   AfterStmt,
   PortGroup,
   Datapoint,
-} from "../../language/generated/ast.js";
+} from "../../../language/generated/ast.js";
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -57,18 +57,18 @@ import {
   extractControlUnits,
   RegularControlUnit,
   ScheduledControlUnit,
-} from "./beckhoff-utils.js";
+} from "./utils.js";
 import {
   getOutputs,
   getInputs,
   getLocals,
   getLogic,
-} from "../../language/control/utils/function-block-utils.js";
+} from "../../../language/control/utils/function-block-utils.js";
 import {
   getPortGroups,
   getDatapoints,
-} from "../../language/hardware/utils/component-utils.js";
-import { getControllers } from "../../language/hardware/utils/hardware-definition-utils.js";
+} from "../../../language/hardware/utils/component-utils.js";
+import { getControllers } from "../../../language/hardware/utils/hardware-definition-utils.js";
 
 // Helper function to check if a node is a primitive value
 function isPrimitive(expr: Primary): boolean {
@@ -1171,7 +1171,6 @@ class BeckhoffGeneratorContext {
     const inputs: HardwareDatapoint[] = [];
     const outputs: HardwareDatapoint[] = [];
     for (const controller of getControllers(this.hardwareModel)) {
-      if (controller.platform !== "Beckhoff") continue;
       this.processDatapoints(
         getDatapoints(controller),
         getPortGroups(controller),
@@ -1255,7 +1254,7 @@ class BeckhoffGeneratorContext {
     }
   }
 
-  generate(): {
+  generateBeckhoffArtifacts(): {
     files: string[];
     csharpStrings: Record<
       string,
@@ -1397,11 +1396,7 @@ class BeckhoffGeneratorContext {
     // Variable mapping suggestions for C# TwinCAT Automation Interface
     // Map PLC variable names to hardware channels (inputs/outputs)
     const variableMappings: any[] = [];
-    // Find all controllers for Beckhoff
-    const controllers = getControllers(this.hardwareModel).filter(
-      (c) => c.platform === "Beckhoff"
-    );
-    for (const controller of controllers) {
+    for (const controller of getControllers(this.hardwareModel)) {
       const portGroups = getPortGroups(controller);
       const portGroupMap = new Map(portGroups.map((pg) => [pg.name, pg]));
       for (const datapoint of getDatapoints(controller)) {
@@ -1455,7 +1450,7 @@ class BeckhoffGeneratorContext {
   }
 }
 
-export function generateBeckhoffCode(
+export function generate(
   controlModel: ControlModel,
   hardwareModel: HardwareModel,
   destination: string
@@ -1465,7 +1460,7 @@ export function generateBeckhoffCode(
     hardwareModel,
     destination
   );
-  return ctx.generate();
+  return ctx.generateBeckhoffArtifacts();
 }
 
 class EmittedVarDecl {
@@ -1519,7 +1514,7 @@ function convertTypeRefToST(typeRef: TypeRef): string {
 }
 
 /**
- * Handles special input mapping and constructor logic for Beckhoff libraries (e.g., DALI, others in future).
+ * Handles special input mapping and constructor logic libraries (e.g., DALI, others in future).
  * Returns an object with possibly modified inputMappings and constructorArgs for declaration.
  */
 function handleLibrarySpecials(
