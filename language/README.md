@@ -13,6 +13,7 @@ npm install
 ```bash
 npm run langium:generate
 npm run build
+npm link
 ```
 
 ## Generate Extension
