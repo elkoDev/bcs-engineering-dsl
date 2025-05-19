@@ -2,18 +2,15 @@
 {
     public class ScriptConfig
     {
-        public required string ProgId { get; set; }
         public required string SolutionName { get; set; }
         public required string ProjectName { get; set; }
         public required string PlcProjectName { get; set; }
         public required string GenerationPath { get; set; }
-        public string SolutionPath
-        {
-            get { return GenerationPath + SolutionName; }
-        }
         public required string TemplatePath { get; set; }
-        public required string VsXaePlcEmptyTemplateName = "Empty PLC Template.plcproj";
+        public string ProgId { get; set; } = "TcXaeShell.DTE.15.0";
 
-        public ScriptConfig() { }
+        public string SolutionPath => Path.Combine(GenerationPath, SolutionName);
+        public string VsXaePlcEmptyTemplateName { get; set; } = "Standard PLC Template.plcproj";
     }
+
 }
