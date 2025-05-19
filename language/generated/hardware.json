@@ -49,8 +49,8 @@
       "box": "Coupler",
       "module": "IOModule_AI1",
       "moduleProduct": "KL3064",
-      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 1^Input",
-      "suggestion": "TIPC^PlcProj^PlcProj Instance^PlcTask Inputs^UltrasonicSensor_Distance"
+      "source": "TIPC^PlcProj^PlcProj Instance^PlcTask Inputs^UltrasonicSensor_Distance",
+      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 1^Input"
     },
     {
       "plcVar": "UltrasonicSensor_Valid",
@@ -61,8 +61,8 @@
       "box": "Coupler",
       "module": "IOModule_AI1",
       "moduleProduct": "KL3064",
-      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 1^Input",
-      "suggestion": "TIPC^PlcProj^PlcProj Instance^PlcTask Inputs^UltrasonicSensor_Valid"
+      "source": "TIPC^PlcProj^PlcProj Instance^PlcTask Inputs^UltrasonicSensor_Valid",
+      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 1^Input"
     },
     {
       "plcVar": "Temperatures_Room1",
@@ -73,8 +73,8 @@
       "box": "Coupler",
       "module": "IOModule_AI1",
       "moduleProduct": "KL3064",
-      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 1^Input",
-      "suggestion": "TIPC^PlcProj^PlcProj Instance^PlcTask Inputs^Temperatures_Room1"
+      "source": "TIPC^PlcProj^PlcProj Instance^PlcTask Inputs^Temperatures_Room1",
+      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 1^Input"
     },
     {
       "plcVar": "Temperatures_Room2",
@@ -85,8 +85,8 @@
       "box": "Coupler",
       "module": "IOModule_AI1",
       "moduleProduct": "KL3064",
-      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 2^Input",
-      "suggestion": "TIPC^PlcProj^PlcProj Instance^PlcTask Inputs^Temperatures_Room2"
+      "source": "TIPC^PlcProj^PlcProj Instance^PlcTask Inputs^Temperatures_Room2",
+      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 2^Input"
     },
     {
       "plcVar": "Temperatures_Room3",
@@ -97,8 +97,8 @@
       "box": "Coupler",
       "module": "IOModule_AI1",
       "moduleProduct": "KL3064",
-      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 3^Input",
-      "suggestion": "TIPC^PlcProj^PlcProj Instance^PlcTask Inputs^Temperatures_Room3"
+      "source": "TIPC^PlcProj^PlcProj Instance^PlcTask Inputs^Temperatures_Room3",
+      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 3^Input"
     },
     {
       "plcVar": "Temperatures_Room4",
@@ -109,8 +109,8 @@
       "box": "Coupler",
       "module": "IOModule_AI1",
       "moduleProduct": "KL3064",
-      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 4^Input",
-      "suggestion": "TIPC^PlcProj^PlcProj Instance^PlcTask Inputs^Temperatures_Room4"
+      "source": "TIPC^PlcProj^PlcProj Instance^PlcTask Inputs^Temperatures_Room4",
+      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 4^Input"
     },
     {
       "plcVar": "Buttons_Room1",
@@ -121,8 +121,8 @@
       "box": "Coupler",
       "module": "IOModule_DI1",
       "moduleProduct": "EL1008",
-      "destination": "TIID^EtherCAT^EK1100^EL1008^Channel 1^Input",
-      "suggestion": "TIPC^PlcProj^PlcProj Instance^PlcTask Inputs^Buttons_Room1"
+      "source": "TIPC^PlcProj^PlcProj Instance^PlcTask Inputs^Buttons_Room1",
+      "destination": "TIID^EtherCAT^EK1100^EL1008^Channel 1^Input"
     },
     {
       "plcVar": "Buttons_Room2",
@@ -133,8 +133,8 @@
       "box": "Coupler",
       "module": "IOModule_DI1",
       "moduleProduct": "EL1008",
-      "destination": "TIID^EtherCAT^EK1100^EL1008^Channel 2^Input",
-      "suggestion": "TIPC^PlcProj^PlcProj Instance^PlcTask Inputs^Buttons_Room2"
+      "source": "TIPC^PlcProj^PlcProj Instance^PlcTask Inputs^Buttons_Room2",
+      "destination": "TIID^EtherCAT^EK1100^EL1008^Channel 2^Input"
     },
     {
       "plcVar": "Lights_Room1",
@@ -145,8 +145,8 @@
       "box": "Coupler",
       "module": "IOModule_DO1",
       "moduleProduct": "KL2408",
-      "destination": "TIID^EtherCAT^EK1100^KL2408^Channel 1^Output",
-      "suggestion": "TIPC^PlcProj^PlcProj Instance^PlcTask Outputs^Lights_Room1"
+      "source": "TIPC^PlcProj^PlcProj Instance^PlcTask Outputs^Lights_Room1",
+      "destination": "TIID^EtherCAT^EK1100^KL2408^Channel 1^Output"
     },
     {
       "plcVar": "Lights_Room2",
@@ -157,8 +157,8 @@
       "box": "Coupler",
       "module": "IOModule_DO1",
       "moduleProduct": "KL2408",
-      "destination": "TIID^EtherCAT^EK1100^KL2408^Channel 2^Output",
-      "suggestion": "TIPC^PlcProj^PlcProj Instance^PlcTask Outputs^Lights_Room2"
+      "source": "TIPC^PlcProj^PlcProj Instance^PlcTask Outputs^Lights_Room2",
+      "destination": "TIID^EtherCAT^EK1100^KL2408^Channel 2^Output"
     }
   ]
 }

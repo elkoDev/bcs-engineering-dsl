@@ -1439,10 +1439,10 @@ class BeckhoffGeneratorContext {
             box: moduleInfo?.box.name,
             module: moduleInfo?.module.name,
             moduleProduct: moduleInfo?.module.product,
-            destination,
-            suggestion: `TIPC^PlcProj^PlcProj Instance^PlcTask ${
+            source: `TIPC^PlcProj^PlcProj Instance^PlcTask ${
               direction === "input" ? "Inputs" : "Outputs"
             }^${plcVar}`,
+            destination,
           });
         }
       }

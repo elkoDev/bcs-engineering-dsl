@@ -2,8 +2,31 @@
 {
     internal static class IoMappings
     {
+        public static int GetEthercatSubType(string product)
+=> EthercatItemSubTypes.TryGetValue(product, out var subType) ? subType : IoSubTypes.EthercatDefault;
+
+        public static int GetProfinetControllerSubType(string product)
+            => ProfinetControllers.TryGetValue(product, out var subType)
+                ? subType
+                : throw new ArgumentException($"Unsupported Profinet controller '{product}'");
+
+        public static int GetProfinetBoxSubType(string product)
+            => ProfinetBoxes.TryGetValue(product, out var subType)
+                ? subType
+                : throw new ArgumentException($"Unsupported Profinet box '{product}'");
+
+        public static int GetProfibusMasterSubType(string product)
+            => ProfibusMasters.TryGetValue(product, out var subType)
+                ? subType
+                : throw new ArgumentException($"Unsupported Profibus master '{product}'");
+
+        public static int GetProfibusSlaveSubType(string product)
+            => ProfibusSlaves.TryGetValue(product, out var subType)
+                ? subType
+                : throw new ArgumentException($"Unsupported Profibus slave '{product}'");
+
         // Default 9099 for EtherCAT terminals/modules — overridden when listed here
-        public static readonly Dictionary<string, int> EthercatItemSubTypes =
+        private static readonly Dictionary<string, int> EthercatItemSubTypes =
             new(StringComparer.OrdinalIgnoreCase)
             {
                 // EtherCAT boxes / couplers
@@ -43,7 +66,7 @@
                 ["EL6652"] = 9110
             };
 
-        public static readonly Dictionary<string, int> ProfinetControllers =
+        private static readonly Dictionary<string, int> ProfinetControllers =
             new(StringComparer.OrdinalIgnoreCase)
             {
                 ["ControllerRT"] = 113,
@@ -52,7 +75,7 @@
                 ["EL6632"] = 126
             };
 
-        public static readonly Dictionary<string, int> ProfinetBoxes =
+        private static readonly Dictionary<string, int> ProfinetBoxes =
             new(StringComparer.OrdinalIgnoreCase)
             {
                 ["BK9102"] = 9125,
@@ -60,14 +83,14 @@
                 ["EL6631"] = 9130
             };
 
-        public static readonly Dictionary<string, int> ProfibusMasters =
+        private static readonly Dictionary<string, int> ProfibusMasters =
             new(StringComparer.OrdinalIgnoreCase)
             {
                 ["EL6731"] = 86,
                 ["FC310x"] = 86       // same subtype
             };
 
-        public static readonly Dictionary<string, int> ProfibusSlaves =
+        private static readonly Dictionary<string, int> ProfibusSlaves =
             new(StringComparer.OrdinalIgnoreCase)
             {
                 ["EL6731-0010"] = 97
