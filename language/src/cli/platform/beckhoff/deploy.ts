@@ -23,8 +23,7 @@ export function deploy(opts: DeployOptions) {
     opts.projectName,
     "--plc-name",
     opts.plcName,
-    "--template-path",
-    opts.templatePath,
+    ...(opts.templatePath ? ["--template-path", opts.templatePath] : []),
   ].filter((arg): arg is string => typeof arg === "string");
 
   console.log(chalk.gray(`[beckhoff] ${tcPath} ${args.join(" ")}`));

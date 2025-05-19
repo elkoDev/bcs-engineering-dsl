@@ -5,3 +5,4 @@
 /language/test/generating/output
 /.vs
 /language/generated
+/language/example/generated

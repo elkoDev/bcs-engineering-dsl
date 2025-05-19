@@ -82,7 +82,6 @@ export async function extractDocuments(
   return [mainDocument, documents];
 }
 
-
 export async function extractControlModelWithHardwareModels(
   fileName: string,
   services: LangiumCoreServices
@@ -108,11 +107,11 @@ export function extractDestinationAndName(
   filePath: string,
   destination: string | undefined
 ): FilePathData {
-  filePath = path
+  const baseName = path
     .basename(filePath, path.extname(filePath))
     .replace(/[.-]/g, "");
   return {
     destination: destination ?? path.join(path.dirname(filePath), "generated"),
-    name: path.basename(filePath),
+    name: baseName,
   };
 }
