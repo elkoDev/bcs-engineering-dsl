@@ -6,6 +6,7 @@ namespace TcAutomation
     [SupportedOSPlatform("windows")]
     class Program
     {
+        [STAThread]
         static int Main(string[] args)
         {
             var workspaceOption = new Option<string>(
@@ -66,7 +67,7 @@ namespace TcAutomation
                     ProgId = progId
                 };
 
-                var script = new Script(cfg);
+                using var script = new Script(cfg);
                 script.Run();
             },
             workspaceOption,

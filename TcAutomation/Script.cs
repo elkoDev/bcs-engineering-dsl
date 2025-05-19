@@ -1,5 +1,6 @@
 ﻿using EnvDTE;
 using EnvDTE80;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using TCatSysManagerLib;
 using TcAutomation.Manager.Io;
@@ -7,7 +8,7 @@ using TcAutomation.Manager.Plc;
 
 namespace TcAutomation
 {
-    internal class Script
+    internal class Script : IDisposable
     {
         private DTE2? _dte = null;
         private Solution2? _solution = null;
@@ -25,6 +26,7 @@ namespace TcAutomation
             OnInitialize();
         }
 
+        [SupportedOSPlatform("windows")]
         ~Script()
         {
             OnDestruct();
@@ -36,10 +38,34 @@ namespace TcAutomation
             _dte = StartHiddenDte();
         }
 
+        [SupportedOSPlatform("windows")]
         private void OnDestruct()
         {
-            _dte?.Quit();
-            MessageFilter.Revoke();
+            try
+            {
+                _dte?.Quit();
+            }
+            catch
+            {
+                /* ignore errors on quit */
+            }
+
+            if (_dte != null)
+            {
+                Marshal.FinalReleaseComObject(_dte);
+            }
+
+            if (MessageFilter.IsRegistered)
+            {
+                MessageFilter.Revoke();
+            }
+
+            _dte = null;
+            _solution = null;
+            _systemManager = null;
+            _project = null;
+            _plcProjectManager = null;
+            _ioProjectManager = null;
         }
 
         public void Run()
@@ -56,7 +82,8 @@ namespace TcAutomation
                 _plcProjectManager = new PlcProjectManager(_systemManager, _config);
                 _plcProjectManager.AddPlcProject();
                 _plcProjectManager.SetTaskCycleTime(10000); // 10ms
-                _plcProjectManager.AddReference("Tc3_DALI", "Beckhoff Automation GmbH");
+                _plcProjectManager.AddReference("Tc2_Utilities", "Beckhoff Automation GmbH");
+                _plcProjectManager.AddReference("Tc3_DALI", "Beckhoff Automation GmbH"); // TODO: add those dynamically
 
                 // Load files dynamically from generation path
                 var generatedDir = new DirectoryInfo(_config.GenerationPath);
@@ -142,8 +169,6 @@ namespace TcAutomation
             Type? dteType = Type.GetTypeFromProgID(_config.ProgId, throwOnError: true);
             var dte = (DTE2)Activator.CreateInstance(dteType!, true)!;
 
-            if (!MessageFilter.IsRegistered) MessageFilter.Register();
-
             dte.SuppressUI = true;
             dte.MainWindow.Visible = false;
             dte.UserControl = false;
@@ -155,6 +180,8 @@ namespace TcAutomation
         {
             DeleteSolutionFolder();
             Directory.CreateDirectory(_config.SolutionPath);
+
+            if (!MessageFilter.IsRegistered) MessageFilter.Register();
 
             var sln = (Solution2)dte.Solution;
             sln.Create(_config.SolutionPath, _config.SolutionName);
@@ -185,6 +212,14 @@ namespace TcAutomation
             Console.WriteLine("Project added from template.");
 
             return prj;
+        }
+
+
+        [SupportedOSPlatform("windows")]
+        public void Dispose()
+        {
+            OnDestruct();
+            GC.SuppressFinalize(this);
         }
     }
 }

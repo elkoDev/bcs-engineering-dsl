@@ -31,11 +31,10 @@ namespace TcAutomation
         public static void Register()
         {
             IOleMessageFilter newFilter = new MessageFilter();
-            IOleMessageFilter oldFilter = null;
-            int test = CoRegisterMessageFilter(newFilter, out oldFilter);
+            int test = CoRegisterMessageFilter(newFilter, out _);
 
             if (test != 0)
-                Debug.Fail("CoRegisterMessageFilter failed!");
+                Debug.Fail($"CoRegisterMessageFilter failed! HRESULT: 0x{test:X8}");
             else
                 _isRegistered = true;
         }
@@ -45,7 +44,7 @@ namespace TcAutomation
         /// </summary>
         public static void Revoke()
         {
-            IOleMessageFilter oldFilter = null;
+            IOleMessageFilter? oldFilter = null;
             int test = CoRegisterMessageFilter(null, out oldFilter);
             _isRegistered = false;
         }
@@ -105,7 +104,7 @@ namespace TcAutomation
 
         // Implement the IOleMessageFilter interface.
         [DllImport("Ole32.dll")]
-        private static extern int CoRegisterMessageFilter(IOleMessageFilter newFilter, out IOleMessageFilter oldFilter);
+        private static extern int CoRegisterMessageFilter(IOleMessageFilter? newFilter, out IOleMessageFilter oldFilter);
     }
 
     /// <summary>
