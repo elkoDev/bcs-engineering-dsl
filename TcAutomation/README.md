@@ -13,4 +13,4 @@ msbuild /p:Configuration=Release TcAutomation.csproj
 ## Build
 - Open the `TcAutomation.iss` file in Inno Setup.
 - Click the "Build/Compile" button (or press Ctrl+F9)."
-- The installer will be created in "bin\Release\net9.0\Output".
+- The installer will be created in the `output` folder.
