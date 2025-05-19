@@ -28,7 +28,7 @@ namespace TcAutomation.Manager.Plc
             _plcProject = plcProjectRoot.LookupChild(_config.PlcProjectName + " Project");
             _realTimeTasks = _systemManager.LookupTreeItem(TcShortcut.TIRT.GetShortcutKey());
 
-            Console.WriteLine($"✅ PLC project '{_config.PlcProjectName}' created successfully.");
+            Console.WriteLine($"✅ PLC project '{_config.PlcProjectName}' created.");
         }
 
         public void SetTaskCycleTime(int cycleTime)
@@ -36,7 +36,7 @@ namespace TcAutomation.Manager.Plc
             string xmlCycleTime = "<TreeItem><TaskDef><CycleTime>" + cycleTime + "</CycleTime></TaskDef></TreeItem>";
             ITcSmTreeItem task = _systemManager.LookupTreeItem("TIRT^PlcTask");
             task.ConsumeXml(xmlCycleTime);
-            Console.WriteLine("✅ Task cycle time successfully set to " + cycleTime / 1000 + "ms.");
+            Console.WriteLine("✅ Task cycle time set to " + cycleTime / 1000 + "ms.");
         }
 
         public void AddReference(string libraryName, string vendor = "Beckhoff Automation GmbH")
@@ -44,7 +44,7 @@ namespace TcAutomation.Manager.Plc
             ITcSmTreeItem references = _systemManager.LookupTreeItem($"{TcShortcut.TIPC.GetShortcutKey()}^{_config.PlcProjectName}^{_config.PlcProjectName} Project^References");
             ITcPlcLibraryManager libManager = (ITcPlcLibraryManager)references;
             libManager.AddLibrary(libraryName, "*", vendor);
-            Console.WriteLine($"✅ Library '{libraryName}' added successfully.");
+            Console.WriteLine($"✅ Library '{libraryName}' added.");
         }
 
         private string GetParentPathForType(PlcObjectType type)
@@ -83,7 +83,7 @@ namespace TcAutomation.Manager.Plc
                 impl.ImplementationText = implementationText;
             }
 
-            Console.WriteLine($"✅ Created {type.Name} '{name}' with optional texts.");
+            Console.WriteLine($"✅ Created {type.Name} '{name}'.");
             return newItem;
         }
 
@@ -94,7 +94,7 @@ namespace TcAutomation.Manager.Plc
             decl.DeclarationText = declarationText;
             var impl = (ITcPlcImplementation)mainPlcObject;
             impl.ImplementationText = implementationText;
-            Console.WriteLine($"✅ Main PLC object set with optional texts.");
+            Console.WriteLine($"✅ Main PLC object set.");
         }
     }
 }
