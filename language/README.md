@@ -47,13 +47,13 @@ npm link
 ## 2.1 Generate Code
 
 ```bash
-bcs-engineering-dsl beckhoff generate <path-to-bcsctrl-file>
+bcs-engineering-cli beckhoff generate <path-to-bcsctrl-file>
 ```
 
 ## 2.2 Generate Code and Deploy
 
 ```bash
-bcs-engineering-dsl beckhoff deploy <path-to-bcsctrl-file>
+bcs-engineering-cli beckhoff deploy <path-to-bcsctrl-file>
 ```
 
 **NOTE:** The working directory will be set to the root of the provided file. This means that the .bcsctrl file can contain cross-references to other files in the same directory.

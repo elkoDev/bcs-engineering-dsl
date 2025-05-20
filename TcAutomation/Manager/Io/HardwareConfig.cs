@@ -2,8 +2,15 @@
 {
     public class HardwareConfig
     {
+        public List<LibraryEntry> Libraries { get; set; } = new();
         public List<Bus> Buses { get; set; } = new();
         public List<VariableMapping> VariableMappings { get; set; } = new();
+    }
+
+    public class LibraryEntry
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Vendor { get; set; } = "Beckhoff Automation GmbH";
     }
 
     public class Bus

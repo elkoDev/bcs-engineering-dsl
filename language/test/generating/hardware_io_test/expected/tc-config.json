@@ -1,7 +1,13 @@
 {
   "libraries": [
-    "Tc3_DALI",
-    "Tc3_EventLogger"
+    {
+      "name": "Tc3_DALI",
+      "vendor": "Beckhoff Automation GmbH"
+    },
+    {
+      "name": "Tc3_EventLogger",
+      "vendor": "Beckhoff Automation GmbH"
+    }
   ],
   "buses": [
     {

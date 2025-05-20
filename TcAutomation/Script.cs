@@ -2,6 +2,7 @@
 using EnvDTE80;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.Text.Json;
 using TCatSysManagerLib;
 using TcAutomation.Manager.Io;
 using TcAutomation.Manager.Plc;
@@ -16,7 +17,7 @@ namespace TcAutomation
         private Project? _project = null;
         private PlcProjectManager? _plcProjectManager = null;
         private IoProjectManager? _ioProjectManager = null;
-
+        private HardwareConfig? _hardwareConfig = null;
         private readonly ScriptConfig _config;
 
         [SupportedOSPlatform("windows")]
@@ -78,16 +79,29 @@ namespace TcAutomation
 
                 _systemManager = (ITcSysManager4)_project!.Object;
 
-                // Setup PLC Project
-                _plcProjectManager = new PlcProjectManager(_systemManager, _config);
-                _plcProjectManager.AddPlcProject();
-                _plcProjectManager.SetTaskCycleTime(10000); // 10ms
-                _plcProjectManager.AddReference("Tc2_Utilities", "Beckhoff Automation GmbH");
-                _plcProjectManager.AddReference("Tc3_DALI", "Beckhoff Automation GmbH"); // TODO: add those dynamically
-
                 // Load files dynamically from generation path
                 var generatedDir = new DirectoryInfo(_config.GenerationPath);
                 if (!generatedDir.Exists) throw new DirectoryNotFoundException("Generated directory not found.");
+                string tcConfigJsonPath = Path.Combine(generatedDir.FullName, "tc-config.json");
+                if (!File.Exists(tcConfigJsonPath))
+                    throw new FileNotFoundException("tc-config.json missing.");
+
+                // Setup PLC Project
+                _plcProjectManager = new PlcProjectManager(_systemManager, _config);
+                _plcProjectManager.AddPlcProject();
+
+                // Add references
+                _hardwareConfig = JsonSerializer.Deserialize<HardwareConfig>(
+                    File.ReadAllText(tcConfigJsonPath), new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    }
+                ) ?? throw new InvalidDataException("tc-config.json invalid or empty");
+                _plcProjectManager.AddReference("Tc2_Utilities");
+                foreach (var lib in _hardwareConfig.Libraries)
+                {
+                    _plcProjectManager.AddReference(lib.Name, lib.Vendor);
+                }
 
                 // Create Enums
                 var enumsDir = new DirectoryInfo(Path.Combine(generatedDir.FullName, "Enums"));
@@ -139,13 +153,13 @@ namespace TcAutomation
 
                 _plcProjectManager.SetMainPlcObject(File.ReadAllText(mainDeclPath), File.ReadAllText(mainImplPath));
 
-                // Setup IO Project
-                string hardwareJsonPath = Path.Combine(generatedDir.FullName, "hardware.json");
-                if (!File.Exists(hardwareJsonPath))
-                    throw new FileNotFoundException("hardware.json missing.");
+                // Link Task
+                _plcProjectManager.LinkPlcInstanceWithTask();
+                _plcProjectManager.SetTaskCycleTime(11000); // 11ms
 
+                // Setup IO Project
                 _ioProjectManager = new IoProjectManager(_systemManager);
-                _ioProjectManager.CreateIoFromJson(hardwareJsonPath);
+                _ioProjectManager.CreateIoFromJson(tcConfigJsonPath);
 
                 // Activate configuration and restart TwinCAT
                 _systemManager.ActivateConfiguration();

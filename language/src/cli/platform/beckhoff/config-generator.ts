@@ -34,10 +34,11 @@ export class TcConfigGenerator {
     };
   }
 
-  private collectLibraries(): string[] {
-    const libraries: string[] = [];
+  private collectLibraries(): { name: string; vendor: string }[] {
+    const libraries: { name: string; vendor: string }[] = [];
     for (const decl of this.controlModel.importDecls ?? []) {
-      if (decl.name) libraries.push(decl.name);
+      if (decl.name)
+        libraries.push({ name: decl.name, vendor: "Beckhoff Automation GmbH" });
     }
     return libraries;
   }
