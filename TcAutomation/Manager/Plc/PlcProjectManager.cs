@@ -31,13 +31,15 @@ namespace TcAutomation.Manager.Plc
             Console.WriteLine($"✅ PLC project '{_config.PlcProjectName}' created.");
         }
 
+        /*
         public void SetTaskCycleTime(int cycleTime)
         {
             string xmlCycleTime = "<TreeItem><TaskDef><CycleTime>" + cycleTime + "</CycleTime></TaskDef></TreeItem>";
-            ITcSmTreeItem task = _systemManager.LookupTreeItem("TIRT^PlcTask");
+            ITcSmTreeItem task = _systemManager.LookupTreeItem("TIRT^MainPlcTask");
             task.ConsumeXml(xmlCycleTime);
             Console.WriteLine("✅ Task cycle time set to " + cycleTime / 1000 + "ms.");
         }
+        */
 
         public void AddReference(string libraryName, string vendor = "Beckhoff Automation GmbH")
         {
@@ -95,6 +97,33 @@ namespace TcAutomation.Manager.Plc
             var impl = (ITcPlcImplementation)mainPlcObject;
             impl.ImplementationText = implementationText;
             Console.WriteLine($"✅ Main PLC object set.");
+        }
+
+        public void LinkPlcInstanceWithTask()
+        {
+            _plcProject!.DeleteChild("PlcTask");
+            _realTimeTasks!.DeleteChild("PlcTask");
+            ITcSmTreeItem rtTask = _realTimeTasks!.CreateChild("MainPlcTask", (int)TREEITEMTYPES.TREEITEMTYPE_TASK);
+            if (!TryLookupChild(_plcProject!, "MainPlcTask", out _))
+            {
+
+                _ = _plcProject!.CreateChild("MainPlcTask", (int)TREEITEMTYPES.TREEITEMTYPE_PLCTASK, "", "MAIN");
+            }
+            Console.WriteLine($"✅ Linked PLC instance with 'MainPlcTask'.");
+        }
+
+        private bool TryLookupChild(ITcSmTreeItem parent, string childName, out ITcSmTreeItem? child)
+        {
+            foreach (ITcSmTreeItem c in parent)
+            {
+                if (c.Name == childName)
+                {
+                    child = c;
+                    return true;
+                }
+            }
+            child = null;
+            return false;
         }
     }
 }

@@ -155,7 +155,7 @@ namespace TcAutomation
 
                 // Link Task
                 _plcProjectManager.LinkPlcInstanceWithTask();
-                _plcProjectManager.SetTaskCycleTime(11000); // 11ms
+                //_plcProjectManager.SetTaskCycleTime(11000); // 11ms
 
                 // Setup IO Project
                 _ioProjectManager = new IoProjectManager(_systemManager);
