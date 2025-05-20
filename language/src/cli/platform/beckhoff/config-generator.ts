@@ -107,33 +107,17 @@ export class TcConfigGenerator {
         for (const channel of datapoint.channels) {
           const plcVar = `${datapoint.name}_${channel.name}`;
           const direction = portgroup.ioType.includes("INPUT")
-            ? "input"
-            : "output";
+            ? "Input"
+            : "Output";
           const channelIndex = channel.index;
-          let destination = null;
-          if (moduleInfo) {
-            destination = [
-              `TIID`,
-              moduleInfo.bus.type,
-              moduleInfo.box.product,
-              moduleInfo.module.product,
-              `Channel ${channelIndex + 1}`,
-              direction === "input" ? "Input" : "Output",
-            ].join("^");
-          }
           variableMappings.push({
             plcVar,
             direction,
-            channel: channel.name,
             channelIndex,
-            bus: moduleInfo?.bus.name,
-            box: moduleInfo?.box.name,
-            module: moduleInfo?.module.name,
+            bus: moduleInfo?.bus.type,
+            box: moduleInfo?.box.product,
             moduleProduct: moduleInfo?.module.product,
-            source: `TIPC^MyTwinCATProject^MyTwinCATProject Instance^PlcTask ${
-              direction === "input" ? "Inputs" : "Outputs"
-            }^${plcVar}`,
-            destination,
+            moduleSlot: moduleInfo?.module.slot,
           });
         }
       }

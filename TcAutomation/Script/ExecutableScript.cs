@@ -6,10 +6,11 @@ using System.Text.Json;
 using TCatSysManagerLib;
 using TcAutomation.Manager.Io;
 using TcAutomation.Manager.Plc;
+using TcAutomation.Manager.System;
 
-namespace TcAutomation
+namespace TcAutomation.Script
 {
-    internal class Script : IDisposable
+    internal class ExecutableScript : IDisposable
     {
         private DTE2? _dte = null;
         private Solution2? _solution = null;
@@ -18,17 +19,18 @@ namespace TcAutomation
         private PlcProjectManager? _plcProjectManager = null;
         private IoProjectManager? _ioProjectManager = null;
         private HardwareConfig? _hardwareConfig = null;
+        private SystemProjectManager? _systemProjectManager = null;
         private readonly ScriptConfig _config;
 
         [SupportedOSPlatform("windows")]
-        public Script(ScriptConfig config)
+        public ExecutableScript(ScriptConfig config)
         {
             _config = config;
             OnInitialize();
         }
 
         [SupportedOSPlatform("windows")]
-        ~Script()
+        ~ExecutableScript()
         {
             OnDestruct();
         }
@@ -78,6 +80,8 @@ namespace TcAutomation
                 _project = AddTwinCatProject(_solution!);
 
                 _systemManager = (ITcSysManager4)_project!.Object;
+
+                _systemProjectManager = new SystemProjectManager(_systemManager!, _config);
 
                 // Load files dynamically from generation path
                 var generatedDir = new DirectoryInfo(_config.GenerationPath);
@@ -159,7 +163,10 @@ namespace TcAutomation
 
                 // Setup IO Project
                 _ioProjectManager = new IoProjectManager(_systemManager);
-                _ioProjectManager.CreateIoFromJson(tcConfigJsonPath);
+                _ioProjectManager.CreateIoFromHardwareConfig(_hardwareConfig!);
+
+                // Link Variables
+                _systemProjectManager.LinkVariables(_hardwareConfig!);
 
                 // Activate configuration and restart TwinCAT
                 _systemManager.ActivateConfiguration();

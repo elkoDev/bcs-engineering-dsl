@@ -1,4 +1,4 @@
-﻿namespace TcAutomation
+﻿namespace TcAutomation.Script
 {
     public class ScriptConfig
     {

@@ -1,5 +1,6 @@
 ﻿using System.CommandLine;
 using System.Runtime.Versioning;
+using TcAutomation.Script;
 
 namespace TcAutomation
 {
@@ -67,7 +68,7 @@ namespace TcAutomation
                     ProgId = progId
                 };
 
-                using var script = new Script(cfg);
+                using var script = new ExecutableScript(cfg);
                 script.Run();
             },
             workspaceOption,

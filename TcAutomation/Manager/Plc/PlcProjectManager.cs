@@ -1,4 +1,5 @@
 ﻿using TCatSysManagerLib;
+using TcAutomation.Script;
 
 namespace TcAutomation.Manager.Plc
 {

@@ -15,14 +15,12 @@ internal sealed class IoProjectManager
     /// <summary>
     /// Create the complete I/O topology from a JSON file.
     /// </summary>
-    public void CreateIoFromJson(string jsonPath)
+    public void CreateIoFromHardwareConfig(HardwareConfig hw)
     {
         var options = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
         };
-        var hw = JsonSerializer.Deserialize<HardwareConfig>(File.ReadAllText(jsonPath), options)
-                 ?? throw new InvalidDataException("hardware.json invalid or empty");
 
         foreach (var bus in hw.Buses)
         {

@@ -20,7 +20,7 @@
           "name": "Coupler",
           "modules": [
             {
-              "product": "KL3064",
+              "product": "EL3074",
               "name": "IOModule_AI1",
               "slot": 1
             },
@@ -30,17 +30,17 @@
               "slot": 2
             },
             {
-              "product": "KL2408",
+              "product": "EL2024",
               "name": "IOModule_DO1",
               "slot": 3
             },
             {
-              "product": "KL3064",
+              "product": "EL4024",
               "name": "IOModule_AO1",
               "slot": 4
             },
             {
-              "product": "KL6821",
+              "product": "EL6821",
               "name": "IOModule_DALI",
               "slot": 5
             }
@@ -52,123 +52,93 @@
   "variableMappings": [
     {
       "plcVar": "UltrasonicSensor_Distance",
-      "direction": "input",
-      "channel": "Distance",
+      "direction": "Input",
       "channelIndex": 0,
-      "bus": "FieldBus",
-      "box": "Coupler",
-      "module": "IOModule_AI1",
-      "moduleProduct": "KL3064",
-      "source": "TIPC^MyTwinCATProject^MyTwinCATProject Instance^PlcTask Inputs^UltrasonicSensor_Distance",
-      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 1^Input"
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL3074",
+      "moduleSlot": 1
     },
     {
       "plcVar": "UltrasonicSensor_Valid",
-      "direction": "input",
-      "channel": "Valid",
+      "direction": "Input",
       "channelIndex": 0,
-      "bus": "FieldBus",
-      "box": "Coupler",
-      "module": "IOModule_AI1",
-      "moduleProduct": "KL3064",
-      "source": "TIPC^MyTwinCATProject^MyTwinCATProject Instance^PlcTask Inputs^UltrasonicSensor_Valid",
-      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 1^Input"
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL3074",
+      "moduleSlot": 1
     },
     {
       "plcVar": "Temperatures_Room1",
-      "direction": "input",
-      "channel": "Room1",
+      "direction": "Input",
       "channelIndex": 0,
-      "bus": "FieldBus",
-      "box": "Coupler",
-      "module": "IOModule_AI1",
-      "moduleProduct": "KL3064",
-      "source": "TIPC^MyTwinCATProject^MyTwinCATProject Instance^PlcTask Inputs^Temperatures_Room1",
-      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 1^Input"
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL3074",
+      "moduleSlot": 1
     },
     {
       "plcVar": "Temperatures_Room2",
-      "direction": "input",
-      "channel": "Room2",
+      "direction": "Input",
       "channelIndex": 1,
-      "bus": "FieldBus",
-      "box": "Coupler",
-      "module": "IOModule_AI1",
-      "moduleProduct": "KL3064",
-      "source": "TIPC^MyTwinCATProject^MyTwinCATProject Instance^PlcTask Inputs^Temperatures_Room2",
-      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 2^Input"
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL3074",
+      "moduleSlot": 1
     },
     {
       "plcVar": "Temperatures_Room3",
-      "direction": "input",
-      "channel": "Room3",
+      "direction": "Input",
       "channelIndex": 2,
-      "bus": "FieldBus",
-      "box": "Coupler",
-      "module": "IOModule_AI1",
-      "moduleProduct": "KL3064",
-      "source": "TIPC^MyTwinCATProject^MyTwinCATProject Instance^PlcTask Inputs^Temperatures_Room3",
-      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 3^Input"
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL3074",
+      "moduleSlot": 1
     },
     {
       "plcVar": "Temperatures_Room4",
-      "direction": "input",
-      "channel": "Room4",
+      "direction": "Input",
       "channelIndex": 3,
-      "bus": "FieldBus",
-      "box": "Coupler",
-      "module": "IOModule_AI1",
-      "moduleProduct": "KL3064",
-      "source": "TIPC^MyTwinCATProject^MyTwinCATProject Instance^PlcTask Inputs^Temperatures_Room4",
-      "destination": "TIID^EtherCAT^EK1100^KL3064^Channel 4^Input"
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL3074",
+      "moduleSlot": 1
     },
     {
       "plcVar": "Buttons_Room1",
-      "direction": "input",
-      "channel": "Room1",
+      "direction": "Input",
       "channelIndex": 0,
-      "bus": "FieldBus",
-      "box": "Coupler",
-      "module": "IOModule_DI1",
+      "bus": "EtherCAT",
+      "box": "EK1100",
       "moduleProduct": "EL1008",
-      "source": "TIPC^MyTwinCATProject^MyTwinCATProject Instance^PlcTask Inputs^Buttons_Room1",
-      "destination": "TIID^EtherCAT^EK1100^EL1008^Channel 1^Input"
+      "moduleSlot": 2
     },
     {
       "plcVar": "Buttons_Room2",
-      "direction": "input",
-      "channel": "Room2",
+      "direction": "Input",
       "channelIndex": 1,
-      "bus": "FieldBus",
-      "box": "Coupler",
-      "module": "IOModule_DI1",
+      "bus": "EtherCAT",
+      "box": "EK1100",
       "moduleProduct": "EL1008",
-      "source": "TIPC^MyTwinCATProject^MyTwinCATProject Instance^PlcTask Inputs^Buttons_Room2",
-      "destination": "TIID^EtherCAT^EK1100^EL1008^Channel 2^Input"
+      "moduleSlot": 2
     },
     {
       "plcVar": "Lights_Room1",
-      "direction": "output",
-      "channel": "Room1",
+      "direction": "Output",
       "channelIndex": 0,
-      "bus": "FieldBus",
-      "box": "Coupler",
-      "module": "IOModule_DO1",
-      "moduleProduct": "KL2408",
-      "source": "TIPC^MyTwinCATProject^MyTwinCATProject Instance^PlcTask Outputs^Lights_Room1",
-      "destination": "TIID^EtherCAT^EK1100^KL2408^Channel 1^Output"
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL2024",
+      "moduleSlot": 3
     },
     {
       "plcVar": "Lights_Room2",
-      "direction": "output",
-      "channel": "Room2",
+      "direction": "Output",
       "channelIndex": 1,
-      "bus": "FieldBus",
-      "box": "Coupler",
-      "module": "IOModule_DO1",
-      "moduleProduct": "KL2408",
-      "source": "TIPC^MyTwinCATProject^MyTwinCATProject Instance^PlcTask Outputs^Lights_Room2",
-      "destination": "TIID^EtherCAT^EK1100^KL2408^Channel 2^Output"
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL2024",
+      "moduleSlot": 3
     }
   ]
 }

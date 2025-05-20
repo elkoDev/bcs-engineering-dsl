@@ -44,8 +44,8 @@
 
         public string Bus { get; set; } = string.Empty;
         public string Box { get; set; } = string.Empty;
-        public string Module { get; set; } = string.Empty;
         public string ModuleProduct { get; set; } = string.Empty;
+        public int ModuleSlot { get; set; }
 
         public string Destination { get; set; } = string.Empty;
         public string Suggestion { get; set; } = string.Empty;
