@@ -54,7 +54,7 @@ internal sealed class IoProjectManager
             var boxItem = master.CreateChild(box.Product, boxSubType, "", box.Product);
             Console.WriteLine($"Created box: {box.Name} ({box.Product})");
 
-            // Step 3: Create Modules (e.g., EL1008, KL2408, etc.)
+            // Step 3: Create Modules (e.g., EL1008, etc.)
             foreach (var mod in box.Modules.OrderBy(m => m.Slot))
             {
                 string moduleName = $"Term {mod.Slot} ({mod.Product})";

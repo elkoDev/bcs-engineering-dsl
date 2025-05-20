@@ -1,4 +1,8 @@
 {
+  "libraries": [
+    "Tc3_DALI",
+    "Tc3_EventLogger"
+  ],
   "buses": [
     {
       "type": "EtherCAT",

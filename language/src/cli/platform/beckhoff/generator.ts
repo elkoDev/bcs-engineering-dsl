@@ -69,6 +69,7 @@ import {
   getDatapoints,
 } from "../../../language/hardware/utils/component-utils.js";
 import { getControllers } from "../../../language/hardware/utils/hardware-definition-utils.js";
+import { TcConfigGenerator } from "./config-generator.js";
 
 // Helper function to check if a node is a primitive value
 function isPrimitive(expr: Primary): boolean {
@@ -154,6 +155,7 @@ class BeckhoffGeneratorContext {
   hardwareChannelFlatNames: Set<string>;
   fbInstanceMap: Map<any, InstanceInfo>; // Key: UseStmt, edge, or AfterStmt, Value: InstanceInfo
   fbInstanceCounter: number;
+  tcConfigGenerator: TcConfigGenerator;
 
   constructor(
     controlModel: ControlModel,
@@ -166,7 +168,7 @@ class BeckhoffGeneratorContext {
     this.hardwareChannelFlatNames = new Set();
     this.fbInstanceMap = new Map();
     this.fbInstanceCounter = 1;
-    // Removed addRequiredAdditionalFBInstances from constructor
+    this.tcConfigGenerator = new TcConfigGenerator(controlModel, hardwareModel);
   }
 
   // Generate a globally unique FB instance name
@@ -1334,119 +1336,16 @@ class BeckhoffGeneratorContext {
       implementation: createCSharpString(mainImplFilePath),
     };
 
-    // --- Write hardware.json ---
-    const hardwareJson = this.generateHardwareJson();
-    const hardwareJsonPath = path.join(this.destination, "hardware.json");
-    fs.writeFileSync(hardwareJsonPath, JSON.stringify(hardwareJson, null, 2));
-    files.push(hardwareJsonPath);
-    csharpStrings["hardware"] = {
-      declaration: JSON.stringify(hardwareJson, null, 2),
+    // --- Write tc-config.json ---
+    const tcConfigJson = this.tcConfigGenerator.generateTcConfigJson();
+    const tcConfigJsonPath = path.join(this.destination, "tc-config.json");
+    fs.writeFileSync(tcConfigJsonPath, JSON.stringify(tcConfigJson, null, 2));
+    files.push(tcConfigJsonPath);
+    csharpStrings["tc-config"] = {
+      declaration: JSON.stringify(tcConfigJson, null, 2),
     };
-    // ---
 
     return { files, csharpStrings };
-  }
-
-  /**
-   * Generate hardware.json with bus/box/module structure and variable mapping suggestions
-   * Now includes channel, bus, box, module, and destination path for each variable mapping.
-   */
-  generateHardwareJson() {
-    // Use 'any' arrays to avoid TS type inference issues for push
-    const buses: any[] = [];
-    for (const def of this.hardwareModel.hardwareDefinitions) {
-      if (def.$type === "Bus") {
-        const bus: any = {
-          type: def.busType,
-          name: def.name,
-          masterDeviceName: def.master.replace(/^"|"$/g, ""), // Remove quotes
-          boxes: [] as any[],
-        };
-        for (const box of def.boxes) {
-          const boxObj: any = {
-            product: box.productCode,
-            name: box.name,
-            modules: [] as any[],
-          };
-          for (const mod of box.modules) {
-            boxObj.modules.push({
-              product: mod.productCode,
-              name: mod.name,
-              slot: mod.slot,
-            });
-          }
-          bus.boxes.push(boxObj);
-        }
-        buses.push(bus);
-      }
-    }
-
-    // Build a lookup for moduleName -> {bus, box, module}
-    const moduleLookup: Record<string, { bus: any; box: any; module: any }> =
-      {};
-    for (const bus of buses) {
-      for (const box of bus.boxes) {
-        for (const mod of box.modules) {
-          if (mod.name)
-            moduleLookup[String(mod.name)] = { bus, box, module: mod };
-        }
-      }
-    }
-
-    // Variable mapping suggestions for C# TwinCAT Automation Interface
-    // Map PLC variable names to hardware channels (inputs/outputs)
-    const variableMappings: any[] = [];
-    for (const controller of getControllers(this.hardwareModel)) {
-      const portGroups = getPortGroups(controller);
-      const portGroupMap = new Map(portGroups.map((pg) => [pg.name, pg]));
-      for (const datapoint of getDatapoints(controller)) {
-        const portgroup =
-          datapoint.portgroup?.ref &&
-          portGroupMap.get(datapoint.portgroup.ref.name);
-        if (!portgroup) continue;
-        const moduleName = portgroup.module?.ref?.name;
-        const moduleInfo = moduleName ? moduleLookup[moduleName] : undefined;
-        for (const channel of datapoint.channels) {
-          const plcVar = `${datapoint.name}_${channel.name}`;
-          const direction = portgroup.ioType.includes("INPUT")
-            ? "input"
-            : "output";
-          // Find channel index (from 'at' in DSL)
-          const channelIndex = channel.index;
-          // Compose destination path (for C#)
-          let destination = null;
-          if (moduleInfo) {
-            destination = [
-              `TIID`,
-              moduleInfo.bus.type,
-              moduleInfo.box.product,
-              moduleInfo.module.product,
-              `Channel ${channelIndex + 1}`,
-              direction === "input" ? "Input" : "Output",
-            ].join("^");
-          }
-          variableMappings.push({
-            plcVar,
-            direction,
-            channel: channel.name,
-            channelIndex,
-            bus: moduleInfo?.bus.name,
-            box: moduleInfo?.box.name,
-            module: moduleInfo?.module.name,
-            moduleProduct: moduleInfo?.module.product,
-            source: `TIPC^MyTwinCATProject^MyTwinCATProject Instance^PlcTask ${
-              direction === "input" ? "Inputs" : "Outputs"
-            }^${plcVar}`,
-            destination,
-          });
-        }
-      }
-    }
-
-    return {
-      buses,
-      variableMappings,
-    };
   }
 }
 

@@ -371,8 +371,8 @@ describe("Beckhoff Generator Tests", () => {
     });
 
     compareGeneratedWithExpected({
-      generatedFilePath: path.join(outputDir, "hardware.json"),
-      expectedFilePath: path.join(expectedDir, "hardware.json"),
+      generatedFilePath: path.join(outputDir, "tc-config.json"),
+      expectedFilePath: path.join(expectedDir, "tc-config.json"),
     });
   });
 

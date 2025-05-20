@@ -1,4 +1,7 @@
 // A test file for IO code generation
+import library Tc3_DALI;
+import library Tc3_EventLogger;
+
 control IOHardwareTestController {
 
     unit TestHardwareIOLogic {
