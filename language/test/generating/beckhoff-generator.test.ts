@@ -68,7 +68,7 @@ describe("Beckhoff Generator Tests", () => {
 
   afterAll(() => {
     if (fs.existsSync(TEST_OUTPUT_DIR)) {
-      //fs.rmSync(TEST_OUTPUT_DIR, { recursive: true, force: true });
+      fs.rmSync(TEST_OUTPUT_DIR, { recursive: true, force: true });
     }
   });
 

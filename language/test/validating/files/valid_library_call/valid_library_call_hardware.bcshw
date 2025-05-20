@@ -3,7 +3,7 @@ bus FieldBus type EtherCAT {
     box Coupler {
         product: EK1100
         module IOModule_AI1 {
-            product: KL3064
+            product: EL3074
             position: 1
         }
         module IOModule_DI1 {
@@ -11,15 +11,15 @@ bus FieldBus type EtherCAT {
             position: 2
         }
         module IOModule_DO1 {
-            product: KL2408
+            product: EL2024
             position: 3
         }
         module IOModule_AO1 {
-            product: KL3064
+            product: EL4024
             position: 4
         }
         module IOModule_DALI {
-            product: KL6811
+            product: EL6821
             position: 5
         }
     }
