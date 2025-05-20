@@ -59,7 +59,7 @@ internal sealed class IoProjectManager
             {
                 string moduleName = $"Term {mod.Slot} ({mod.Product})";
                 int modSubType = IoMappings.GetEthercatSubType(mod.Product);
-                boxItem.CreateChild(moduleName, modSubType, null, mod.Product);
+                boxItem.CreateChild(moduleName, modSubType, null, mod.Product); // TODO: add previous module name instead of null
                 Console.WriteLine($"Created module: {moduleName}");
             }
         }
