@@ -53,92 +53,83 @@
     {
       "plcVar": "UltrasonicSensor_Distance",
       "direction": "Input",
-      "channelIndex": 0,
       "bus": "EtherCAT",
       "box": "EK1100",
       "moduleProduct": "EL3074",
-      "moduleSlot": 1
+      "moduleSlot": 1,
+      "link": "AI Standard Channel 1^Value"
     },
     {
-      "plcVar": "UltrasonicSensor_Valid",
+      "plcVar": "UltrasonicSensor_Error",
       "direction": "Input",
-      "channelIndex": 0,
       "bus": "EtherCAT",
       "box": "EK1100",
       "moduleProduct": "EL3074",
-      "moduleSlot": 1
+      "moduleSlot": 1,
+      "link": "AI Standard Channel 1^Status^Error"
     },
     {
       "plcVar": "Temperatures_Room1",
       "direction": "Input",
-      "channelIndex": 0,
       "bus": "EtherCAT",
       "box": "EK1100",
       "moduleProduct": "EL3074",
-      "moduleSlot": 1
+      "moduleSlot": 1,
+      "link": "AI Standard Channel 2^Value"
     },
     {
       "plcVar": "Temperatures_Room2",
       "direction": "Input",
-      "channelIndex": 1,
       "bus": "EtherCAT",
       "box": "EK1100",
       "moduleProduct": "EL3074",
-      "moduleSlot": 1
+      "moduleSlot": 1,
+      "link": "AI Standard Channel 3^Value"
     },
     {
       "plcVar": "Temperatures_Room3",
       "direction": "Input",
-      "channelIndex": 2,
       "bus": "EtherCAT",
       "box": "EK1100",
       "moduleProduct": "EL3074",
-      "moduleSlot": 1
-    },
-    {
-      "plcVar": "Temperatures_Room4",
-      "direction": "Input",
-      "channelIndex": 3,
-      "bus": "EtherCAT",
-      "box": "EK1100",
-      "moduleProduct": "EL3074",
-      "moduleSlot": 1
+      "moduleSlot": 1,
+      "link": "AI Standard Channel 4^Value"
     },
     {
       "plcVar": "Buttons_Room1",
       "direction": "Input",
-      "channelIndex": 0,
       "bus": "EtherCAT",
       "box": "EK1100",
       "moduleProduct": "EL1008",
-      "moduleSlot": 2
+      "moduleSlot": 2,
+      "link": "Channel 1^Input"
     },
     {
       "plcVar": "Buttons_Room2",
       "direction": "Input",
-      "channelIndex": 1,
       "bus": "EtherCAT",
       "box": "EK1100",
       "moduleProduct": "EL1008",
-      "moduleSlot": 2
+      "moduleSlot": 2,
+      "link": "Channel 2^Input"
     },
     {
       "plcVar": "Lights_Room1",
       "direction": "Output",
-      "channelIndex": 0,
       "bus": "EtherCAT",
       "box": "EK1100",
       "moduleProduct": "EL2024",
-      "moduleSlot": 3
+      "moduleSlot": 3,
+      "link": "Channel 1^Output"
     },
     {
       "plcVar": "Lights_Room2",
       "direction": "Output",
-      "channelIndex": 1,
       "bus": "EtherCAT",
       "box": "EK1100",
       "moduleProduct": "EL2024",
-      "moduleSlot": 3
+      "moduleSlot": 3,
+      "link": "Channel 2^Output"
     }
   ]
 }

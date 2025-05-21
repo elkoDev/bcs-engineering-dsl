@@ -181,7 +181,7 @@ control MainController {
     unit ValidateSensorDistance {
         var distance: INT = UltrasonicSensor.Distance;
 
-        if (UltrasonicSensor.Valid) {
+        if (!UltrasonicSensor.Error) {
             lightLevel = distance;
         }
     }

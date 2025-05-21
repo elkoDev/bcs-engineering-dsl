@@ -116,7 +116,7 @@ export class TcConfigGenerator {
             box: moduleInfo?.box.product,
             moduleProduct: moduleInfo?.module.product,
             moduleSlot: moduleInfo?.module.slot,
-            link: channel.link,
+            link: channel.link.replace(/^"|"$/g, ""), // Remove quotes
           });
         }
       }
