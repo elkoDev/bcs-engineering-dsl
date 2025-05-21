@@ -35,21 +35,21 @@ controller InvalidDuplicateController {
     datapoint windowContact {
         portgroup: DigitalInputs
         channels: {
-            channel value: BOOL at 0
+            channel value: BOOL link "Channel 1^Input"
         }
     }
 
     datapoint windowContact_duplicate {
         portgroup: DigitalInputs
         channels: {
-            channel value: BOOL at 0
+            channel value: BOOL link "Channel 2^Input"
         }
     }
 
     datapoint windowContact_duplicate {
         portgroup: DigitalInputs
         channels: {
-            channel value: BOOL at 1
+            channel value: BOOL link "Channel 2^Input"
         }
     }
 
@@ -62,14 +62,14 @@ controller InvalidDuplicateController {
     datapoint motor {
         portgroup: DigitalOutputs
         channels: {
-            channel value: BOOL at 0
+            channel value: BOOL link "Channel 1^Output"
         }
     }
 
     datapoint motor {
         portgroup: DigitalOutputs
         channels: {
-            channel value: BOOL at 1
+            channel value: BOOL link "Channel 2^Output"
         }
     }
 }

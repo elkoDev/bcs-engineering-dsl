@@ -35,7 +35,7 @@ controller InvalidVarDeclTestController {
     datapoint windowContact {
         portgroup: DigitalInputs
         channels: {
-            channel value: BOOL at 0
+            channel value: BOOL link "Channel 1^Input"
         }
     }
 }

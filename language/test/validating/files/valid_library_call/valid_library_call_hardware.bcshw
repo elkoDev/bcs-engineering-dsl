@@ -26,16 +26,16 @@ bus FieldBus type EtherCAT {
 }
 
 controller ValidLibraryCallTestController {
-    portgroup DI {
+    portgroup DigitalInputs {
         module: IOModule_DI1
         ioType: DIGITAL_INPUT
         channels: 8
     }
 
     datapoint windowContact {
-        portgroup: DI
+        portgroup: DigitalInputs
         channels: {
-            channel value: BOOL at 0
+            channel value: BOOL link "Channel 1^Input"
         }
     }
 }
