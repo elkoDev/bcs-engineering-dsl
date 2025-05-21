@@ -59,8 +59,8 @@ export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenP
       });
       acceptor({
         node,
-        property: "index",
-        type: SemanticTokenTypes.number,
+        property: "link",
+        type: SemanticTokenTypes.string,
       });
     }
     if (isPortGroup(node)) {

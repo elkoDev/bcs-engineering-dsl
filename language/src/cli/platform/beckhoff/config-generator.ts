@@ -109,15 +109,14 @@ export class TcConfigGenerator {
           const direction = portgroup.ioType.includes("INPUT")
             ? "Input"
             : "Output";
-          const channelIndex = channel.index;
           variableMappings.push({
             plcVar,
             direction,
-            channelIndex,
             bus: moduleInfo?.bus.type,
             box: moduleInfo?.box.product,
             moduleProduct: moduleInfo?.module.product,
             moduleSlot: moduleInfo?.module.slot,
+            link: channel.link,
           });
         }
       }

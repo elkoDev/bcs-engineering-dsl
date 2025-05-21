@@ -37,10 +37,9 @@ Datapoint:
 ;
 
 Channel:
-    'channel' name=ID ':' dataType=PrimitiveType
-    ('[' bitRange=BitRange ']')?
-    'at' index=IntLiteral
+  'channel' name=ID ':' dataType=PrimitiveType 'link' link=StringLiteral
 ;
+
 
 BitRange:
     start=IntLiteral ('..' end=IntLiteral)?

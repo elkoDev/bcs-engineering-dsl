@@ -2,7 +2,6 @@ import { ValidationAcceptor, ValidationChecks } from "langium";
 import { BCSHardwareLangServices } from "./bcs-hardware-lang-module.js";
 import {
   BCSEngineeringDSLAstType,
-  Channel,
   Controller,
   Datapoint,
   PortGroup,
@@ -19,7 +18,7 @@ export function registerBCSHardwareValidationChecks(
       validator.checkUniqueComponentNames,
     ],
     PortGroup: [validator.checkPortgroupChannelCount],
-    Datapoint: [validator.checkDatapointChannelIndicesAndDuplicates],
+    Datapoint: [validator.checkDatapointChannelsValid],
   };
   registry.register(checks, validator);
 }
@@ -55,67 +54,43 @@ export class BCSHardwareLangValidator {
     }
   }
 
-  checkDatapointChannelIndicesAndDuplicates(
+  checkDatapointChannelsValid(
     datapoint: Datapoint,
     accept: ValidationAcceptor
   ): void {
-    const portgroup = datapoint.portgroup?.ref;
-    if (!portgroup) {
-      accept(
-        "error",
-        `Datapoint '${datapoint.name}' must be assigned to a portgroup.`,
-        {
-          node: datapoint,
-          property: "portgroup",
-        }
-      );
-      return;
-    }
-
-    const maxIndex = portgroup.channels - 1;
-    const indexMap = new Map<number, Channel[]>();
-
+    const seenLinks = new Set<string>();
     for (const channel of datapoint.channels) {
-      const index = channel.index;
+      // Check name exists
+      if (!channel.name || channel.name.length < 1) {
+        accept("error", `Channel must have a name.`, {
+          node: channel,
+          property: "name",
+        });
+      }
 
-      // Check index range
-      if (index < 0 || index > maxIndex) {
+      // Check link exists
+      if (!channel.link || channel.link.length < 1) {
         accept(
           "error",
-          `Channel '${channel.name}' index ${index} is out of range (0 to ${maxIndex}) for portgroup '${portgroup.name}'.`,
-          { node: channel, property: "index" }
+          `Channel '${channel.name}' must define a link to hardware IO.`,
+          {
+            node: channel,
+            property: "link",
+          }
         );
+      } else if (seenLinks.has(channel.link)) {
+        // Check uniqueness of link
+        accept(
+          "error",
+          `Duplicate link '${channel.link}' in datapoint '${datapoint.name}'.`,
+          {
+            node: channel,
+            property: "link",
+          }
+        );
+      } else {
+        seenLinks.add(channel.link);
       }
-
-      const existingAtIndex = indexMap.get(index) ?? [];
-      for (const existing of existingAtIndex) {
-        if (!channel.bitRange || !existing.bitRange) {
-          // At least one of them has no bitRange -> full overlap
-          accept(
-            "error",
-            `Duplicate channel index '${index}' used in '${datapoint.name}' (also used by '${existing.name}'), without distinct bit ranges.`,
-            { node: channel, property: "index" }
-          );
-          break;
-        }
-
-        // Check if bit ranges overlap
-        const aStart = channel.bitRange.start;
-        const aEnd = channel.bitRange.end ?? channel.bitRange.start;
-        const bStart = existing.bitRange.start;
-        const bEnd = existing.bitRange.end ?? existing.bitRange.start;
-
-        if (aStart <= bEnd && bStart <= aEnd) {
-          accept(
-            "error",
-            `Bit range overlap at index ${index}: '${channel.name}' [${aStart}..${aEnd}] and '${existing.name}' [${bStart}..${bEnd}].`,
-            { node: channel, property: "bitRange" }
-          );
-          break;
-        }
-      }
-
-      indexMap.set(index, [...existingAtIndex, channel]);
     }
   }
 

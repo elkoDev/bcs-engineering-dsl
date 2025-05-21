@@ -60,34 +60,33 @@ controller MainController {
     datapoint UltrasonicSensor {
         portgroup: AnalogInputs
         channels: {
-            channel Distance: INT [0..11] at 0,
-            channel Valid: BOOL [12] at 0
+            channel Distance: INT link "AI Standard Channel 1^Value",
+            channel Error: BOOL link "AI Standard Channel 1^Status^Error"
         }
     }
 
     datapoint Temperatures {
         portgroup: AnalogInputs
         channels: {
-            channel Room1: REAL at 0,
-            channel Room2: REAL at 1,
-            channel Room3: REAL at 2,
-            channel Room4: REAL at 3
+            channel Room1: INT link "AI Standard Channel 2^Value",
+            channel Room2: INT link "AI Standard Channel 3^Value",
+            channel Room3: INT link "AI Standard Channel 4^Value"
         }
     }
 
     datapoint Buttons {
         portgroup: DigitalInputs
         channels: {
-            channel Room1: BOOL at 0,
-            channel Room2: BOOL at 1
+            channel Room1: BOOL link "Channel 1^Input",
+            channel Room2: BOOL link "Channel 2^Input"
         }
     }
 
     datapoint Lights {
         portgroup: DigitalOutputs
         channels: {
-            channel Room1: BOOL at 0,
-            channel Room2: BOOL at 1
+            channel Room1: BOOL link "Channel 1^Output",
+            channel Room2: BOOL link "Channel 2^Output"
         }
     }
 }    
