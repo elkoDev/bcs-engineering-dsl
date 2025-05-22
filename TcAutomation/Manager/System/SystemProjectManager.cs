@@ -24,17 +24,9 @@ namespace TcAutomation.Manager.System
         /// </summary>
         private bool BuildProject()
         {
-            // Trigger a full solution build.
             _dte.Solution.SolutionBuild.Build(true);
 
-            // Wait for the build to complete.
             vsBuildState state = _dte.Solution.SolutionBuild.BuildState;
-            while (state == vsBuildState.vsBuildStateInProgress)
-            {
-                global::System.Threading.Thread.Sleep(500);
-                state = _dte.Solution.SolutionBuild.BuildState;
-            }
-
             bool buildSucceeded = (_dte.Solution.SolutionBuild.LastBuildInfo == 0
                                    && state == vsBuildState.vsBuildStateDone);
             return buildSucceeded;
@@ -42,6 +34,7 @@ namespace TcAutomation.Manager.System
 
         public void LinkVariables(HardwareConfig hw)
         {
+            Task.Run(() => WindowHelper.WaitAndCloseTcShellPopup());
             BuildProject();
 
             foreach (var mapping in hw.VariableMappings)
