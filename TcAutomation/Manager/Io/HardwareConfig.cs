@@ -38,16 +38,12 @@
     public class VariableMapping
     {
         public string PlcVar { get; set; } = string.Empty;
-        public string Direction { get; set; } = string.Empty; // e.g., "input" or "output"
-        public string Channel { get; set; } = string.Empty;
-        public int ChannelIndex { get; set; }
-
+        public string Direction { get; set; } = string.Empty; // e.g., "Input" or "Output"
         public string Bus { get; set; } = string.Empty;
         public string Box { get; set; } = string.Empty;
         public string ModuleProduct { get; set; } = string.Empty;
         public int ModuleSlot { get; set; }
+        public string Link { get; set; } = string.Empty; // e.g., "AI Standard Channel 1^Status^Error"
 
-        public string Destination { get; set; } = string.Empty;
-        public string Suggestion { get; set; } = string.Empty;
     }
 }

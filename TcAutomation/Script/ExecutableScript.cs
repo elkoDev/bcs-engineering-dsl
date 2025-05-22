@@ -81,7 +81,7 @@ namespace TcAutomation.Script
 
                 _systemManager = (ITcSysManager4)_project!.Object;
 
-                _systemProjectManager = new SystemProjectManager(_systemManager!, _config);
+                _systemProjectManager = new SystemProjectManager(_systemManager!, _config, _dte!);
 
                 // Load files dynamically from generation path
                 var generatedDir = new DirectoryInfo(_config.GenerationPath);
