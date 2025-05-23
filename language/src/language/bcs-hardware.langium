@@ -78,14 +78,12 @@ Module:
 
 NetworkSettings:
     'network' '{'
-        'ipAddress:' ip=StringLiteral       // TODO: IPLiteral
-        'subnetMask:' mask=StringLiteral    // TODO: IPLiteral
-        ('gateway:' gateway=ID)?
-        ('httpPort:' httpPort=IntLiteral)?
-        ('adsPort:'  adsPort=IntLiteral)?
+        'target:' target=StringLiteral          // e.g. "CX5140-001"
+        'ipAddress:' ipAddress=StringLiteral    // e.g. "192.168.1.100" TODO: IPLiteral
+        'amsNetId:' amsNetId=StringLiteral      // e.g. "192.168.1.100.1.1" 
     '}'
 ;
 
-type BusType = 'EtherCAT' | 'Profinet' | 'Profibus'; 
+type BusType = 'EtherCAT' | 'Profinet' | 'Profibus' | 'KBus'
 BusType returns string:
-    'EtherCAT' | 'Profinet' | 'Profibus';
+    'EtherCAT' | 'Profinet' | 'Profibus' | 'KBus';

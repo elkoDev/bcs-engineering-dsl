@@ -2,7 +2,7 @@ import type {
   ControlModel,
   HardwareModel,
 } from "../../language/generated/ast.js";
-import { generate as genBeckhoff } from "./beckhoff/generator.js";
+import { generate as genBeckhoff } from "./beckhoff/generate.js";
 import { deploy as depBeckhoff } from "./beckhoff/deploy.js";
 //import { generate as genSiemens } from "./siemens/generator.js";
 //import { deploy as depSiemens } from "./siemens/deploy.js";

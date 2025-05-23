@@ -5,11 +5,11 @@ namespace TcAutomation.Manager.Io;
 
 internal sealed class IoProjectManager
 {
-    private readonly ITcSysManager4 _sys;
+    private readonly ITcSysManager4 _systemManager;
 
     public IoProjectManager(ITcSysManager4 sys)
     {
-        _sys = sys;
+        _systemManager = sys;
     }
 
     /// <summary>
@@ -38,7 +38,7 @@ internal sealed class IoProjectManager
 
     private void CreateEthercatTopology(Bus bus)
     {
-        var ioRoot = _sys.LookupTreeItem(TcShortcut.TIID.GetShortcutKey());
+        var ioRoot = _systemManager.LookupTreeItem(TcShortcut.TIID.GetShortcutKey());
 
         // Step 1: Create Master
         var master = ioRoot.CreateChild(

@@ -18,6 +18,22 @@ export class TcConfigGenerator {
   }
 
   /**
+   * Extracts the network settings from the hardware model, if present.
+   */
+  private extractNetworkSettings(): any {
+    for (const def of this.hardwareModel.hardwareDefinitions) {
+      if (def.$type === "NetworkSettings") {
+        return {
+          target: def.target?.replace(/^"|"$/g, ""),
+          ipAddress: def.ipAddress?.replace(/^"|"$/g, ""),
+          amsNetId: def.amsNetId?.replace(/^"|"$/g, ""),
+        };
+      }
+    }
+    return undefined;
+  }
+
+  /**
    * Generates a JSON object for TwinCAT configuration.
    * @returns {object} The generated TwinCAT configuration object.
    */
@@ -26,11 +42,13 @@ export class TcConfigGenerator {
     const buses = this.parseBuses();
     const moduleLookup = this.buildModuleLookup(buses);
     const variableMappings = this.generateVariableMappings(moduleLookup);
+    const network = this.extractNetworkSettings();
 
     return {
       libraries,
       buses,
       variableMappings,
+      ...(network ? { network } : {}),
     };
   }
 

@@ -92,6 +92,7 @@ controller MainController {
 }    
 
 network {
-    ipAddress: "0.0.0.0"
-    subnetMask: "0.0.0.0"
+    target: "CX5140-001"
+    ipAddress: "192.168.1.100"
+    amsNetId: "192.168.1.100.1.1"
 }
