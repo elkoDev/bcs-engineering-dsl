@@ -3,3 +3,5 @@
 /TcAutomation/obj
 /TcAutomation/generated
 /language/test/generating/output
+/.vs
+/language/example/generated

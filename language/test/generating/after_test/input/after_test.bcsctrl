@@ -1,0 +1,17 @@
+control AfterTestController {
+    var conditionA: BOOL = true;
+    var conditionB: BOOL = false;
+
+    unit AfterUnit {
+        var x: INT;
+        after T#5s if (conditionA) then {
+            conditionB = true;
+            conditionA = false;
+        }
+
+        after T#10s if (conditionB == true) then {
+            conditionA = true;
+            conditionB = false;
+        }
+    }
+}
