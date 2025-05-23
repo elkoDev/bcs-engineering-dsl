@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "TcAutomation": {
+      "commandName": "Project",
+      "commandLineArgs": "--workspace C:\\Users\\elias\\Desktop\\example --solution-name MyGeneratedSolution --project-name MyTwinCATProject --plc-name MyPlcProject"
+    }
+  }
+}

@@ -1,21 +1,21 @@
 [![CI](https://github.com/elkoDev/bcs-engineering-dsl/actions/workflows/ci.yml/badge.svg)](https://github.com/elkoDev/bcs-engineering-dsl/actions/workflows/ci.yml)
 
-# Important Commands
+# 1. Setup
 
-## Install Dependencies
+## 1.1 Install Dependencies
 
 ```bash
 npm install
 ```
 
-## Build
+## 1.2 Build
 
 ```bash
 npm run langium:generate
 npm run build
 ```
 
-## Generate Extension
+## 1.3 Generate Extension
 
 Before generating the extension, make sure to run the build commands first.
 
@@ -23,17 +23,46 @@ Before generating the extension, make sure to run the build commands first.
 vsce package
 ```
 
-## Generate Code
-
-The code generation is done by the `bcs-engineering-dsl` CLI. The command is as follows:
+## 1.4 Publish CLI
 
 ```bash
-node .\bin\cli.js generate .\example\control.bcsctrl
+npm login
+npm publish --access public
 ```
 
-# Supported Target Platforms
+## 1.5 Install CLI
 
-## Beckhoff TwinCAT 3
+```bash
+npm install -g bcs-engineering-dsl
+```
+
+or link the local version
+
+```bash
+npm link
+```
+
+# 2. Usage
+
+## 2.1 Generate Code
+
+```bash
+bcs-engineering-cli beckhoff generate <path-to-bcsctrl-file>
+```
+
+## 2.2 Generate Code and Deploy
+
+```bash
+bcs-engineering-cli beckhoff deploy <path-to-bcsctrl-file>
+```
+
+**NOTE:** The working directory will be set to the root of the provided file. This means that the .bcsctrl file can contain cross-references to other files in the same directory.
+
+## 2.3 Supported Target Platforms
+
+Currently the following target platforms are supported:
+
+### 2.3.1 Beckhoff TwinCAT 3
 
 In addition to the standard libraries provided by Beckhoff, the following libraries are supported:
 

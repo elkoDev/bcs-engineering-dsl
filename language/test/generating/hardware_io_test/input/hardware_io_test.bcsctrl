@@ -1,12 +1,15 @@
 // A test file for IO code generation
+import library Tc3_DALI;
+import library Tc3_EventLogger;
+
 control IOHardwareTestController {
 
     unit TestHardwareIOLogic {
         // Check Analog Input: UltrasonicSensor
         var distance: INT;
-        var valid: BOOL;
+        var error: BOOL;
         distance = UltrasonicSensor.Distance;
-        valid = UltrasonicSensor.Valid;
+        error = UltrasonicSensor.Error;
 
         // Check Analog Input: Temperatures
         var temp1 : REAL;
@@ -16,7 +19,6 @@ control IOHardwareTestController {
         temp1 = Temperatures.Room1;
         temp2 = Temperatures.Room2;
         temp3 = Temperatures.Room3;
-        temp4 = Temperatures.Room4;
 
         // Check Digital Input: Buttons
         var btn1 : BOOL;

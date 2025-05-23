@@ -1,9 +1,35 @@
 // A minimal hardware definition to accompany functionblock_test.bcsctrl
-controller FunctionBlockTestController for Beckhoff {
+bus FieldBus type EtherCAT {
+    masterDevice: "Device 1 (EtherCAT)"
+    box Coupler {
+        product: EK1100
+        module IOModule_AI1 {
+            product: EL3074
+            position: 1
+        }
+        module IOModule_DI1 {
+            product: EL1008
+            position: 2
+        }
+        module IOModule_DO1 {
+            product: EL2024
+            position: 3
+        }
+        module IOModule_AO1 {
+            product: EL4024
+            position: 4
+        }
+        module IOModule_DALI {
+            product: EL6821
+            position: 5
+        }
+    }
+}
+
+controller FunctionBlockTestController {
     portgroup DI {
-        moduleType: EL1008
+        module: IOModule_DI1
         ioType: DIGITAL_INPUT
-        startAddress: %IX0.0
         channels: 8
     }
 }

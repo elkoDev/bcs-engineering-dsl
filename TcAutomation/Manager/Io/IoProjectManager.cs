@@ -1,0 +1,68 @@
+﻿using System.Text.Json;
+using TCatSysManagerLib;
+
+namespace TcAutomation.Manager.Io;
+
+internal sealed class IoProjectManager
+{
+    private readonly ITcSysManager4 _systemManager;
+
+    public IoProjectManager(ITcSysManager4 sys)
+    {
+        _systemManager = sys;
+    }
+
+    /// <summary>
+    /// Create the complete I/O topology from a JSON file.
+    /// </summary>
+    public void CreateIoFromHardwareConfig(HardwareConfig hw)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        foreach (var bus in hw.Buses)
+        {
+            switch (bus.Type)
+            {
+                case "EtherCAT":
+                    CreateEthercatTopology(bus);
+                    break;
+
+                default:
+                    throw new NotSupportedException($"Unsupported bus type '{bus.Type}'");
+            }
+        }
+    }
+
+    private void CreateEthercatTopology(Bus bus)
+    {
+        var ioRoot = _systemManager.LookupTreeItem(TcShortcut.TIID.GetShortcutKey());
+
+        // Step 1: Create Master
+        var master = ioRoot.CreateChild(
+            string.IsNullOrWhiteSpace(bus.MasterDeviceName) ? "EtherCAT Master" : bus.MasterDeviceName,
+            IoSubTypes.EthercatMaster, null, null);
+        Console.WriteLine($"\t- Created master: {master.Name} ({bus.MasterDeviceName})");
+
+        // Step 2: Create Boxes (e.g., EK1100)
+        foreach (var box in bus.Boxes)
+        {
+            var boxSubType = IoMappings.GetEthercatSubType(box.Product);
+            var boxItem = master.CreateChild(box.Product, boxSubType, "", box.Product);
+            Console.WriteLine($"\t\t- Created box: {box.Name} ({box.Product})");
+
+            // Step 3: Create Modules (e.g., EL1008, etc.)
+            foreach (var mod in box.Modules.OrderBy(m => m.Slot))
+            {
+                string moduleName = $"Term {mod.Slot} ({mod.Product})";
+                int modSubType = IoMappings.GetEthercatSubType(mod.Product);
+                boxItem.CreateChild(moduleName, modSubType, null, mod.Product); // TODO: add previous module name instead of null
+                Console.WriteLine($"\t\t- Created module: {moduleName}");
+            }
+        }
+
+        Console.WriteLine("✅ EtherCAT I/O topology created.");
+    }
+}

@@ -1,64 +1,92 @@
 // A test file for IO code generation
-controller IOHardwareTestController for Beckhoff {
+bus FieldBus type EtherCAT {
+    masterDevice: "Device 1 (EtherCAT)"
+    box Coupler {
+        product: EK1100
+        module IOModule_AI1 {
+            product: EL3074
+            position: 1
+        }
+        module IOModule_DI1 {
+            product: EL1008
+            position: 2
+        }
+        module IOModule_DO1 {
+            product: EL2024
+            position: 3
+        }
+        module IOModule_AO1 {
+            product: EL4024
+            position: 4
+        }
+        module IOModule_DALI {
+            product: EL6821
+            position: 5
+        }
+    }
+}
+
+controller IOHardwareTestController {
     portgroup AnalogInputs {
-        moduleType: KL3064
+        module: IOModule_AI1
         ioType: ANALOG_INPUT
-        startAddress: %IW0
         channels: 4
     }
 
     portgroup DigitalInputs {
-        moduleType: EL1008
+        module: IOModule_DI1
         ioType: DIGITAL_INPUT
-        startAddress: %IX8.0
         channels: 8
     }
 
     portgroup DigitalOutputs {
-        moduleType: KL2408
+        module: IOModule_DO1
         ioType: DIGITAL_OUTPUT
-        startAddress: %QX0.0
         channels: 8
     }
 
     portgroup AnalogOutputs {
-        moduleType: KL3064
+        module: IOModule_AO1
         ioType: ANALOG_OUTPUT
-        startAddress: %QW0
         channels: 4
     }
 
     datapoint UltrasonicSensor {
         portgroup: AnalogInputs
         channels: {
-            channel Distance: INT [0..11] at 0,
-            channel Valid: BOOL [12] at 0
+            channel Distance: INT link "AI Standard Channel 1^Value",
+            channel Error: BOOL link "AI Standard Channel 1^Status^Error"
         }
     }
 
     datapoint Temperatures {
         portgroup: AnalogInputs
         channels: {
-            channel Room1: REAL at 0,
-            channel Room2: REAL at 1,
-            channel Room3: REAL at 2,
-            channel Room4: REAL at 3
+            channel Room1: INT link "AI Standard Channel 2^Value",
+            channel Room2: INT link "AI Standard Channel 3^Value",
+            channel Room3: INT link "AI Standard Channel 4^Value"
         }
     }
 
     datapoint Buttons {
         portgroup: DigitalInputs
         channels: {
-            channel Room1: BOOL at 0,
-            channel Room2: BOOL at 1
+            channel Room1: BOOL link "Channel 1^Input",
+            channel Room2: BOOL link "Channel 2^Input"
         }
     }
 
     datapoint Lights {
         portgroup: DigitalOutputs
         channels: {
-            channel Room1: BOOL at 0,
-            channel Room2: BOOL at 1
+            channel Room1: BOOL link "Channel 1^Output",
+            channel Room2: BOOL link "Channel 2^Output"
         }
     }
+}
+
+network {
+    target: "CX5140-001"
+    ipAddress: "192.168.1.100"
+    amsNetId: "192.168.1.100.1.1"
 }

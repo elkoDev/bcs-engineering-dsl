@@ -2,17 +2,20 @@ grammar BCSHardware
 import "./common"
 
 entry HardwareModel:
-    (controllers+=Controller)*
+    hardwareDefinitions+=HardwareDefinition*
 ;
 
+HardwareDefinition:
+    Controller | Bus | NetworkSettings
+;
+
+// ----------------------------------------------------------------
+// LOGICAL / SIGNAL VIEW
+// ----------------------------------------------------------------
 Controller:
-    'controller' name=ID 'for' platform=Platform '{'
+    'controller' name=ID '{'
         (components+=Component)*
     '}';
-
-type Platform = 'Beckhoff' | 'KNX' | 'Siemens';
-Platform returns string:
-    'Beckhoff' | 'KNX' | 'Siemens';  
 
 Component:
     PortGroup | Datapoint
@@ -20,9 +23,8 @@ Component:
 
 PortGroup:
     'portgroup' name=ID '{'
-         'moduleType:' moduleType=ID
+         'module:' module=[Module]
          'ioType:' ioType=IOType
-         'startAddress:' startAddress=IOBinding
          'channels:' channels=IntLiteral
     '}'
 ;
@@ -35,10 +37,9 @@ Datapoint:
 ;
 
 Channel:
-    'channel' name=ID ':' dataType=PrimitiveType
-    ('[' bitRange=BitRange ']')?
-    'at' index=IntLiteral
+  'channel' name=ID ':' dataType=PrimitiveType 'link' link=StringLiteral
 ;
+
 
 BitRange:
     start=IntLiteral ('..' end=IntLiteral)?
@@ -49,4 +50,40 @@ IOType returns string:
     'ANALOG_INPUT' | 'ANALOG_OUTPUT' | 'DIGITAL_INPUT' | 'DIGITAL_OUTPUT';
 
 
-terminal IOBinding: /%[IQ][XBWDL]?([0-9]+(\.[0-9]+)?)?/;
+// ----------------------------------------------------------------
+//  PHYSICAL / DEPLOYMENT VIEW
+// ----------------------------------------------------------------
+Bus:
+    'bus' name=ID 'type' busType=BusType '{'
+        'masterDevice:' master=StringLiteral        // e.g. "Device 1 (EtherCAT)"
+        boxes+=Box*
+    '}'
+;
+
+Box:
+    'box' name=ID '{'
+        'product:' productCode=ID           // e.g. EK1100, CU1128
+        ('revision:' rev=StringLiteral)?    // optional explicit rev
+        modules+=Module*
+    '}'
+;
+
+Module:
+    'module' name=ID '{'
+        'product:' productCode=ID           // e.g. EL1008, KL2408
+        ('revision:' rev=StringLiteral)?
+        'position:' slot=IntLiteral         // term slot number
+    '}'
+;
+
+NetworkSettings:
+    'network' '{'
+        'target:' target=StringLiteral          // e.g. "CX5140-001"
+        'ipAddress:' ipAddress=StringLiteral    // e.g. "192.168.1.100" TODO: IPLiteral
+        'amsNetId:' amsNetId=StringLiteral      // e.g. "192.168.1.100.1.1" 
+    '}'
+;
+
+type BusType = 'EtherCAT' | 'Profinet' | 'Profibus' | 'KBus'
+BusType returns string:
+    'EtherCAT' | 'Profinet' | 'Profibus' | 'KBus';

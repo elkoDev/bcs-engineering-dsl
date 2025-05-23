@@ -1,0 +1,140 @@
+{
+  "libraries": [
+    {
+      "name": "Tc3_DALI",
+      "vendor": "Beckhoff Automation GmbH"
+    },
+    {
+      "name": "Tc3_EventLogger",
+      "vendor": "Beckhoff Automation GmbH"
+    }
+  ],
+  "buses": [
+    {
+      "type": "EtherCAT",
+      "name": "FieldBus",
+      "masterDeviceName": "Device 1 (EtherCAT)",
+      "boxes": [
+        {
+          "product": "EK1100",
+          "name": "Coupler",
+          "modules": [
+            {
+              "product": "EL3074",
+              "name": "IOModule_AI1",
+              "slot": 1
+            },
+            {
+              "product": "EL1008",
+              "name": "IOModule_DI1",
+              "slot": 2
+            },
+            {
+              "product": "EL2024",
+              "name": "IOModule_DO1",
+              "slot": 3
+            },
+            {
+              "product": "EL4024",
+              "name": "IOModule_AO1",
+              "slot": 4
+            },
+            {
+              "product": "EL6821",
+              "name": "IOModule_DALI",
+              "slot": 5
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variableMappings": [
+    {
+      "plcVar": "UltrasonicSensor_Distance",
+      "direction": "Input",
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL3074",
+      "moduleSlot": 1,
+      "link": "AI Standard Channel 1^Value"
+    },
+    {
+      "plcVar": "UltrasonicSensor_Error",
+      "direction": "Input",
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL3074",
+      "moduleSlot": 1,
+      "link": "AI Standard Channel 1^Status^Error"
+    },
+    {
+      "plcVar": "Temperatures_Room1",
+      "direction": "Input",
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL3074",
+      "moduleSlot": 1,
+      "link": "AI Standard Channel 2^Value"
+    },
+    {
+      "plcVar": "Temperatures_Room2",
+      "direction": "Input",
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL3074",
+      "moduleSlot": 1,
+      "link": "AI Standard Channel 3^Value"
+    },
+    {
+      "plcVar": "Temperatures_Room3",
+      "direction": "Input",
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL3074",
+      "moduleSlot": 1,
+      "link": "AI Standard Channel 4^Value"
+    },
+    {
+      "plcVar": "Buttons_Room1",
+      "direction": "Input",
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL1008",
+      "moduleSlot": 2,
+      "link": "Channel 1^Input"
+    },
+    {
+      "plcVar": "Buttons_Room2",
+      "direction": "Input",
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL1008",
+      "moduleSlot": 2,
+      "link": "Channel 2^Input"
+    },
+    {
+      "plcVar": "Lights_Room1",
+      "direction": "Output",
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL2024",
+      "moduleSlot": 3,
+      "link": "Channel 1^Output"
+    },
+    {
+      "plcVar": "Lights_Room2",
+      "direction": "Output",
+      "bus": "EtherCAT",
+      "box": "EK1100",
+      "moduleProduct": "EL2024",
+      "moduleSlot": 3,
+      "link": "Channel 2^Output"
+    }
+  ],
+  "network": {
+    "target": "CX5140-001",
+    "ipAddress": "192.168.1.100",
+    "amsNetId": "192.168.1.100.1.1"
+  }
+}
