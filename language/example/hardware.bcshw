@@ -5,7 +5,7 @@ bus FieldBus type EtherCAT {
         module IOModule_AI1 {
             product: EL3074
             position: 1
-        }
+        } 
         module IOModule_DI1 {
             product: EL1008
             position: 2

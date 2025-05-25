@@ -5,6 +5,7 @@
         public List<LibraryEntry> Libraries { get; set; } = new();
         public List<Bus> Buses { get; set; } = new();
         public List<VariableMapping> VariableMappings { get; set; } = new();
+        public Network Network { get; set; } = new();
     }
 
     public class LibraryEntry
@@ -45,5 +46,12 @@
         public int ModuleSlot { get; set; }
         public string Link { get; set; } = string.Empty; // e.g., "AI Standard Channel 1^Status^Error"
 
+    }
+
+    public class Network
+    {
+        public string Target { get; set; } = string.Empty;
+        public string IpAddress { get; set; } = string.Empty;
+        public string AmsNetId { get; set; } = string.Empty;
     }
 }
