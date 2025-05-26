@@ -245,7 +245,7 @@ describe("BCS Control Validation Tests", () => {
     const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
-    expect(allDiagnostics.length).toBe(46);
+    expect(allDiagnostics.length).toBe(47);
 
     const expectedErrors = [
       'Type mismatch: Cannot assign "INT" to "BOOL".',
@@ -270,6 +270,7 @@ describe("BCS Control Validation Tests", () => {
       "Cannot infer type for variable initialization: invalidAccess = invalidScalarIndex",
       'Array index must be of type INT, but got "STRING".',
       'Type mismatch: Cannot assign "ARRAY<mixed>[2]" to "ARRAY<BOOL>[2]".',
+      'Type mismatch: Cannot assign "ARRAY<mixed>[5]" to "ARRAY<BOOL>[5][5]".',
     ];
 
     for (const expected of expectedErrors) {

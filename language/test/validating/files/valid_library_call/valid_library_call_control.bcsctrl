@@ -12,7 +12,7 @@ extern struct ST_DALIChangeAddressList {
     nErrors           : DWORD
 }
 
-extern functionblock FB_Tc3_DALI from Tc3_DALI{ 
+extern functionblock FB_Tc3_DALI from Tc3_DALI { 
     inputs {
         var iDALIAddress: E_DALIAddressType;
         var iDALICommandPriority: E_DALICommandPriority;
