@@ -324,13 +324,26 @@ export function inferArrayLiteralType(
   if (!firstElementType) {
     return `ARRAY<unknown>[${elements.length}]`;
   }
-
   if (firstElementType.startsWith("ARRAY<")) {
-    // Nested array inside
+    // Nested array inside - validate ALL sub-arrays have consistent types
     const innerMatch = /^ARRAY<(.+)>(\[(.+?)\])+$/.exec(firstElementType);
     if (innerMatch) {
       const baseType = innerMatch[1];
       const innerDims = innerMatch[2]; // [5] or [5][5], etc
+      
+      // Validate all elements are arrays with the same base type
+      for (let i = 1; i < elements.length; i++) {
+        const elementType = inferType(elements[i], accept);
+        if (!elementType?.startsWith("ARRAY<")) {
+          return `ARRAY<mixed>[${elements.length}]`;
+        }
+        
+        const elementMatch = /^ARRAY<(.+)>(\[(.+?)\])+$/.exec(elementType);
+        if (!elementMatch || elementMatch[1] !== baseType) {
+          return `ARRAY<mixed>[${elements.length}]`;
+        }
+      }
+      
       return `ARRAY<${baseType}>[${elements.length}]${innerDims}`;
     }
   }

@@ -20,6 +20,7 @@ control InvalidArrayTestController {
         var arr8: REAL[5][5][5] = [1.0, 2.0, 3.0, 4.0, 5.0];
         var arr9: BOOL[5][5] = [true, false, true, [true, false, true, true, false], true];
         var arr10: Mode[5][5][5] = [Mode.OFF, Mode.ECO, Mode.COMFORT, Mode.OFF, Mode.ECO];
+        var arr11: BOOL[5][5] = [[false, false, false, false, true], [false, false, false, false, true], [true, false, "wrong_datatype", false, true], [false, true, false, true, false], [true, false, true, false, true]];
 
 
         var x: INT = 5;
