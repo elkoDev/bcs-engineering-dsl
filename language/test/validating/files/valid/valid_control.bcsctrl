@@ -177,7 +177,7 @@ control ValidTestController {
         };
 
         // 10. Access nested struct fields
-        rectArea = complex.rect.x * complex.rect.y;
+        var rectArea: REAL = complex.rect.x * complex.rect.y;
 
         // 11. Access nested array inside struct
         var arrayArea: REAL;
