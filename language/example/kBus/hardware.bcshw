@@ -1,64 +1,58 @@
-bus FieldBus type EtherCAT {
-    masterDevice: "Device 1 (EtherCAT)"
+bus FieldBus type KBus {
+    masterDevice: "CX8190"
     box Coupler {
-        product: EK1100
-        module IOModule_AI1 {
-            product: EL3074
+        product: INTERNAL
+        module Zwei_Kanal_Digital_Eingang_Modul {
+            product: KL1002
             position: 1
         } 
-        module IOModule_DI1 {
-            product: EL1008
+        module Zwei_Kanal_Relais_Ausgang_Modul {
+            product: KL2622
             position: 2
         }
-        module IOModule_DO1 {
-            product: EL2024
+        module Vier_Kanal_Analog_Eingang_Modul {
+            product: KL3044
             position: 3
         }
-        module IOModule_AO1 {
-            product: EL4024
+        module Vier_Kanal_Analog_Ausgang_Modul {
+            product: KL4004
             position: 4
         }
-        module IOModule_DALI {
-            product: EL6821
+        module Endklemme {
+            product: KL9010
             position: 5
         }
     }
 }
 
-controller MainController {
+controller KBusController {
 
-    portgroup AnalogInputs {
-        module: IOModule_AI1
+    portgroup FourAnalogInputs {
+        module: Vier_Kanal_Analog_Eingang_Modul
         ioType: ANALOG_INPUT
         channels: 4
     }
 
-    portgroup DigitalInputs {
-        module: IOModule_DI1
+    portgroup TwoDigitalInputs {
+        module: Zwei_Kanal_Digital_Eingang_Modul
         ioType: DIGITAL_INPUT
-        channels: 8
+        channels: 2
     }
 
-    portgroup DigitalOutputs {
-        module: IOModule_DO1
+    portgroup TwoDigitalOutputs {
+        module: Zwei_Kanal_Relais_Ausgang_Modul
         ioType: DIGITAL_OUTPUT
-        channels: 8
+        channels: 2
     }
 
-    portgroup AnalogOutputs {
-        module: IOModule_AO1
+    portgroup FourAnalogOutputs {
+        module: Vier_Kanal_Analog_Ausgang_Modul
         ioType: ANALOG_OUTPUT
         channels: 4
     }
 
-    portgroup DaliPort {
-        module: IOModule_DALI
-        ioType: ANALOG_OUTPUT
-        channels: 8
-    }
-
     datapoint UltrasonicSensor {
-        portgroup: AnalogInputs
+        portgroup: FourAnalogInputs
         channels: {
             channel Distance: INT link "AI Standard Channel 1^Value",
             channel Error: BOOL link "AI Standard Channel 1^Status^Error"
@@ -66,7 +60,7 @@ controller MainController {
     }
 
     datapoint Temperatures {
-        portgroup: AnalogInputs
+        portgroup: FourAnalogInputs
         channels: {
             channel Room1: INT link "AI Standard Channel 2^Value",
             channel Room2: INT link "AI Standard Channel 3^Value",
@@ -75,7 +69,7 @@ controller MainController {
     }
 
     datapoint Buttons {
-        portgroup: DigitalInputs
+        portgroup: TwoDigitalInputs
         channels: {
             channel Room1: BOOL link "Channel 1^Input",
             channel Room2: BOOL link "Channel 2^Input"
@@ -83,7 +77,7 @@ controller MainController {
     }
 
     datapoint Lights {
-        portgroup: DigitalOutputs
+        portgroup: TwoDigitalOutputs
         channels: {
             channel Room1: BOOL link "Channel 1^Output",
             channel Room2: BOOL link "Channel 2^Output"
