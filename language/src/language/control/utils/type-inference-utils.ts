@@ -174,7 +174,6 @@ export function inferStructPropertyType(
  * Handles array indexing, checking array bounds and index types
  *
  * @param expr The array expression being indexed
- * @param type The type of the array
  * @param indexExpr The index expression
  * @param sizeExpr The size expression from the array definition
  * @param accept Function to report validation issues
@@ -330,20 +329,20 @@ export function inferArrayLiteralType(
     if (innerMatch) {
       const baseType = innerMatch[1];
       const innerDims = innerMatch[2]; // [5] or [5][5], etc
-      
+
       // Validate all elements are arrays with the same base type
       for (let i = 1; i < elements.length; i++) {
         const elementType = inferType(elements[i], accept);
         if (!elementType?.startsWith("ARRAY<")) {
           return `ARRAY<mixed>[${elements.length}]`;
         }
-        
+
         const elementMatch = /^ARRAY<(.+)>(\[(.+?)\])+$/.exec(elementType);
         if (!elementMatch || elementMatch[1] !== baseType) {
           return `ARRAY<mixed>[${elements.length}]`;
         }
       }
-      
+
       return `ARRAY<${baseType}>[${elements.length}]${innerDims}`;
     }
   }
@@ -437,7 +436,9 @@ export function isTypeAssignable(
  * @param varDecl The variable declaration
  * @returns The inferred type or undefined
  */
-export function inferVarDeclType(varDecl: VarDecl): string | undefined {
+export function inferVarDeclType(
+  varDecl: VarDecl | undefined
+): string | undefined {
   if (!varDecl) return undefined;
   if (!varDecl.typeRef) return undefined;
 
@@ -467,10 +468,9 @@ export function inferVarDeclType(varDecl: VarDecl): string | undefined {
   }
 
   if (!baseType) return undefined;
-
   if (varDecl.typeRef.sizes.length > 0) {
     const sizes = varDecl.typeRef.sizes
-      .map((s: any) =>
+      .map((s) =>
         s.$type === "Primary" && typeof s.val === "number" ? s.val : "?"
       )
       .join("][");
@@ -511,19 +511,6 @@ export function inferEnumDeclType(ref: any): string {
 }
 
 /**
- * Infers the type of an enum member literal
- *
- * @param expr The expression containing the enum member literal
- * @returns The inferred type or undefined
- */
-export function inferEnumMemberLiteralType(expr: any): string | undefined {
-  if (isEnumMemberLiteral(expr.val)) {
-    return `ENUM:${expr.val.enumDecl.$refText}`;
-  }
-  return undefined;
-}
-
-/**
  * Infers the type of a case literal, which might be an enum member or a primitive value
  *
  * @param expr The case literal expression
@@ -544,28 +531,4 @@ export function inferCaseLiteralType(
   }
 
   return undefined;
-}
-
-/**
- * Validates array indices to ensure they use the correct type (INT)
- *
- * @param expr The reference expression with indices
- * @param accept Function to report validation issues
- * @param inferType Function to infer the type of expressions
- */
-export function validateArrayIndices(
-  expr: any,
-  accept: ValidationAcceptor,
-  inferType: (expr: any, accept: ValidationAcceptor) => string | undefined
-): void {
-  for (const idxExpr of expr.indices) {
-    const idxType = inferType(idxExpr, accept);
-    if (idxType !== "INT") {
-      accept(
-        "error",
-        `Array index must be of type INT, but got "${idxType}".`,
-        { node: idxExpr }
-      );
-    }
-  }
 }
