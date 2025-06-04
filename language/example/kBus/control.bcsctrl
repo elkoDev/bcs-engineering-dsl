@@ -93,6 +93,8 @@ control KBusController {
     unit MorningPresenceCheck {
         if (now >= TOD#07:00:00) {
             Lights.Room2 = true;
+            TemperatureSetpoints.Room1Value = 21;
+            TemperatureSetpoints.Room1Ctrl = true;
         }
     }
 
@@ -112,7 +114,7 @@ control KBusController {
     unit ValidateSensorDistance {
         var distance: INT = UltrasonicSensor.Distance;
 
-        if (!UltrasonicSensor.Error) {
+        if (UltrasonicSensor.State == 0) {
             lightLevel = distance;
         }
     }

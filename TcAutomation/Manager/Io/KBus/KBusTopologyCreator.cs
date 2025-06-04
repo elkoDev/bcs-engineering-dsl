@@ -22,42 +22,26 @@ namespace TcAutomation.Manager.Io.KBus
             // Extract the controller type from the master device name or use fallback
             string controllerType = ExtractControllerType(masterDeviceName);
             int masterSubType = IoMappings.GetKBusMasterSubType(controllerType);
-            
-            var master = ioRoot.CreateChild(masterDeviceName, masterSubType, null, null);
+              var master = ioRoot.CreateChild(masterDeviceName, masterSubType, null, null);
             Console.WriteLine($"\t- Created KBus master: {master.Name} (Type: {controllerType})");
 
-            // Step 2: Create KBus interface within the master device
-            // For KBus, we need to create the KBus interface first
-            var kbusInterface = master.CreateChild("K-Bus", IoSubTypes.KBusInterface, null, null);
-            Console.WriteLine($"\t\t- Created K-Bus interface");
+            // Step 2: Create CX1100-BK terminal coupler box
+            // For KBus, we always create a CX1100-BK terminal coupler where terminals are added
+            var couplerBox = master.CreateChild("Box 1 (CX1100-BK)", 9700, null, null);
+            Console.WriteLine($"\t\t- Created CX1100-BK terminal coupler");
 
-            // Step 3: Process boxes - for KBus, boxes are typically INTERNAL since terminals connect directly
+            // Step 3: Create KBus Terminals (KL modules) under the coupler box
+            // All terminals from all logical boxes are added to the coupler regardless of box grouping
             foreach (var box in bus.Boxes)
             {
-                ITcSmTreeItem parentForTerminals;
+                Console.WriteLine($"\t\t- Processing terminals from box: {box.Name}");
                 
-                if (box.Product.Equals("INTERNAL", StringComparison.OrdinalIgnoreCase))
-                {
-                    // For INTERNAL boxes, terminals are added directly to the KBus interface
-                    parentForTerminals = kbusInterface;
-                    Console.WriteLine($"\t\t- Processing internal KBus terminals");
-                }
-                else
-                {
-                    // For specific box products (e.g., BK9000), create the box first
-                    // This is less common for KBus but supported for compatibility
-                    var boxSubType = IoMappings.GetKBusTerminalSubType(box.Product);
-                    parentForTerminals = kbusInterface.CreateChild(box.Product, boxSubType, "", box.Product);
-                    Console.WriteLine($"\t\t- Created box: {box.Name} ({box.Product})");
-                }
-
-                // Step 4: Create KBus Terminals (KL modules)
                 foreach (var mod in box.Modules.OrderBy(m => m.Slot))
                 {
                     string terminalName = $"Term {mod.Slot} ({mod.Product})";
                     int terminalSubType = IoMappings.GetKBusTerminalSubType(mod.Product);
                     
-                    var terminalItem = parentForTerminals.CreateChild(terminalName, terminalSubType, null, null);
+                    var terminalItem = couplerBox.CreateChild(terminalName, terminalSubType, null, null);
                     Console.WriteLine($"\t\t\t- Created terminal: {terminalName}");
                 }
             }

@@ -1,7 +1,7 @@
 bus FieldBus type KBus {
     masterDevice: "Device 1 (CX-BK)"
-    box Coupler {
-        product: INTERNAL
+    box TerminalBlock {
+        product: KBusTerminals
         module Zwei_Kanal_Digital_Eingang_Modul {
             product: KL1002
             position: 1
@@ -54,17 +54,17 @@ controller KBusController {
     datapoint UltrasonicSensor {
         portgroup: FourAnalogInputs
         channels: {
-            channel Distance: INT link "AI Standard Channel 1^Value",
-            channel Error: BOOL link "AI Standard Channel 1^Status^Error"
+            channel Distance: INT link "Channel 1^Data In",
+            channel State: INT link "Channel 1^State"
         }
     }
 
     datapoint Temperatures {
         portgroup: FourAnalogInputs
         channels: {
-            channel Room1: INT link "AI Standard Channel 2^Value",
-            channel Room2: INT link "AI Standard Channel 3^Value",
-            channel Room3: INT link "AI Standard Channel 4^Value"
+            channel Room1: INT link "Channel 2^Value",
+            channel Room2: INT link "Channel 3^Value",
+            channel Room3: INT link "Channel 4^Value"
         }
     }
 
@@ -81,6 +81,16 @@ controller KBusController {
         channels: {
             channel Room1: BOOL link "Channel 1^Output",
             channel Room2: BOOL link "Channel 2^Output"
+        }
+    }
+
+    datapoint TemperatureSetpoints {
+        portgroup: FourAnalogOutputs
+        channels: {
+            channel Room1Value: INT link "Channel 1^Data Out",
+            channel Room1Ctrl: BOOL link "Channel 1^Ctrl",
+            channel Room2Value: INT link "Channel 2^Data Out",
+            channel Room2Ctrl: BOOL link "Channel 2^Ctrl"
         }
     }
 }    

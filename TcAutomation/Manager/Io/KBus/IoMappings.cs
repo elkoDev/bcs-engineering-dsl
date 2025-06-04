@@ -274,16 +274,7 @@ namespace TcAutomation.Manager.Io.KBus
                 ["KL9528"] = 9528, // Power supply terminal
                 ["KL9540"] = 9540, // Surge filter field supply terminal
                 ["KL9550"] = 9550, // Surge filter system and field supply terminal
-                ["KL9560"] = 9560, // Power supply terminal
-                ["KL9570"] = 9570, // Buffer capacitor terminal
+                ["KL9560"] = 9560, // Power supply terminal                ["KL9570"] = 9570, // Buffer capacitor terminal
             };
-    }
-
-    /// <summary>
-    /// Common subtypes for KBus CreateChild() calls
-    /// </summary>
-    internal static class IoSubTypes
-    {
-        public const int KBusInterface = 77; // BX Klemmenbus Interface - generic KBus interface
     }
 }

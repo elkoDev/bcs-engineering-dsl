@@ -190,8 +190,8 @@ namespace TcAutomation.Script
             Type? dteType = Type.GetTypeFromProgID(_config.ProgId, throwOnError: true);
             var dte = (DTE2)Activator.CreateInstance(dteType!, true)!;
 
-            dte.SuppressUI = true;
-            dte.MainWindow.Visible = false;
+            dte.SuppressUI = false;
+            dte.MainWindow.Visible = true;
             dte.UserControl = false;
 
             return dte;
