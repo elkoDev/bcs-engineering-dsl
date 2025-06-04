@@ -21,12 +21,13 @@ namespace TcAutomation.Manager.Io.KBus
 
             // Extract the controller type from the master device name or use fallback
             string controllerType = ExtractControllerType(masterDeviceName);
-            int masterSubType = IoMappings.GetKBusMasterSubType(controllerType);            var master = ioRoot.CreateChild(masterDeviceName, masterSubType, null, null);
+            int masterSubType = IoMappings.GetKBusMasterSubType(controllerType);
+            var master = ioRoot.CreateChild(masterDeviceName, masterSubType, null, null);
             Console.WriteLine($"\t- Created KBus master: {master.Name} (Type: {controllerType})");
 
             // Step 2: Find the automatically created terminal coupler box
             // CX controllers automatically create a terminal coupler box when added
-            ITcSmTreeItem couplerBox = null;
+            ITcSmTreeItem? couplerBox = null;
             for (int i = 1; i <= master.ChildCount; i++)
             {
                 var child = master.Child[i];

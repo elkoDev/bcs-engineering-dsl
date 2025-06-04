@@ -112,9 +112,9 @@ control KBusController {
     }
 
     unit ValidateSensorDistance {
-        var distance: INT = UltrasonicSensor.Distance;
+        var distance: INT = UltrasonicSensor.Distance_Value;
 
-        if (UltrasonicSensor.State == 0) {
+        if (UltrasonicSensor.Distance_State == 0) {
             lightLevel = distance;
         }
     }

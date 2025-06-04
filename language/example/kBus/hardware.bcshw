@@ -1,5 +1,5 @@
 bus FieldBus type KBus {
-    masterDevice: "Device 1 (CX8190)"
+    masterDevice: "CX8190"
     box TerminalBlock {
         product: KBusTerminals
         module Zwei_Kanal_Digital_Eingang_Modul {
@@ -54,17 +54,20 @@ controller KBusController {
     datapoint UltrasonicSensor {
         portgroup: FourAnalogInputs
         channels: {
-            channel Distance: INT link "Channel 1^Data In",
-            channel State: INT link "Channel 1^State"
+            channel Distance_Value: INT link "Channel 1^Data In",
+            channel Distance_State: INT link "Channel 1^State"
         }
     }
 
     datapoint Temperatures {
         portgroup: FourAnalogInputs
         channels: {
-            channel Room1: INT link "Channel 2^Value",
-            channel Room2: INT link "Channel 3^Value",
-            channel Room3: INT link "Channel 4^Value"
+            channel Room1_Value: INT link "Channel 2^Data In",
+            channel Room1_State: INT link "Channel 2^State",
+            channel Room2_Value: INT link "Channel 3^Data In",
+            channel Room2_State: INT link "Channel 3^State",
+            channel Room3_Value: INT link "Channel 4^Data In",
+            channel Room3_State: INT link "Channel 4^State"
         }
     }
 

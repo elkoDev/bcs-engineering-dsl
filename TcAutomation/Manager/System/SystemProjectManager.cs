@@ -31,9 +31,7 @@ namespace TcAutomation.Manager.System
             bool buildSucceeded = (_dte.Solution.SolutionBuild.LastBuildInfo == 0
                                    && state == vsBuildState.vsBuildStateDone);
             return buildSucceeded;
-        }
-
-        public void LinkVariables(HardwareConfig hw)
+        }        public void LinkVariables(HardwareConfig hw)
         {
             Task.Run(() => WindowHelper.WaitAndCloseTcShellPopup());
             BuildProject();
@@ -42,13 +40,61 @@ namespace TcAutomation.Manager.System
             {
                 string ioDirectionString = $"{mapping.Direction}s";
                 string source = $"{TcShortcut.TIPC.GetShortcutKey()}^{_config.PlcProjectName}^{_config.PlcProjectName} Instance^MainPlcTask {ioDirectionString}^Main.{mapping.PlcVar}";
-                string destination = $"{TcShortcut.TIID.GetShortcutKey()}^Device 1 ({mapping.Bus})^{mapping.Box}^Term {mapping.ModuleSlot} ({mapping.ModuleProduct})^{mapping.Link}";
+                
+                // Discover the actual device structure instead of hardcoding names
+                string destination = FindIoDestinationPath(mapping);
 
                 _systemManager.LinkVariables(source, destination);
-                Console.WriteLine($"\t- Linked {mapping.PlcVar} to {mapping.Link} on {mapping.Bus} - {mapping.Box} - {mapping.ModuleProduct} - Slot {mapping.ModuleSlot}");
+                Console.WriteLine($"\t- Linked {mapping.PlcVar} to {destination}");
             }
 
             Console.WriteLine($"✅ Variables linked to hardware configuration.");
+        }
+
+        /// <summary>
+        /// Discovers the actual TwinCAT device structure to build correct I/O paths
+        /// </summary>
+        private string FindIoDestinationPath(VariableMapping mapping)
+        {
+            var ioRoot = _systemManager.LookupTreeItem(TcShortcut.TIID.GetShortcutKey());            // Find the device that matches the bus configuration
+            ITcSmTreeItem device = null!;
+            for (int i = 1; i <= ioRoot.ChildCount; i++)
+            {
+                var child = ioRoot.Child[i];
+                if (child.ItemType == 2) // Device type
+                {
+                    // For now, take the first device - could be enhanced to match by controller type
+                    device = child;
+                    break;
+                }
+            }
+
+            if (device == null)
+            {
+                throw new InvalidOperationException("No I/O device found in TwinCAT project");
+            }
+
+            // Find the box (terminal coupler)
+            ITcSmTreeItem box = null;
+            for (int i = 1; i <= device.ChildCount; i++)
+            {
+                var child = device.Child[i];
+                if (child.ItemType == 5) // Box type
+                {
+                    box = child;
+                    break;
+                }
+            }
+
+            if (box == null)
+            {
+                throw new InvalidOperationException($"No terminal coupler box found in device {device.Name}");
+            }
+
+            // Build the destination path using actual TwinCAT names
+            string destination = $"{TcShortcut.TIID.GetShortcutKey()}^{device.Name}^{box.Name}^Term {mapping.ModuleSlot} ({mapping.ModuleProduct})^{mapping.Link}";
+            
+            return destination;
         }
     }
 }
