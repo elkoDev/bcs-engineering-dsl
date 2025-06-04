@@ -1,6 +1,7 @@
 ﻿using EnvDTE;
 using EnvDTE80;
 using TCatSysManagerLib;
+using TcAutomation.Helper;
 using TcAutomation.Manager.Io;
 using TcAutomation.Script;
 

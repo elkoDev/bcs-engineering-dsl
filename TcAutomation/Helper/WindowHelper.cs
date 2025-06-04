@@ -2,36 +2,36 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace TcAutomation
+namespace TcAutomation.Helper
 {
     internal static class WindowHelper
     {
         private const int BM_CLICK = 0x00F5;
 
         [DllImport("user32.dll", SetLastError = true)]
-        private static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);
+        private static extern nint FindWindow(string? lpClassName, string? lpWindowName);
 
         [DllImport("user32.dll", SetLastError = true)]
-        private static extern IntPtr FindWindowEx(IntPtr hwndParent, IntPtr hwndChildAfter, string? lpszClass, string? lpszWindow);
+        private static extern nint FindWindowEx(nint hwndParent, nint hwndChildAfter, string? lpszClass, string? lpszWindow);
 
         [DllImport("user32.dll", SetLastError = true)]
-        private static extern int SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
+        private static extern int SendMessage(nint hWnd, int Msg, nint wParam, nint lParam);
 
         public static void CloseTcShellPopup()
         {
-            IntPtr hWnd = FindWindow(null, "TcXaeShell");
+            nint hWnd = FindWindow(null, "TcXaeShell");
 
-            if (hWnd != IntPtr.Zero)
+            if (hWnd != nint.Zero)
             {
                 StringBuilder sb = new(256);
                 _ = GetWindowText(hWnd, sb, sb.Capacity);
 
                 if (sb.ToString().Contains("TcXaeShell", StringComparison.OrdinalIgnoreCase))
                 {
-                    IntPtr btnOk = FindWindowEx(hWnd, IntPtr.Zero, "Button", "OK");
-                    if (btnOk != IntPtr.Zero)
+                    nint btnOk = FindWindowEx(hWnd, nint.Zero, "Button", "OK");
+                    if (btnOk != nint.Zero)
                     {
-                        var status = SendMessage(btnOk, BM_CLICK, IntPtr.Zero, IntPtr.Zero);
+                        var status = SendMessage(btnOk, BM_CLICK, nint.Zero, nint.Zero);
                         Console.WriteLine("✅ TcShell popup closed.");
                     }
                 }
@@ -50,6 +50,6 @@ namespace TcAutomation
 
 
         [DllImport("user32.dll", SetLastError = true)]
-        private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+        private static extern int GetWindowText(nint hWnd, StringBuilder lpString, int nMaxCount);
     }
 }
