@@ -41,24 +41,29 @@ namespace TcAutomation.Manager.Io.KBus
         public static int GetKBusTerminalSubType(string product)
             => KBusTerminalSubTypes.TryGetValue(product, out var subType)
                 ? subType
-                : throw new ArgumentException($"Unsupported KBus terminal '{product}'");        /// <summary>
-        /// KBus master devices - fallback mappings and specific devices
-        /// Primary mapping logic is in GetKBusMasterSubType() method
-        /// Based on Beckhoff documentation device subtypes
+                : throw new ArgumentException($"Unsupported KBus terminal '{product}'");
+
+        /// <summary>
+        /// KBus master devices (CX controllers with built-in KBus interface)
+        /// Based on Beckhoff documentation - CX devices with KBus interface
         /// </summary>
-        private static readonly Dictionary<string, int> KBusMasterDevices =
-            new(StringComparer.OrdinalIgnoreCase)
+        private static readonly Dictionary<string, int> KBusMasterDevices =            new(StringComparer.OrdinalIgnoreCase)
             {
-                // Generic fallbacks
-                ["CX-BK"] = 120,  // Generic KBus device -> CX5000 type
-                ["CCAT"] = 124,   // Beckhoff CCAT-Adapter
-                
-                // Specific device examples (for reference, but prefix matching takes precedence)
-                ["CX5000"] = 120, // IODEVICETYPE_CX5000
-                ["CX8000"] = 135, // IODEVICETYPE_CX8000 (covers all CX8xxx)
-                ["CX8190"] = 135, // IODEVICETYPE_CX8000 (example CX8xxx device)
-                ["CX9000"] = 105, // IODEVICETYPE_CX9000_BK
-                ["CX1100"] = 65,  // IODEVICETYPE_CX1100_BK
+                // CX5000 series
+                ["CX5000"] = 120,
+
+                // CX8000 series  
+                ["CX8000"] = 135,
+                ["CX8190"] = 135,
+
+                // CX9000 series
+                ["CX9000"] = 105,
+
+                // CX1100 series
+                ["CX1100"] = 65,
+
+                // Generic fallback
+                ["CX-BK"] = 120,  // CX Terminal Device - generic KBus device
             };
 
         /// <summary>
