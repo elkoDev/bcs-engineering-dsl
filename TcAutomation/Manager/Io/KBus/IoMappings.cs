@@ -3,36 +3,16 @@ namespace TcAutomation.Manager.Io.KBus
     internal static class IoMappings
     {        /// <summary>
         /// Get the device subtype for KBus master devices (CX controllers)
-        /// Uses smart mapping based on device families from Beckhoff documentation
+        /// For KBus, all CX controllers use subtype 120 (CX Terminal Device)
+        /// This matches what TwinCAT scan returns for KBus-enabled controllers
         /// </summary>
         public static int GetKBusMasterSubType(string product)
         {
             if (string.IsNullOrWhiteSpace(product))
-                throw new ArgumentException("Product name cannot be null or empty");
-
-            var upperProduct = product.ToUpperInvariant();
-
-            // Smart mapping based on device families
-            // CX8xxx series -> 135 (IODEVICETYPE_CX8000)
-            if (upperProduct.StartsWith("CX8"))
-                return 135;
-
-            // CX9xxx series -> 105 (IODEVICETYPE_CX9000_BK) 
-            if (upperProduct.StartsWith("CX9"))
-                return 105;
-
-            // CX5xxx series -> 120 (IODEVICETYPE_CX5000)
-            if (upperProduct.StartsWith("CX5"))
-                return 120;
-
-            // CX1xxx series -> 65 (IODEVICETYPE_CX1100_BK)
-            if (upperProduct.StartsWith("CX1"))
-                return 65;
-
-            // Exact matches for specific devices or fallbacks
-            return KBusMasterDevices.TryGetValue(product, out var subType)
-                ? subType
-                : throw new ArgumentException($"Unsupported KBus master device '{product}'. Supported: CX1xxx, CX5xxx, CX8xxx, CX9xxx series or CX-BK");
+                throw new ArgumentException("Product name cannot be null or empty");            // For KBus topology, all CX controllers use the same subtype: 120 (CX Terminal Device)
+            // This is different from other bus types where each controller has its own subtype
+            // The actual controller type is identified by the product name in TwinCAT
+            return 120; // IODEVICETYPE_CX_TERMINAL_DEVICE
         }
 
         /// <summary>
@@ -41,32 +21,7 @@ namespace TcAutomation.Manager.Io.KBus
         public static int GetKBusTerminalSubType(string product)
             => KBusTerminalSubTypes.TryGetValue(product, out var subType)
                 ? subType
-                : throw new ArgumentException($"Unsupported KBus terminal '{product}'");
-
-        /// <summary>
-        /// KBus master devices (CX controllers with built-in KBus interface)
-        /// Based on Beckhoff documentation - CX devices with KBus interface
-        /// </summary>
-        private static readonly Dictionary<string, int> KBusMasterDevices =            new(StringComparer.OrdinalIgnoreCase)
-            {
-                // CX5000 series
-                ["CX5000"] = 120,
-
-                // CX8000 series  
-                ["CX8000"] = 135,
-                ["CX8190"] = 135,
-
-                // CX9000 series
-                ["CX9000"] = 105,
-
-                // CX1100 series
-                ["CX1100"] = 65,
-
-                // Generic fallback
-                ["CX-BK"] = 120,  // CX Terminal Device - generic KBus device
-            };
-
-        /// <summary>
+                : throw new ArgumentException($"Unsupported KBus terminal '{product}'");        /// <summary>
         /// KBus terminal subtypes based on Beckhoff documentation
         /// All KL terminals with their corresponding subtypes
         /// </summary>

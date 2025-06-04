@@ -10,20 +10,16 @@ namespace TcAutomation.Manager.Io.KBus
     internal class KBusTopologyCreator : BusTopologyCreator
     {
         public KBusTopologyCreator(ITcSysManager4 systemManager)
-            : base(systemManager) { }
-
-        public override void CreateTopology(Bus bus)
+            : base(systemManager) { }        public override void CreateTopology(Bus bus)
         {
             var ioRoot = SystemManager.LookupTreeItem(TcShortcut.TIID.GetShortcutKey());
 
             // Step 1: Create KBus Master Device (CX controller)
-            // For KBus, the master device is typically a CX controller with built-in KBus interface
-            var masterDeviceName = string.IsNullOrWhiteSpace(bus.MasterDeviceName) ? "Device 1 (CX-BK)" : bus.MasterDeviceName;
-
-            // Extract the controller type from the master device name or use fallback
-            string controllerType = ExtractControllerType(masterDeviceName);
+            // Use the controller type directly from the DSL configuration
+            string controllerType = string.IsNullOrWhiteSpace(bus.MasterDeviceName) ? "CX-BK" : bus.MasterDeviceName;
             int masterSubType = IoMappings.GetKBusMasterSubType(controllerType);
-            var master = ioRoot.CreateChild(masterDeviceName, masterSubType, null, null);
+
+            var master = ioRoot.CreateChild(controllerType, masterSubType, null, null);
             Console.WriteLine($"\t- Created KBus master: {master.Name} (Type: {controllerType})");
 
             // Step 2: Find the automatically created terminal coupler box
@@ -38,12 +34,10 @@ namespace TcAutomation.Manager.Io.KBus
                     Console.WriteLine($"\t\t- Found terminal coupler: {child.Name}");
                     break;
                 }
-            }
-
-            if (couplerBox == null)
+            }            if (couplerBox == null)
             {
-                throw new InvalidOperationException($"Terminal coupler box not found in master device {masterDeviceName}. The CX controller should automatically create this.");
-            }            // Step 3: Create KBus Terminals (KL modules) under the coupler box
+                throw new InvalidOperationException($"Terminal coupler box not found in master device {controllerType}. The CX controller should automatically create this.");
+            }// Step 3: Create KBus Terminals (KL modules) under the coupler box
             // All terminals from all logical boxes are added to the coupler regardless of box grouping
             // Skip KL9010 (end terminal) if it already exists
             foreach (var box in bus.Boxes)
@@ -151,19 +145,16 @@ namespace TcAutomation.Manager.Io.KBus
                 Console.WriteLine($"\t\t- Warning: Could not update device addresses: {ex.Message}");
                 Console.WriteLine("\t\t- Continuing with default offline configuration. Addresses may need manual configuration.");
             }
-        }
-
-        /// <summary>
+        }        /// <summary>
         /// Checks if the scanned device subtype matches our created device
         /// </summary>
         private bool IsMatchingDeviceSubType(int scannedSubType, ITcSmTreeItem createdDevice)
         {
-            // For KBus devices, we look for:
-            // - CX devices (subtypes 65, 105, 120, 135)
-            // - CCAT devices (subtype 124) which are used by CX controllers
-
-            var validKBusSubTypes = new[] { 65, 105, 120, 124, 135 };
-            return validKBusSubTypes.Contains(scannedSubType);
+            // For KBus devices, we specifically want the CX Terminal Device (subtype 120)
+            // This is the device that handles KBus I/O terminals
+            // We ignore the CCAT Adapter (124) as it's the low-level hardware interface
+            
+            return scannedSubType == 120; // CX Terminal Device
         }
 
         /// <summary>
