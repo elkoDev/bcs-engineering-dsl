@@ -6,41 +6,39 @@ namespace TcAutomation.Manager.Io.KBus
         /// Get the device subtype for KBus master devices (CX controllers)
         /// </summary>
         public static int GetKBusMasterSubType(string product)
-            => KBusMasterDevices.TryGetValue(product, out var subType) 
-                ? subType 
+            => KBusMasterDevices.TryGetValue(product, out var subType)
+                ? subType
                 : throw new ArgumentException($"Unsupported KBus master device '{product}'");
 
         /// <summary>
         /// Get the subtype for KBus terminals/modules
         /// </summary>
         public static int GetKBusTerminalSubType(string product)
-            => KBusTerminalSubTypes.TryGetValue(product, out var subType) 
-                ? subType 
+            => KBusTerminalSubTypes.TryGetValue(product, out var subType)
+                ? subType
                 : throw new ArgumentException($"Unsupported KBus terminal '{product}'");
 
         /// <summary>
         /// KBus master devices (CX controllers with built-in KBus interface)
         /// Based on Beckhoff documentation - CX devices with KBus interface
         /// </summary>
-        private static readonly Dictionary<string, int> KBusMasterDevices =
-            new(StringComparer.OrdinalIgnoreCase)
+        private static readonly Dictionary<string, int> KBusMasterDevices =            new(StringComparer.OrdinalIgnoreCase)
             {
                 // CX5000 series
                 ["CX5000"] = 120,
-                
+
                 // CX8000 series  
                 ["CX8000"] = 135,
-                ["CX8190"] = 135, // Same as CX8000 family
-                
+                ["CX8190"] = 120, // CX Terminal Device - confirmed from actual TwinCAT project
+
                 // CX9000 series
                 ["CX9000"] = 105,
-                
+
                 // CX1100 series
                 ["CX1100"] = 65,
-                
+
                 // Generic fallback
-                ["CX-BK"] = 77,  // BX Klemmenbus Interface - generic KBus interface
-                ["INTERNAL"] = 77 // For cases where product is specified as INTERNAL
+                ["CX-BK"] = 120,  // CX Terminal Device - generic KBus device
             };
 
         /// <summary>

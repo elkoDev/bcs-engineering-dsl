@@ -1,5 +1,5 @@
 bus FieldBus type KBus {
-    masterDevice: "Device 1 (CX-BK)"
+    masterDevice: "Device 1 (CX8190)"
     box TerminalBlock {
         product: KBusTerminals
         module Zwei_Kanal_Digital_Eingang_Modul {

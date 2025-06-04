@@ -8,7 +8,7 @@ namespace TcAutomation.Manager.Io.KBus
     /// </summary>
     internal class KBusTopologyCreator : BusTopologyCreator
     {
-        public KBusTopologyCreator(ITcSysManager4 systemManager) 
+        public KBusTopologyCreator(ITcSysManager4 systemManager)
             : base(systemManager) { }
 
         public override void CreateTopology(Bus bus)
@@ -18,29 +18,48 @@ namespace TcAutomation.Manager.Io.KBus
             // Step 1: Create KBus Master Device (CX controller)
             // For KBus, the master device is typically a CX controller with built-in KBus interface
             var masterDeviceName = string.IsNullOrWhiteSpace(bus.MasterDeviceName) ? "Device 1 (CX-BK)" : bus.MasterDeviceName;
-            
+
             // Extract the controller type from the master device name or use fallback
             string controllerType = ExtractControllerType(masterDeviceName);
-            int masterSubType = IoMappings.GetKBusMasterSubType(controllerType);
-              var master = ioRoot.CreateChild(masterDeviceName, masterSubType, null, null);
+            int masterSubType = IoMappings.GetKBusMasterSubType(controllerType);            var master = ioRoot.CreateChild(masterDeviceName, masterSubType, null, null);
             Console.WriteLine($"\t- Created KBus master: {master.Name} (Type: {controllerType})");
 
-            // Step 2: Create CX1100-BK terminal coupler box
-            // For KBus, we always create a CX1100-BK terminal coupler where terminals are added
-            var couplerBox = master.CreateChild("Box 1 (CX1100-BK)", 9700, null, null);
-            Console.WriteLine($"\t\t- Created CX1100-BK terminal coupler");
+            // Step 2: Find the automatically created terminal coupler box
+            // CX controllers automatically create a terminal coupler box when added
+            ITcSmTreeItem couplerBox = null;
+            for (int i = 1; i <= master.ChildCount; i++)
+            {
+                var child = master.Child[i];
+                if (child.ItemType == 5) // Box type
+                {
+                    couplerBox = child;
+                    Console.WriteLine($"\t\t- Found terminal coupler: {child.Name}");
+                    break;
+                }
+            }
 
-            // Step 3: Create KBus Terminals (KL modules) under the coupler box
+            if (couplerBox == null)
+            {
+                throw new InvalidOperationException($"Terminal coupler box not found in master device {masterDeviceName}. The CX controller should automatically create this.");
+            }            // Step 3: Create KBus Terminals (KL modules) under the coupler box
             // All terminals from all logical boxes are added to the coupler regardless of box grouping
+            // Skip KL9010 (end terminal) if it already exists
             foreach (var box in bus.Boxes)
             {
                 Console.WriteLine($"\t\t- Processing terminals from box: {box.Name}");
-                
+
                 foreach (var mod in box.Modules.OrderBy(m => m.Slot))
                 {
+                    // Skip KL9010 end terminal as it's automatically created by CX controllers
+                    if (mod.Product.Equals("KL9010", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine($"\t\t\t- Skipped KL9010 end terminal (automatically created)");
+                        continue;
+                    }
+
                     string terminalName = $"Term {mod.Slot} ({mod.Product})";
                     int terminalSubType = IoMappings.GetKBusTerminalSubType(mod.Product);
-                    
+
                     var terminalItem = couplerBox.CreateChild(terminalName, terminalSubType, null, null);
                     Console.WriteLine($"\t\t\t- Created terminal: {terminalName}");
                 }
