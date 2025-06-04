@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using System.Xml;
 using TCatSysManagerLib;
 
 namespace TcAutomation.Manager.Io.KBus
@@ -65,8 +66,12 @@ namespace TcAutomation.Manager.Io.KBus
                     Console.WriteLine($"\t\t\t- Created terminal: {terminalName}");
                 }
             }
-
             Console.WriteLine("✅ KBus I/O topology created.");
+            // Step 4: Update address information for online configuration
+            UpdateDeviceAddresses(master);
+
+            // Step 5: Scan and update boxes/terminals if needed
+            //ScanAndUpdateBoxes(master);
         }
 
         /// <summary>
@@ -90,10 +95,107 @@ namespace TcAutomation.Manager.Io.KBus
             if (upperName.Contains("CX9000")) return "CX9000";
             if (upperName.Contains("CX5000")) return "CX5000";
             if (upperName.Contains("CX1100")) return "CX1100";
-            if (upperName.Contains("CX-BK")) return "CX-BK";
-
-            // Default fallback
+            if (upperName.Contains("CX-BK")) return "CX-BK";            // Default fallback
             return "CX-BK";
+        }
+
+        /// <summary>
+        /// Updates device address information by scanning for available devices on the target system
+        /// </summary>
+        private void UpdateDeviceAddresses(ITcSmTreeItem createdDevice)
+        {
+            try
+            {
+                Console.WriteLine("\t- Scanning for online devices to update address information...");
+
+                // Step 1: Scan for available devices
+                var ioRoot = SystemManager.LookupTreeItem(TcShortcut.TIID.GetShortcutKey());
+                string scannedXml = ioRoot.ProduceXml(false);
+
+                // Step 2: Parse the XML to find matching device
+                var xmlDoc = new XmlDocument();
+                xmlDoc.LoadXml(scannedXml);
+
+                // Look for devices in the scanned XML
+                var xmlDeviceList = xmlDoc.SelectNodes("TreeItem/DeviceGrpDef/FoundDevices/Device");
+                if (xmlDeviceList == null || xmlDeviceList.Count == 0)
+                {
+                    Console.WriteLine("\t\t- No devices found during scan. Address information will remain default.");
+                    return;
+                }
+
+                // Step 3: Find matching device by subtype
+                foreach (XmlNode deviceNode in xmlDeviceList)
+                {
+                    var subTypeNode = deviceNode.SelectSingleNode("ItemSubType");
+                    if (subTypeNode != null && int.TryParse(subTypeNode.InnerText, out int scannedSubType))
+                    {
+                        // Check if this scanned device matches our created device subtype
+                        if (IsMatchingDeviceSubType(scannedSubType, createdDevice))
+                        {
+                            var addressInfoNode = deviceNode.SelectSingleNode("AddressInfo");
+                            if (addressInfoNode != null)
+                            {
+                                // Step 4: Update the address information
+                                string xmlAddress = $"<TreeItem><DeviceDef>{addressInfoNode.OuterXml}</DeviceDef></TreeItem>";
+                                createdDevice.ConsumeXml(xmlAddress);
+                                Console.WriteLine($"\t\t- Updated address information for device: {createdDevice.Name}");
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\t\t- Warning: Could not update device addresses: {ex.Message}");
+                Console.WriteLine("\t\t- Continuing with default offline configuration. Addresses may need manual configuration.");
+            }
+        }
+
+        /// <summary>
+        /// Checks if the scanned device subtype matches our created device
+        /// </summary>
+        private bool IsMatchingDeviceSubType(int scannedSubType, ITcSmTreeItem createdDevice)
+        {
+            // For KBus devices, we look for:
+            // - CX devices (subtypes 65, 105, 120, 135)
+            // - CCAT devices (subtype 124) which are used by CX controllers
+
+            var validKBusSubTypes = new[] { 65, 105, 120, 124, 135 };
+            return validKBusSubTypes.Contains(scannedSubType);
+        }
+
+        /// <summary>
+        /// Scans and updates boxes (terminal couplers) to ensure proper address configuration
+        /// </summary>
+        private void ScanAndUpdateBoxes(ITcSmTreeItem device)
+        {
+            try
+            {
+                Console.WriteLine("\t- Scanning boxes for address updates...");
+
+                // Trigger box scanning on the device
+                string scanBoxesXml = "<TreeItem><DeviceDef><ScanBoxes>1</ScanBoxes></DeviceDef></TreeItem>";
+                device.ConsumeXml(scanBoxesXml);
+
+                Console.WriteLine($"\t\t- Box scanning completed for device: {device.Name}");
+
+                // Log the found boxes
+                for (int i = 1; i <= device.ChildCount; i++)
+                {
+                    var box = device.Child[i];
+                    if (box.ItemType == 5) // Box type
+                    {
+                        Console.WriteLine($"\t\t\t- Found box: {box.Name}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\t\t- Warning: Could not scan boxes: {ex.Message}");
+                Console.WriteLine("\t\t- Continuing with existing box configuration.");
+            }
         }
     }
 }

@@ -33,6 +33,9 @@ namespace TcAutomation.Manager.System
             return buildSucceeded;
         }        public void LinkVariables(HardwareConfig hw)
         {
+            // Step 1: Set target NetId if specified
+            SetTargetNetId(hw.Network);
+            
             Task.Run(() => WindowHelper.WaitAndCloseTcShellPopup());
             BuildProject();
 
@@ -49,6 +52,26 @@ namespace TcAutomation.Manager.System
             }
 
             Console.WriteLine($"✅ Variables linked to hardware configuration.");
+        }
+
+        /// <summary>
+        /// Sets the target NetId for remote device connection if specified in hardware config
+        /// </summary>
+        private void SetTargetNetId(Network network)
+        {
+            if (!string.IsNullOrWhiteSpace(network.AmsNetId))
+            {
+                try
+                {
+                    _systemManager.SetTargetNetId(network.AmsNetId);
+                    Console.WriteLine($"\t- Set target NetId: {network.AmsNetId}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"\t- Warning: Could not set target NetId '{network.AmsNetId}': {ex.Message}");
+                    Console.WriteLine("\t- Continuing with local configuration.");
+                }
+            }
         }
 
         /// <summary>
