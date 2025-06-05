@@ -16,7 +16,7 @@ extern struct I_TcMessage {
     dummy : BOOL // Placeholder for actual message structure
 }
 
-extern functionblock FB_DALI207QueryFailureStatus from Tc3_DALI{
+extern functionblock FB_DALI207QueryFailureStatus from Tc3_DALI {
     inputs {
         var bStart : BOOL;
         var nAddress : BYTE;
@@ -31,7 +31,7 @@ extern functionblock FB_DALI207QueryFailureStatus from Tc3_DALI{
     }
 }
 
-control MainController {
+control EtherCATController {
 
     enum OperatingMode { OFF, ECO, COMFORT }
     struct Temperatures {

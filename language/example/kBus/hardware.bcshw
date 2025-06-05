@@ -1,0 +1,104 @@
+bus FieldBus type KBus {
+    masterDevice: "CX8190"
+    box TerminalBlock {
+        product: KBusTerminals
+        module Zwei_Kanal_Digital_Eingang_Modul {
+            product: KL1002
+            position: 1
+        } 
+        module Zwei_Kanal_Relais_Ausgang_Modul {
+            product: KL2622
+            position: 2
+        }
+        module Vier_Kanal_Analog_Eingang_Modul {
+            product: KL3044
+            position: 3
+        }
+        module Vier_Kanal_Analog_Ausgang_Modul {
+            product: KL4004
+            position: 4
+        }
+        module Endklemme {
+            product: KL9010
+            position: 5
+        }
+    }
+}
+
+controller KBusController {
+
+    portgroup FourAnalogInputs {
+        module: Vier_Kanal_Analog_Eingang_Modul
+        ioType: ANALOG_INPUT
+        channels: 4
+    }
+
+    portgroup TwoDigitalInputs {
+        module: Zwei_Kanal_Digital_Eingang_Modul
+        ioType: DIGITAL_INPUT
+        channels: 2
+    }
+
+    portgroup TwoDigitalOutputs {
+        module: Zwei_Kanal_Relais_Ausgang_Modul
+        ioType: DIGITAL_OUTPUT
+        channels: 2
+    }
+
+    portgroup FourAnalogOutputs {
+        module: Vier_Kanal_Analog_Ausgang_Modul
+        ioType: ANALOG_OUTPUT
+        channels: 4
+    }
+
+    datapoint UltrasonicSensor {
+        portgroup: FourAnalogInputs
+        channels: {
+            channel Distance_Value: INT link "Channel 1^Data In",
+            channel Distance_State: INT link "Channel 1^State"
+        }
+    }
+
+    datapoint Temperatures {
+        portgroup: FourAnalogInputs
+        channels: {
+            channel Room1_Value: INT link "Channel 2^Data In",
+            channel Room1_State: INT link "Channel 2^State",
+            channel Room2_Value: INT link "Channel 3^Data In",
+            channel Room2_State: INT link "Channel 3^State",
+            channel Room3_Value: INT link "Channel 4^Data In",
+            channel Room3_State: INT link "Channel 4^State"
+        }
+    }
+
+    datapoint Buttons {
+        portgroup: TwoDigitalInputs
+        channels: {
+            channel Room1: BOOL link "Channel 1^Input",
+            channel Room2: BOOL link "Channel 2^Input"
+        }
+    }
+
+    datapoint Lights {
+        portgroup: TwoDigitalOutputs
+        channels: {
+            channel Room1: BOOL link "Channel 1^Output",
+            channel Room2: BOOL link "Channel 2^Output"
+        }
+    }
+
+    datapoint TemperatureSetpoints {
+        portgroup: FourAnalogOutputs
+        channels: {
+            channel Room1Value: INT link "Channel 1^Data Out",
+            channel Room1Ctrl: BOOL link "Channel 1^Ctrl",
+            channel Room2Value: INT link "Channel 2^Data Out",
+            channel Room2Ctrl: BOOL link "Channel 2^Ctrl"
+        }
+    }
+}    
+
+network {
+    hostname: "CX-301714"
+    ipAddress: "169.254.225.85"
+}

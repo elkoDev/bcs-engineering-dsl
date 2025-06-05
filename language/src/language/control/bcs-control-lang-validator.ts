@@ -1,6 +1,5 @@
-import { AstUtils, ValidationAcceptor, ValidationChecks } from "langium";
+import { ValidationAcceptor, ValidationChecks } from "langium";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
-import { getInputs, getOutputs } from "./utils/function-block-utils.js";
 import {
   inferBinaryExpressionType,
   inferUnaryExpressionType,
@@ -13,8 +12,13 @@ import {
   inferEnumDeclType,
   validateArrayIndex,
   inferCaseLiteralType,
+  isTypeAssignable,
 } from "./utils/type-inference-utils.js";
 import { DuplicationValidator } from "./utils/duplication-validation-utils.js";
+import { ArrayValidationUtils } from "./utils/array-validation-utils.js";
+import { UseStmtValidationUtils } from "./utils/usestmt-validation-utils.js";
+import { AssignmentValidationUtils } from "./utils/assignment-validation-utils.js";
+import { ExpressionUtils } from "./utils/expression-utils.js";
 import {
   BCSEngineeringDSLAstType,
   FunctionBlockDecl,
@@ -31,25 +35,13 @@ import {
   isFunctionBlockLocals,
   isFunctionBlockLogic,
   UseStmt,
-  isRef,
-  isStructDecl,
-  UseOutput,
   VarDecl,
-  isPrimary,
+  isVarDecl,
   isArrayLiteral,
   isStructLiteral,
-  Primary,
-  ArrayLiteral,
-  isVarDecl,
-  isAssignmentStmt,
-  StructDecl,
-  isControlModel,
-  StructLiteral,
   isBinExpr,
   isCaseLiteral,
   isEnumDecl,
-  isFunctionBlockDecl,
-  isTypeAlias,
   Channel,
 } from "../generated/ast.js";
 
@@ -96,7 +88,6 @@ export class BCSControlLangValidator {
       );
     }
   }
-
   checkToExprType(stmt: ForStmt, accept: ValidationAcceptor) {
     const toExpr = stmt.toExpr;
     if (!toExpr) return;
@@ -164,12 +155,11 @@ export class BCSControlLangValidator {
         }
 
         if (!litType) continue;
-
         const ok =
           // exact match
           litType === switchType ||
           // INT can stand in for REAL, etc.
-          this.isTypeAssignable(litType, switchType);
+          isTypeAssignable(litType, switchType);
 
         if (!ok) {
           accept(
@@ -282,203 +272,22 @@ export class BCSControlLangValidator {
       );
     }
   }
-
   checkUseStmtTypes(useStmt: UseStmt, accept: ValidationAcceptor) {
     const fb = useStmt.functionBlockRef?.ref;
     if (!fb) return;
 
-    this.validateFunctionBlockInputs(useStmt, fb, accept);
-    this.validateFunctionBlockOutputs(useStmt, fb, accept);
-  }
-
-  private validateFunctionBlockInputs(
-    useStmt: UseStmt,
-    fb: FunctionBlockDecl,
-    accept: ValidationAcceptor
-  ) {
-    // 1) Check: Number of input arguments vs number of inputs
-    if (useStmt.inputArgs.length !== getInputs(fb).length) {
-      accept(
-        "error",
-        `Function block '${fb.name}' expects ${
-          getInputs(fb).length
-        } input arguments, but got ${useStmt.inputArgs.length}.`,
-        { node: useStmt, property: "inputArgs" }
-      );
-    }
-
-    // 2) Check: Input types
-    this.validateInputTypes(useStmt, fb, accept);
-
-    // 3) Check: Duplicate input mappings
-    DuplicationValidator.checkDuplicateInputMappings(useStmt, fb, accept);
-  }
-
-  private validateInputTypes(
-    useStmt: UseStmt,
-    fb: FunctionBlockDecl,
-    accept: ValidationAcceptor
-  ) {
-    for (const arg of useStmt.inputArgs) {
-      const inputVarName = arg.inputVar.ref?.name;
-      if (!inputVarName) continue;
-
-      const paramDecl = getInputs(fb).find((i) => i.name === inputVarName);
-      const expectedType = this.inferVarDeclType(paramDecl);
-      const actualType = this.inferType(arg.value, accept);
-
-      // Check for struct type misuse
-      if (isRef(arg.value) && isStructDecl(arg.value.ref.ref)) {
-        accept(
-          "error",
-          `Cannot use struct declaration '${arg.value.ref?.ref.name}' as a value for input '${inputVarName}'.`,
-          { node: arg.value }
-        );
-        continue;
-      }
-
-      if (
-        expectedType &&
-        actualType &&
-        !this.isTypeAssignable(actualType, expectedType)
-      ) {
-        accept(
-          "error",
-          `Type mismatch for input '${inputVarName}': expected '${expectedType}', got '${actualType}'.`,
-          { node: arg.value }
-        );
-      }
-    }
-  }
-
-  private validateFunctionBlockOutputs(
-    useStmt: UseStmt,
-    fb: FunctionBlockDecl,
-    accept: ValidationAcceptor
-  ) {
-    const output = useStmt.useOutput;
-    if (!output) return;
-
-    // Determine if output is single or mapping
-    const isSingle = !!output.singleOutput;
-    const isMapping =
-      !!output.mappingOutputs && output.mappingOutputs.length > 0;
-
-    if (isSingle && isMapping) {
-      accept("error", "Cannot mix single and mapped outputs.", {
-        node: useStmt,
-        property: "useOutput",
-      });
-      return;
-    }
-
-    // Single output result (direct reference)
-    if (isSingle) {
-      this.validateSingleOutput(useStmt, fb, output, accept);
-    }
-    // Output mapping list (explicit mappings)
-    else if (isMapping) {
-      this.validateMappedOutputs(useStmt, fb, output, accept);
-    }
-    // No outputs provided
-    else if (getOutputs(fb).length > 0) {
-      accept(
-        "error",
-        `Function block '${fb.name}' expects ${
-          getOutputs(fb).length
-        } outputs, but got 0.`,
-        { node: useStmt, property: "useOutput" }
-      );
-    }
-  }
-
-  private validateSingleOutput(
-    useStmt: UseStmt,
-    fb: FunctionBlockDecl,
-    output: UseOutput,
-    accept: ValidationAcceptor
-  ) {
-    if (getOutputs(fb).length !== 1) {
-      accept(
-        "error",
-        `Function block '${fb.name}' has ${
-          getOutputs(fb).length
-        } outputs, cannot use direct assignment. Use mapping instead.`,
-        { node: useStmt, property: "useOutput" }
-      );
-      return;
-    }
-
-    const expected = getOutputs(fb)[0];
-    const actual = output.singleOutput!.targetOutputVar?.ref;
-
-    if (actual) {
-      const expectedType = this.inferVarDeclType(expected);
-      const actualType = this.inferVarDeclType(actual);
-
-      if (
-        expectedType &&
-        actualType &&
-        !this.isTypeAssignable(expectedType, actualType)
-      ) {
-        accept(
-          "error",
-          `Type mismatch for output '${expected.name}': cannot assign to '${actual.name}' of type '${actualType}', expected '${expectedType}'.`,
-          { node: output.singleOutput!, property: "targetOutputVar" }
-        );
-      }
-    }
-  }
-
-  private validateMappedOutputs(
-    useStmt: UseStmt,
-    fb: FunctionBlockDecl,
-    output: UseOutput,
-    accept: ValidationAcceptor
-  ) {
-    if (output.mappingOutputs.length !== getOutputs(fb).length) {
-      accept(
-        "error",
-        `Function block '${fb.name}' expects ${
-          getOutputs(fb).length
-        } outputs, but got ${output.mappingOutputs.length}.`,
-        { node: useStmt, property: "useOutput" }
-      );
-    }
-
-    // Check for duplicates and type compatibility
-    DuplicationValidator.checkDuplicateOutputMappings(
+    UseStmtValidationUtils.validateFunctionBlockInputs(
       useStmt,
       fb,
-      output,
+      accept,
+      this.inferType.bind(this)
+    );
+    UseStmtValidationUtils.validateFunctionBlockOutputs(
+      useStmt,
+      fb,
+      useStmt.useOutput,
       accept
     );
-
-    // Perform type checking for mappings
-    for (const map of output.mappingOutputs) {
-      const fbOutputVar = map.fbOutputVar?.ref;
-      const targetOutputVar = map.targetOutputVar?.ref;
-
-      if (!targetOutputVar || !fbOutputVar) continue;
-
-      const expected = getOutputs(fb).find((o) => o.name === fbOutputVar.name);
-      const expectedType = expected
-        ? this.inferVarDeclType(expected)
-        : undefined;
-      const actualType = this.inferVarDeclType(targetOutputVar);
-
-      if (
-        expectedType &&
-        actualType &&
-        !this.isTypeAssignable(expectedType, actualType)
-      ) {
-        accept(
-          "error",
-          `Type mismatch for mapped output '${fbOutputVar.name}': expected '${expectedType}', got '${actualType}'.`,
-          { node: map, property: "fbOutputVar" }
-        );
-      }
-    }
   }
 
   /**
@@ -491,201 +300,12 @@ export class BCSControlLangValidator {
    *
    * @param varDecl - The variable declaration to validate.
    * @param accept - A function to report validation errors.
-   */
-  checkVarDeclTypes(varDecl: VarDecl, accept: ValidationAcceptor) {
-    // 1. Infer and validate the declared type
-    const type = this.inferVarDeclType(varDecl);
-    if (!type) {
-      this.reportNoTypeError(varDecl, accept);
-      return;
-    }
-
-    // 2. Skip further checks if there's no initializer
-    if (!varDecl.init) {
-      return;
-    }
-
-    // 3. Check the initialization type and compatibility
-    this.checkInitializerTypeCompatibility(varDecl, type, accept);
-
-    // 4. Check array size if applicable
-    this.checkArraySizeConsistency(varDecl, accept);
-  }
-
-  /**
-   * Reports an error when the variable declaration type cannot be inferred
-   */
-  private reportNoTypeError(
-    varDecl: VarDecl,
-    accept: ValidationAcceptor
-  ): void {
-    accept(
-      "error",
-      `Cannot infer type for variable declaration: ${varDecl.name}`,
-      { node: varDecl, property: "typeRef" }
-    );
-  }
-
-  /**
-   * Checks that the initializer's type is compatible with the variable's declared type
-   */
-  private checkInitializerTypeCompatibility(
-    varDecl: VarDecl,
-    declaredType: string,
-    accept: ValidationAcceptor
-  ): void {
-    const initType = this.inferType(varDecl.init, accept);
-    if (!initType) {
-      this.reportNoInitTypeError(varDecl, accept);
-      return;
-    }
-
-    // Handle struct literals which require special validation
-    if (declaredType.startsWith("STRUCT:") && initType === "STRUCT") {
-      this.validateStructLiteralAssignment(varDecl, accept);
-      return;
-    }
-
-    // Handle struct array literals which require element-wise validation
-    if (this.isStructArrayAssignment(declaredType, initType)) {
-      this.validateStructArrayAssignment(varDecl, declaredType, accept);
-      return;
-    }
-
-    // Regular type compatibility check
-    if (!this.isTypeAssignable(initType, declaredType)) {
-      this.reportTypeMismatchError(varDecl, initType, declaredType, accept);
-    }
-  }
-
-  /**
-   * Reports an error when the initializer type cannot be inferred
-   */
-  private reportNoInitTypeError(
-    varDecl: VarDecl,
-    accept: ValidationAcceptor
-  ): void {
-    accept(
-      "error",
-      `Cannot infer type for variable initialization: ${
-        varDecl.name
-      } = ${this.stringifyExpression(varDecl.init)}`,
-      { node: varDecl, property: "init" }
-    );
-  }
-
-  /**
-   * Reports a type mismatch error between initializer and variable declaration
-   */
-  private reportTypeMismatchError(
-    varDecl: VarDecl,
-    initType: string,
-    declaredType: string,
-    accept: ValidationAcceptor
-  ): void {
-    accept(
-      "error",
-      `Type mismatch: Cannot assign "${initType}" to "${declaredType}".`,
-      { node: varDecl, property: "init" }
-    );
-  }
-
-  /**
-   * Determines if we're dealing with a struct array assignment that needs special handling
-   */
-  private isStructArrayAssignment(
-    declaredType: string,
-    initType: string
-  ): boolean {
-    return (
-      initType.startsWith("ARRAY<STRUCT>") &&
-      declaredType.startsWith("ARRAY<STRUCT:")
-    );
-  }
-
-  /**
-   * Validates struct array assignment by checking each element against the expected struct type
-   */
-  private validateStructArrayAssignment(
-    varDecl: VarDecl,
-    declaredType: string,
-    accept: ValidationAcceptor
-  ): void {
-    const expectedStructName = /^ARRAY<STRUCT:(.+?)>\[/.exec(declaredType)?.[1];
-    if (!expectedStructName) return;
-
-    if (isPrimary(varDecl.init) && isArrayLiteral(varDecl.init.val)) {
-      for (const element of varDecl.init.val.elements) {
-        if (isPrimary(element) && isStructLiteral(element.val)) {
-          this.validateStructLiteralAssignment(
-            element,
-            accept,
-            expectedStructName
-          );
-        }
-      }
-    }
-  }
-
-  /**
-   * Checks that array initializer sizes match the declared dimensions
-   */
-  private checkArraySizeConsistency(
-    varDecl: VarDecl,
-    accept: ValidationAcceptor
-  ): void {
-    if (
-      !this.hasArrayTypeWithSizes(varDecl) ||
-      !this.hasArrayLiteralInit(varDecl)
-    ) {
-      return;
-    }
-
-    const expectedDimensions = this.extractArrayDimensions(
-      varDecl.typeRef.sizes
-    );
-    if (expectedDimensions.length === 0) {
-      return;
-    }
-
-    this.validateArrayLiteralSize(
-      (varDecl.init! as Primary).val as ArrayLiteral,
-      expectedDimensions,
+   */ checkVarDeclTypes(varDecl: VarDecl, accept: ValidationAcceptor) {
+    AssignmentValidationUtils.validateVarDeclTypes(
+      varDecl,
       accept,
-      varDecl
+      this.inferType.bind(this)
     );
-  }
-
-  /**
-   * Checks if the variable declaration has an array type with specified sizes
-   */
-  private hasArrayTypeWithSizes(varDecl: VarDecl): boolean {
-    return !!varDecl.typeRef?.sizes.length;
-  }
-
-  /**
-   * Checks if the variable has an array literal as initializer
-   */
-  private hasArrayLiteralInit(varDecl: VarDecl): boolean {
-    return isPrimary(varDecl.init) && isArrayLiteral(varDecl.init.val);
-  }
-
-  /**
-   * Extracts array dimensions from size expressions
-   */
-  private extractArrayDimensions(sizeExprs: any[]): number[] {
-    const dimensions: number[] = [];
-
-    for (const sizeExpr of sizeExprs) {
-      if (sizeExpr.$type === "Primary" && typeof sizeExpr.val === "number") {
-        dimensions.push(sizeExpr.val);
-      } else {
-        console.log("Skipping size validation: complex size expression.");
-        return [];
-      }
-    }
-
-    return dimensions;
   }
 
   /**
@@ -698,256 +318,26 @@ export class BCSControlLangValidator {
    * @remarks
    * - If the type of either the target or the value cannot be inferred, a warning is reported.
    * - If the type of the value is not assignable to the type of the target, an error is reported.
+   */ checkAssignmentTypes(stmt: AssignmentStmt, accept: ValidationAcceptor) {
+    AssignmentValidationUtils.validateAssignmentTypes(
+      stmt,
+      accept,
+      this.inferType.bind(this),
+      ExpressionUtils.stringifyExpression
+    );
+  }
+
+  checkArrayIndexTypes(expr: any, accept: ValidationAcceptor) {
+    ArrayValidationUtils.checkArrayIndexTypes(
+      expr,
+      accept,
+      this.inferType.bind(this)
+    );
+  }
+
+  /**
+   * Infers the type of an expression by delegating to the type inference utilities
    */
-  checkAssignmentTypes(stmt: AssignmentStmt, accept: ValidationAcceptor) {
-    const leftType = this.inferType(stmt.target, accept);
-    const rightType = this.inferType(stmt.value, accept);
-
-    this.checkArrayIndexTypes(stmt.target, accept);
-    this.checkArrayIndexTypes(stmt.value, accept);
-
-    if (!leftType || !rightType) {
-      accept(
-        "warning",
-        `Cannot infer type for assignment: ${
-          stmt.target.ref.ref?.name
-        } = ${this.stringifyExpression(stmt.value)}`,
-        { node: stmt }
-      );
-      return;
-    }
-
-    if (leftType.startsWith("STRUCT:") && rightType === "STRUCT") {
-      this.validateStructLiteralAssignment(stmt, accept);
-      return;
-    }
-
-    if (!this.isTypeAssignable(rightType, leftType)) {
-      accept(
-        "error",
-        `Type mismatch: Cannot assign "${rightType}" to "${leftType}".`,
-
-        { node: stmt, property: "value" }
-      );
-    }
-  }
-
-  private stringifyExpression(expr: any): string {
-    if (!expr) return "undefined";
-
-    switch (expr.$type) {
-      case "BinExpr":
-        return `${this.stringifyExpression(expr.e1)} ${
-          expr.op
-        } ${this.stringifyExpression(expr.e2)}`;
-      case "NegExpr":
-        return `-${this.stringifyExpression(expr.expr)}`;
-      case "NotExpr":
-        return `!${this.stringifyExpression(expr.expr)}`;
-      case "ParenExpr":
-        return `(${this.stringifyExpression(expr.expr)})`;
-      case "Ref":
-        return expr.ref?.ref?.name ?? "[unresolved ref]";
-      case "EnumMemberLiteral":
-        return `${expr.value.ref?.name}.${expr.member.ref?.name}`;
-
-      case "Primary":
-        if (expr.val) {
-          if (Array.isArray(expr.val?.elements)) {
-            // It's an ArrayLiteral
-            return `[${expr.val.elements
-              .map((e: any) => this.stringifyExpression(e))
-              .join(", ")}]`;
-          }
-          if (Array.isArray(expr.val?.fields)) {
-            // It's a StructLiteral
-            return `{${expr.val.fields
-              .map(
-                (f: any) => `${f.name}: ${this.stringifyExpression(f.value)}`
-              )
-              .join(", ")}}`;
-          }
-          return `${expr.val}`;
-        }
-        return "[Primary]";
-
-      default:
-        return `[${expr.$type}]`;
-    }
-  }
-
-  private validateStructLiteralAssignment(
-    node: VarDecl | AssignmentStmt | Primary,
-    accept: ValidationAcceptor,
-    forceStructName?: string
-  ) {
-    const structInfo = this.extractStructInfo(node, forceStructName);
-    if (!structInfo) return;
-
-    const { structName, valueExpr, structLiteral } = structInfo;
-
-    // lookup struct
-    const structDecl = this.findStructDeclaration(node, structName);
-    if (!structDecl) return;
-
-    this.validateStructFields(
-      structName,
-      structLiteral,
-      structDecl,
-      valueExpr,
-      accept
-    );
-  }
-
-  private extractStructInfo(
-    node: VarDecl | AssignmentStmt | Primary,
-    forceStructName?: string
-  ): { structName: string; valueExpr: any; structLiteral: any } | undefined {
-    let structName: string | undefined;
-    let valueExpr: any;
-
-    if (isVarDecl(node)) {
-      const typeDecl = node.typeRef?.ref?.ref;
-      if (!isStructDecl(typeDecl)) return undefined;
-      structName = typeDecl.name;
-      valueExpr = node.init;
-    } else if (isAssignmentStmt(node)) {
-      structName = node.target.ref?.ref?.name;
-      valueExpr = node.value;
-    } else if (isPrimary(node)) {
-      // case for array elements
-      structName = forceStructName;
-      valueExpr = node;
-    } else {
-      return undefined;
-    }
-
-    if (!structName || !valueExpr) {
-      return undefined;
-    }
-
-    if (!isPrimary(valueExpr)) {
-      return undefined;
-    }
-
-    const structLiteral = valueExpr.val;
-
-    if (!isStructLiteral(structLiteral)) {
-      return undefined;
-    }
-
-    return { structName, valueExpr, structLiteral };
-  }
-
-  private findStructDeclaration(
-    node: VarDecl | AssignmentStmt | Primary,
-    structName: string
-  ): StructDecl | undefined {
-    const controlModel = AstUtils.getContainerOfType(node, isControlModel);
-    if (!controlModel) return undefined;
-
-    return (
-      (controlModel.controlBlock.items.find(
-        (d) => isStructDecl(d) && d.name === structName
-      ) as StructDecl | undefined) ??
-      (controlModel.externTypeDecls.find(
-        (d) => isStructDecl(d) && d.name === structName
-      ) as StructDecl | undefined)
-    );
-  }
-
-  private validateStructFields(
-    structName: string,
-    structLiteral: StructLiteral,
-    structDecl: StructDecl,
-    valueExpr: any,
-    accept: ValidationAcceptor
-  ): void {
-    const expectedFields = new Set(structDecl.fields.map((f) => f.name));
-    const givenFields = new Set(structLiteral.fields.map((f) => f.name));
-
-    // Check for duplicate fields in the literal
-    this.checkDuplicateFields(structName, structLiteral, accept);
-
-    // Check for unexpected fields in the literal
-    let hasUnexpectedField = this.checkUnexpectedFields(
-      structName,
-      givenFields,
-      expectedFields,
-      valueExpr,
-      accept
-    );
-
-    // Check for missing fields
-    if (!hasUnexpectedField) {
-      this.checkMissingFields(
-        structName,
-        givenFields,
-        expectedFields,
-        valueExpr,
-        accept
-      );
-    }
-  }
-
-  private checkDuplicateFields(
-    structName: string,
-    structLiteral: any,
-    accept: ValidationAcceptor
-  ): void {
-    const seenFields = new Set<string>();
-    for (const field of structLiteral.fields) {
-      if (seenFields.has(field.name)) {
-        accept(
-          "error",
-          `Duplicate field '${field.name}' in struct literal for '${structName}'.`,
-          { node: field }
-        );
-      } else {
-        seenFields.add(field.name);
-      }
-    }
-  }
-
-  private checkUnexpectedFields(
-    structName: string,
-    givenFields: Set<string>,
-    expectedFields: Set<string>,
-    valueExpr: any,
-    accept: ValidationAcceptor
-  ): boolean {
-    let hasUnexpectedField = false;
-    for (const given of givenFields) {
-      if (!expectedFields.has(given)) {
-        accept(
-          "error",
-          `Unexpected field '${given}' in struct literal for '${structName}'.`,
-          { node: valueExpr }
-        );
-        hasUnexpectedField = true;
-      }
-    }
-    return hasUnexpectedField;
-  }
-
-  private checkMissingFields(
-    structName: string,
-    givenFields: Set<string>,
-    expectedFields: Set<string>,
-    valueExpr: any,
-    accept: ValidationAcceptor
-  ): void {
-    for (const expected of expectedFields) {
-      if (!givenFields.has(expected)) {
-        accept(
-          "error",
-          `Missing field '${expected}' in struct literal for '${structName}'.`,
-          { node: valueExpr }
-        );
-      }
-    }
-  }
-
   private inferType(expr: any, accept: ValidationAcceptor): string | undefined {
     if (!expr) return undefined;
 
@@ -995,7 +385,6 @@ export class BCSControlLangValidator {
     // 7) Primitive literals (numbers, strings, booleans)
     return inferPrimitiveLiteralType(expr);
   }
-
   /**
    * Infers the type of a reference expression (variable, field access, array indexing)
    */
@@ -1006,36 +395,60 @@ export class BCSControlLangValidator {
     const ref = expr.ref?.ref;
     if (!ref) return undefined;
 
-    let type: string | undefined;
-
-    // Variable reference
-    if (isVarDecl(ref)) {
-      type = inferVarDeclType(ref);
-
-      // First: Apply array indexing if needed
-      if (expr.indices.length > 0 && type) {
-        type = applyArrayIndexing(expr, type, accept);
-        if (!type) return undefined;
-      }
-
-      // Then: Process struct properties
-      for (const prop of expr.properties) {
-        type = inferStructPropertyType(expr, type!, prop, accept);
-        if (!type) return undefined;
-      }
-    }
-    // Datapoint reference
-    else if (isDatapoint(ref)) {
-      type = inferDatapointChannelType(ref, expr);
-    }
-    // Enum declaration reference
-    else if (isEnumDecl(ref)) {
-      type = inferEnumDeclType(ref);
-    }
+    const type = this.inferBasicReferenceType(ref, expr, accept);
 
     // Check array indices if this is an indexed access
     if (ref && expr.indices.length > 0) {
       this.validateArrayIndices(ref, expr, accept);
+    }
+
+    return type;
+  }
+
+  /**
+   * Infers the basic type of a reference before processing properties/indexing
+   */
+  private inferBasicReferenceType(
+    ref: any,
+    expr: any,
+    accept: ValidationAcceptor
+  ): string | undefined {
+    // Variable reference
+    if (isVarDecl(ref)) {
+      return this.processVariableReference(ref, expr, accept);
+    }
+    // Datapoint reference
+    else if (isDatapoint(ref)) {
+      return inferDatapointChannelType(ref, expr);
+    }
+    // Enum declaration reference
+    else if (isEnumDecl(ref)) {
+      return inferEnumDeclType(ref);
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Processes variable reference with array indexing and struct properties
+   */
+  private processVariableReference(
+    ref: any,
+    expr: any,
+    accept: ValidationAcceptor
+  ): string | undefined {
+    let type = inferVarDeclType(ref);
+
+    // First: Apply array indexing if needed
+    if (expr.indices.length > 0 && type) {
+      type = applyArrayIndexing(expr, type, accept);
+      if (!type) return undefined;
+    }
+
+    // Then: Process struct properties
+    for (const prop of expr.properties) {
+      type = inferStructPropertyType(expr, type!, prop, accept);
+      if (!type) return undefined;
     }
 
     return type;
@@ -1068,129 +481,5 @@ export class BCSControlLangValidator {
       // Validate index bounds when possible
       validateArrayIndex(expr, indexExpr, sizeExpr, accept);
     }
-  }
-
-  private inferVarDeclType(varDecl: VarDecl | undefined): string | undefined {
-    if (!varDecl) return undefined;
-    if (!varDecl.typeRef) return undefined;
-
-    let baseType: string | undefined;
-
-    // Built-in primitive types
-    if (varDecl.typeRef.type) {
-      baseType = varDecl.typeRef.type;
-    }
-
-    // Referencing user-defined types
-    if (varDecl.typeRef.ref) {
-      const typeDecl = varDecl.typeRef.ref.ref;
-      if (!typeDecl) return undefined;
-      if (isEnumDecl(typeDecl)) {
-        baseType = `ENUM:${typeDecl.name}`;
-      }
-      if (isFunctionBlockDecl(typeDecl)) {
-        baseType = `FB:${typeDecl.name}`;
-      }
-      if (isStructDecl(typeDecl)) {
-        baseType = `STRUCT:${typeDecl.name}`;
-      }
-      if (isTypeAlias(typeDecl)) {
-        baseType = typeDecl.primitive;
-      }
-    }
-
-    if (!baseType) return undefined;
-
-    if (varDecl.typeRef.sizes.length > 0) {
-      const sizes = varDecl.typeRef.sizes
-        .map((s) =>
-          s.$type === "Primary" && typeof s.val === "number" ? s.val : "?"
-        )
-        .join("][");
-      return `ARRAY<${baseType}>[${sizes}]`;
-    }
-
-    return baseType;
-  }
-
-  private validateArrayLiteralSize(
-    arrayLiteral: ArrayLiteral,
-    expectedDimensions: number[],
-    accept: ValidationAcceptor,
-    node: any
-  ): void {
-    const expectedSize = expectedDimensions[0];
-
-    if (arrayLiteral.elements.length !== expectedSize) {
-      accept(
-        "error",
-        `Array size mismatch: expected ${expectedSize} elements, but got ${arrayLiteral.elements.length}.`,
-        { node }
-      );
-    }
-
-    if (expectedDimensions.length > 1) {
-      // We expect nested arrays
-      for (const element of arrayLiteral.elements) {
-        if (isPrimary(element) && isArrayLiteral(element.val)) {
-          this.validateArrayLiteralSize(
-            element.val,
-            expectedDimensions.slice(1),
-            accept,
-            node
-          );
-        } else {
-          accept(
-            "error",
-            `Expected nested array with ${expectedDimensions.length} dimensions.`,
-            { node }
-          );
-        }
-      }
-    }
-  }
-
-  checkArrayIndexTypes(expr: any, accept: ValidationAcceptor) {
-    if (expr.$type === "Ref" && expr.indices.length > 0) {
-      for (const idxExpr of expr.indices) {
-        const idxType = this.inferType(idxExpr, accept);
-        if (idxType !== "INT") {
-          accept(
-            "error",
-            `Array index must be of type INT, but got "${idxType}".`,
-            { node: idxExpr }
-          );
-        }
-      }
-    }
-  }
-
-  private isTypeAssignable(sourceType: string, targetType: string): boolean {
-    if (sourceType === targetType) return true;
-
-    if (sourceType.startsWith("ARRAY<") && targetType.startsWith("ARRAY<")) {
-      // Extract base type and size
-      const sourceMatch = RegExp(/^ARRAY<(.+?)>\[(.+)\]$/).exec(sourceType);
-      const targetMatch = RegExp(/^ARRAY<(.+?)>\[(.+)\]$/).exec(targetType);
-      if (!sourceMatch || !targetMatch) return false;
-
-      const sourceElement = sourceMatch[1];
-      const sourceSize = sourceMatch[2];
-      const targetElement = targetMatch[1];
-      const targetSize = targetMatch[2];
-
-      // Compare both element types and sizes
-      return sourceElement === targetElement && sourceSize === targetSize;
-    }
-
-    if (sourceType === "INT" && targetType === "REAL") {
-      return true;
-    }
-
-    if (sourceType.startsWith("ENUM:") && targetType === sourceType) {
-      return true;
-    }
-
-    return false;
   }
 }

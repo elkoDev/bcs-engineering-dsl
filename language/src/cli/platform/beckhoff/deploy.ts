@@ -13,7 +13,6 @@ export function deploy(opts: DeployOptions) {
     console.error(chalk.red(`❌ Cannot find ${exe} in your PATH.`));
     process.exit(1);
   }
-
   const args = [
     "--workspace",
     opts.workspace,
@@ -24,6 +23,8 @@ export function deploy(opts: DeployOptions) {
     "--plc-name",
     opts.plcName,
     ...(opts.templatePath ? ["--template-path", opts.templatePath] : []),
+    ...(opts.adsUsername ? ["--ads-username", opts.adsUsername] : []),
+    ...(opts.adsPassword ? ["--ads-password", opts.adsPassword] : []),
   ].filter((arg): arg is string => typeof arg === "string");
 
   console.log(chalk.gray(`[beckhoff] ${tcPath} ${args.join(" ")}`));

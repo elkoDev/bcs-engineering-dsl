@@ -24,6 +24,8 @@ export interface DeployOptions {
   plcName: string;
   templatePath?: string;
   tcExe?: string;
+  adsUsername?: string;
+  adsPassword?: string;
   // Siemens/KNX could have their options here
 }
 
