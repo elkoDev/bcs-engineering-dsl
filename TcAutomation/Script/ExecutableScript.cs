@@ -190,8 +190,8 @@ namespace TcAutomation.Script
             Type? dteType = Type.GetTypeFromProgID(_config.ProgId, throwOnError: true);
             var dte = (DTE2)Activator.CreateInstance(dteType!, true)!;
 
-            dte.SuppressUI = false;
-            dte.MainWindow.Visible = true;
+            dte.SuppressUI = true;
+            dte.MainWindow.Visible = false;
             dte.UserControl = false;
 
             return dte;
@@ -208,7 +208,7 @@ namespace TcAutomation.Script
             sln.Create(_config.SolutionPath, _config.SolutionName);
             sln.SaveAs(Path.Combine(_config.SolutionPath, $"{_config.SolutionName}.sln"));
 
-            Console.WriteLine("Solution created.");
+            Console.WriteLine("✅ Solution created.");
 
             return sln;
         }
