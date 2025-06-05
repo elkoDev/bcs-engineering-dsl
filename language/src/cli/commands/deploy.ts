@@ -14,6 +14,8 @@ export async function deployAction(
     solutionName: string;
     projectName: string;
     plcName: string;
+    adsUsername?: string;
+    adsPassword?: string;
   }
 ) {
   // 1) generate
@@ -21,7 +23,6 @@ export async function deployAction(
     destination: opts.destination,
     quiet: opts.quiet,
   });
-
   // 2) deploy
   console.log(chalk.blue(`\nDeploying to ${platform}…`));
   deployTo(platform, {
@@ -31,5 +32,7 @@ export async function deployAction(
     solutionName: opts.solutionName,
     projectName: opts.projectName,
     plcName: opts.plcName,
+    adsUsername: opts.adsUsername,
+    adsPassword: opts.adsPassword,
   });
 }

@@ -77,10 +77,9 @@ Module:
 ;
 
 NetworkSettings:
-    'network' '{'
-        'target:' target=StringLiteral          // e.g. "CX5140-001"
+    'network' '{'        
+        'hostname:' hostname=StringLiteral          // e.g. "CX-301714"
         'ipAddress:' ipAddress=StringLiteral    // e.g. "192.168.1.100" TODO: IPLiteral
-        'amsNetId:' amsNetId=StringLiteral      // e.g. "192.168.1.100.1.1" 
     '}'
 ;
 

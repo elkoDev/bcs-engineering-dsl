@@ -18,7 +18,6 @@ export function defineBeckhoffSubcommands(): Command {
         quiet: opts.quiet,
       });
     });
-
   beckhoff
     .command("deploy")
     .argument("<file>", "BCS control file")
@@ -27,6 +26,16 @@ export function defineBeckhoffSubcommands(): Command {
     .option("--project-name <name>", "Project name", "MyTwinCATProject")
     .option("--plc-name <name>", "PLC project", "MyPlcProject")
     .option("--tc-exe <path>", "TcAutomation exe")
+    .option(
+      "--ads-username <username>",
+      "ADS username for remote connection",
+      "Administrator"
+    )
+    .option(
+      "--ads-password <password>",
+      "ADS password for remote connection",
+      "1"
+    )
     .option("-d, --destination <dir>")
     .option("-q, --quiet", "suppress output", false)
     .action(async (file, opts) => {
@@ -36,6 +45,8 @@ export function defineBeckhoffSubcommands(): Command {
         projectName: opts.projectName,
         plcName: opts.plcName,
         tcExe: opts.tcExe,
+        adsUsername: opts.adsUsername,
+        adsPassword: opts.adsPassword,
         destination: opts.destination,
         quiet: opts.quiet,
       });

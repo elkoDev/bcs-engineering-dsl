@@ -16,7 +16,6 @@ export class TcConfigGenerator {
     this.controlModel = controlModel;
     this.hardwareModel = hardwareModel;
   }
-
   /**
    * Extracts the network settings from the hardware model, if present.
    */
@@ -24,9 +23,8 @@ export class TcConfigGenerator {
     for (const def of this.hardwareModel.hardwareDefinitions) {
       if (def.$type === "NetworkSettings") {
         return {
-          target: def.target?.replace(/^"|"$/g, ""),
+          hostname: def.hostname?.replace(/^"|"$/g, ""),
           ipAddress: def.ipAddress?.replace(/^"|"$/g, ""),
-          amsNetId: def.amsNetId?.replace(/^"|"$/g, ""),
         };
       }
     }

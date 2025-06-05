@@ -7,18 +7,11 @@ using TcAutomation.Script;
 
 namespace TcAutomation.Manager.System
 {
-    internal class SystemProjectManager
+    internal class SystemProjectManager(ITcSysManager4 systemManager, ScriptConfig config, DTE2 dte)
     {
-        private ITcSysManager4 _systemManager;
-        private readonly ScriptConfig _config;
-        private readonly DTE2 _dte;
-
-        public SystemProjectManager(ITcSysManager4 systemManager, ScriptConfig config, DTE2 dte)
-        {
-            _systemManager = systemManager;
-            _config = config;
-            _dte = dte;
-        }
+        private readonly ITcSysManager4 _systemManager = systemManager;
+        private readonly ScriptConfig _config = config;
+        private readonly DTE2 _dte = dte;
 
         /// <summary>
         /// Builds the solution before linking to ensure all PLC instance variables are recognized.
@@ -31,11 +24,9 @@ namespace TcAutomation.Manager.System
             bool buildSucceeded = (_dte.Solution.SolutionBuild.LastBuildInfo == 0
                                    && state == vsBuildState.vsBuildStateDone);
             return buildSucceeded;
-        }        public void LinkVariables(HardwareConfig hw)
+        }
+        public void LinkVariables(HardwareConfig hw)
         {
-            // Step 1: Set target NetId if specified
-            SetTargetNetId(hw.Network);
-            
             Task.Run(() => WindowHelper.WaitAndCloseTcShellPopup());
             BuildProject();
 
@@ -43,35 +34,13 @@ namespace TcAutomation.Manager.System
             {
                 string ioDirectionString = $"{mapping.Direction}s";
                 string source = $"{TcShortcut.TIPC.GetShortcutKey()}^{_config.PlcProjectName}^{_config.PlcProjectName} Instance^MainPlcTask {ioDirectionString}^Main.{mapping.PlcVar}";
-                
-                // Discover the actual device structure instead of hardcoding names
+
                 string destination = FindIoDestinationPath(mapping);
 
                 _systemManager.LinkVariables(source, destination);
                 Console.WriteLine($"\t- Linked {mapping.PlcVar} to {destination}");
             }
-
             Console.WriteLine($"✅ Variables linked to hardware configuration.");
-        }
-
-        /// <summary>
-        /// Sets the target NetId for remote device connection if specified in hardware config
-        /// </summary>
-        private void SetTargetNetId(Network network)
-        {
-            if (!string.IsNullOrWhiteSpace(network.AmsNetId))
-            {
-                try
-                {
-                    _systemManager.SetTargetNetId(network.AmsNetId);
-                    Console.WriteLine($"\t- Set target NetId: {network.AmsNetId}");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"\t- Warning: Could not set target NetId '{network.AmsNetId}': {ex.Message}");
-                    Console.WriteLine("\t- Continuing with local configuration.");
-                }
-            }
         }
 
         /// <summary>
@@ -98,7 +67,7 @@ namespace TcAutomation.Manager.System
             }
 
             // Find the box (terminal coupler)
-            ITcSmTreeItem box = null;
+            ITcSmTreeItem? box = null;
             for (int i = 1; i <= device.ChildCount; i++)
             {
                 var child = device.Child[i];
@@ -116,7 +85,7 @@ namespace TcAutomation.Manager.System
 
             // Build the destination path using actual TwinCAT names
             string destination = $"{TcShortcut.TIID.GetShortcutKey()}^{device.Name}^{box.Name}^Term {mapping.ModuleSlot} ({mapping.ModuleProduct})^{mapping.Link}";
-            
+
             return destination;
         }
     }

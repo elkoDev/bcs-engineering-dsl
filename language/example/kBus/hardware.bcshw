@@ -99,7 +99,6 @@ controller KBusController {
 }    
 
 network {
-    target: "CX-301714"
+    hostname: "CX-301714"
     ipAddress: "169.254.225.85"
-    amsNetId: "5.48.23.20.1.1"
 }

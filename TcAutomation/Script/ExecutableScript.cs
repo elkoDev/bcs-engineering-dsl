@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Text.Json;
 using TCatSysManagerLib;
+using TcAutomation.Manager.Ads;
 using TcAutomation.Manager.Io;
 using TcAutomation.Manager.Plc;
 using TcAutomation.Manager.System;
@@ -20,6 +21,7 @@ namespace TcAutomation.Script
         private IoProjectManager? _ioProjectManager = null;
         private HardwareConfig? _hardwareConfig = null;
         private SystemProjectManager? _systemProjectManager = null;
+        private AdsManager? _adsManager = null;
         private readonly ScriptConfig _config;
 
         [SupportedOSPlatform("windows")]
@@ -161,6 +163,10 @@ namespace TcAutomation.Script
                 _plcProjectManager.LinkPlcInstanceWithTask();
                 //_plcProjectManager.SetTaskCycleTime(11000); // 11ms
 
+                // Setup ADS route
+                _adsManager = new AdsManager(_systemManager);
+                _adsManager.SetupAdsRoute(_hardwareConfig.Network, _config.AdsUsername, _config.AdsPassword);
+
                 // Setup IO Project
                 _ioProjectManager = new IoProjectManager(_systemManager);
                 _ioProjectManager.CreateIoFromHardwareConfig(_hardwareConfig!);
@@ -183,6 +189,8 @@ namespace TcAutomation.Script
                 Console.WriteLine($"❌ Error: {ex.Message}");
             }
         }
+
+
 
         [SupportedOSPlatform("windows")]
         private DTE2 StartHiddenDte()

@@ -156,17 +156,12 @@ export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenP
     if (isNetworkSettings(node)) {
       acceptor({
         node,
-        property: "target",
+        property: "hostname",
         type: SemanticTokenTypes.string,
       });
       acceptor({
         node,
         property: "ipAddress",
-        type: SemanticTokenTypes.string,
-      });
-      acceptor({
-        node,
-        property: "amsNetId",
         type: SemanticTokenTypes.string,
       });
     }
