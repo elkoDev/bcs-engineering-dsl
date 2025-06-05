@@ -5,3 +5,4 @@
 /language/test/generating/output
 /.vs
 /language/example/generated
+/language/example/kBus/generated
