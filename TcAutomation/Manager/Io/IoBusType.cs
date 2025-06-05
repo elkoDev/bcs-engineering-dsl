@@ -4,6 +4,7 @@
     {
         Ethercat,
         Profinet,
-        Profibus
+        Profibus,
+        KBus
     }
 }

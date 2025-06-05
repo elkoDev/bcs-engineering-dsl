@@ -1,4 +1,4 @@
-﻿namespace TcAutomation.Manager.Io
+﻿namespace TcAutomation.Manager.Io.Ethercat
 {
     internal static class IoMappings
     {

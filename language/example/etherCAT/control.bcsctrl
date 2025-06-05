@@ -31,7 +31,7 @@ extern functionblock FB_DALI207QueryFailureStatus from Tc3_DALI {
     }
 }
 
-control MainController {
+control EtherCATController {
 
     enum OperatingMode { OFF, ECO, COMFORT }
     struct Temperatures {
