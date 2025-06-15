@@ -1,0 +1,14 @@
+control InvalidEnumTestController {
+
+    unit TestUnit {
+        var wrongSignalDataType : INT;
+        on_rising(wrongSignalDataType) {
+
+        }
+
+        on_falling(wrongSignalDataType) {
+        
+        }
+    }
+}
+ 

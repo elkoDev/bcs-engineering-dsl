@@ -1,0 +1,41 @@
+bus FieldBus type EtherCAT {
+    masterDevice: "Device 1 (EtherCAT)"
+    box Coupler {
+        product: EK1100
+        module IOModule_AI1 {
+            product: EL3074
+            position: 1
+        }
+        module IOModule_DI1 {
+            product: EL1008
+            position: 2
+        }
+        module IOModule_DO1 {
+            product: EL2024
+            position: 3
+        }
+        module IOModule_AO1 {
+            product: EL4024
+            position: 4
+        }
+        module IOModule_DALI {
+            product: EL6821
+            position: 5
+        }
+    }
+}
+
+controller InvalidEnumTestController {
+    portgroup DigitalInputs {
+        module: IOModule_DI1
+        ioType: DIGITAL_INPUT
+        channels: 8
+    }
+
+    datapoint windowContact {
+        portgroup: DigitalInputs
+        channels: {
+            channel value: BOOL link "Channel 1^Input"
+        }
+    }
+}
