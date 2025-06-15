@@ -28,7 +28,7 @@ control ValidTestController {
         }
     }
 
-        functionblock HeatingLogicFB {
+    functionblock HeatingLogicFB {
         inputs {
             var iTemp: REAL;
             var iWindow: BOOL;

@@ -368,7 +368,8 @@ export class TypeConverter {
               `,
               { appendNewLineIfNotEmpty: true }
             )}
-        END_VAR        VAR
+        END_VAR
+        VAR
             ${joinToNode(
               locals,
               (local) =>

@@ -8,12 +8,15 @@ control FunctionBlockTestController {
         outputs {
             var oOutput: BOOL;
         }
+        locals {
+            var iInputNegated: BOOL;
+        }
         logic {
             oOutput = iInput;
             after T#1s if (oOutput == true) then {
                 oOutput = false;
             }
-            on_rising(iInput2) {
+            on_rising(iInput) {
                 oOutput = true;
             }
             on_falling(iInput) {
