@@ -307,6 +307,35 @@ describe("BCS Control Validation Tests", () => {
     }
   });
 
+  test("Detect Invalid Edge Detection", async () => {
+    const services = createBcsEngineeringServices(NodeFileSystem);
+
+    const [mainDoc, allDocs] = await extractDocuments(
+      path.join(
+        __dirname,
+        "files",
+        "invalid_edge_detection",
+        "control_edge_detection.bcsctrl"
+      ),
+      services.bcsControl,
+      false
+    );
+
+    const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
+    const diagString = allDiagnostics.map((d) => d.message).join("\n");
+
+    expect(allDiagnostics.length).toBe(2);
+
+    const expectedErrors = [
+      "Signal in 'on_rising' must be of type BOOL, but got 'INT'.",
+      "Signal in 'on_falling' must be of type BOOL, but got 'INT'.",
+    ];
+
+    for (const expected of expectedErrors) {
+      expect(diagString).toMatch(expected);
+    }
+  });
+
   test("No errors in valid library call", async () => {
     const services = createBcsEngineeringServices(NodeFileSystem);
 

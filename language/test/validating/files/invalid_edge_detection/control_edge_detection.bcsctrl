@@ -1,4 +1,4 @@
-control InvalidEnumTestController {
+control InvalidEdgeDetectionTestController {
 
     unit TestUnit {
         var wrongSignalDataType : INT;
