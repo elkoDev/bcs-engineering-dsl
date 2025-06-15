@@ -5,6 +5,8 @@ import {
   StructDecl,
   FunctionBlockDecl,
   Expr,
+  isOnRisingEdgeStmt,
+  isOnFallingEdgeStmt,
 } from "../../../language/generated/ast.js";
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
@@ -144,6 +146,141 @@ export class TypeConverter {
     fs.writeFileSync(filePath, structContent);
     return filePath;
   }
+  // Helper method to collect function block instances recursively
+  private collectFBInstances(
+    stmts: any[],
+    fbInstanceMap: Map<any, string>,
+    fbAfterMap: Map<any, string>,
+    rTrigCounter: { value: number },
+    fTrigCounter: { value: number },
+    tonCounter: { value: number }
+  ): void {
+    for (const stmt of stmts) {
+      switch (stmt.$type) {
+        case "OnRisingEdgeStmt": {
+          if (!fbInstanceMap.has(stmt)) {
+            fbInstanceMap.set(stmt, `r_TRIGInstance${rTrigCounter.value++}`);
+          }
+          this.collectFBInstances(
+            stmt.stmts ?? [],
+            fbInstanceMap,
+            fbAfterMap,
+            rTrigCounter,
+            fTrigCounter,
+            tonCounter
+          );
+          break;
+        }
+        case "OnFallingEdgeStmt": {
+          if (!fbInstanceMap.has(stmt)) {
+            fbInstanceMap.set(stmt, `f_TRIGInstance${fTrigCounter.value++}`);
+          }
+          this.collectFBInstances(
+            stmt.stmts ?? [],
+            fbInstanceMap,
+            fbAfterMap,
+            rTrigCounter,
+            fTrigCounter,
+            tonCounter
+          );
+          break;
+        }
+        case "AfterStmt": {
+          if (!fbAfterMap.has(stmt)) {
+            fbAfterMap.set(stmt, `tonAfter${tonCounter.value++}`);
+          }
+          this.collectFBInstances(
+            stmt.stmts ?? [],
+            fbInstanceMap,
+            fbAfterMap,
+            rTrigCounter,
+            fTrigCounter,
+            tonCounter
+          );
+          break;
+        }
+        case "IfStmt": {
+          this.collectFBInstances(
+            stmt.stmts ?? [],
+            fbInstanceMap,
+            fbAfterMap,
+            rTrigCounter,
+            fTrigCounter,
+            tonCounter
+          );
+          for (const elseIf of stmt.elseIfStmts ?? []) {
+            this.collectFBInstances(
+              elseIf.stmts ?? [],
+              fbInstanceMap,
+              fbAfterMap,
+              rTrigCounter,
+              fTrigCounter,
+              tonCounter
+            );
+          }
+          if (stmt.elseStmt) {
+            this.collectFBInstances(
+              stmt.elseStmt.stmts ?? [],
+              fbInstanceMap,
+              fbAfterMap,
+              rTrigCounter,
+              fTrigCounter,
+              tonCounter
+            );
+          }
+          break;
+        }
+        case "WhileStmt":
+        case "ForStmt": {
+          this.collectFBInstances(
+            stmt.stmts ?? [],
+            fbInstanceMap,
+            fbAfterMap,
+            rTrigCounter,
+            fTrigCounter,
+            tonCounter
+          );
+          break;
+        }
+        case "SwitchStmt": {
+          for (const c of stmt.cases ?? []) {
+            this.collectFBInstances(
+              c.stmts ?? [],
+              fbInstanceMap,
+              fbAfterMap,
+              rTrigCounter,
+              fTrigCounter,
+              tonCounter
+            );
+          }
+          if (stmt.default) {
+            this.collectFBInstances(
+              stmt.default.stmts ?? [],
+              fbInstanceMap,
+              fbAfterMap,
+              rTrigCounter,
+              fTrigCounter,
+              tonCounter
+            );
+          }
+          break;
+        }
+        default: {
+          if (stmt.stmts) {
+            this.collectFBInstances(
+              stmt.stmts,
+              fbInstanceMap,
+              fbAfterMap,
+              rTrigCounter,
+              fTrigCounter,
+              tonCounter
+            );
+          }
+          break;
+        }
+      }
+    }
+  }
 
   writeFunctionBlock(fbDecl: FunctionBlockDecl): string[] {
     const files: string[] = [];
@@ -154,7 +291,7 @@ export class TypeConverter {
     const locals = getLocals(fbDecl);
     const logic = getLogic(fbDecl);
 
-    // Collect all loop variables from the logic block
+    // Collect all loop variables from the logic block    // Collect all loop variables from the logic block
     const loopVars = new Map<string, { type: string; init?: Expr }>();
     this.collectLoopVars(logic?.stmts ?? [], loopVars);
     // Filter out loop vars already declared as locals
@@ -162,6 +299,42 @@ export class TypeConverter {
     const loopVarsToDeclare = Array.from(loopVars.entries()).filter(
       ([name]) => !localNames.has(name)
     );
+    const fbStatements = logic?.stmts ?? [];
+
+    // Create instance mapping for this function block (isolated from global scope)
+    const fbInstanceMap = new Map<any, string>();
+    const fbAfterMap = new Map<any, string>();
+    // Collect edge detection instances (R_TRIG, F_TRIG) and after instances (TON)
+    const rTrigCounter = { value: 1 };
+    const fTrigCounter = { value: 1 };
+    const tonCounter = { value: 1 };
+
+    this.collectFBInstances(
+      fbStatements,
+      fbInstanceMap,
+      fbAfterMap,
+      rTrigCounter,
+      fTrigCounter,
+      tonCounter
+    );
+
+    // Create arrays for declarations
+    const fbInstanceDecls: Array<{ instanceName: string; fbType: string }> = [];
+    const afterStmtDecls: Array<{ tonName: string; ptValue: any }> = [];
+
+    // Process edge detection instances
+    for (const [stmt, instanceName] of fbInstanceMap) {
+      if (isOnRisingEdgeStmt(stmt)) {
+        fbInstanceDecls.push({ instanceName, fbType: "R_TRIG" });
+      } else if (isOnFallingEdgeStmt(stmt)) {
+        fbInstanceDecls.push({ instanceName, fbType: "F_TRIG" });
+      }
+    }
+
+    // Process after statements
+    for (const [stmt, tonName] of fbAfterMap) {
+      afterStmtDecls.push({ tonName, ptValue: stmt.time });
+    }
 
     // Write declaration file
     const declFilePath = path.join(
@@ -199,36 +372,81 @@ export class TypeConverter {
         VAR
             ${joinToNode(
               locals,
-              (local) => expandToNode`
-                ${local.name}: ${convertTypeRefToST(local.typeRef)}${
-                local.init ? ` := ${this.convertExprToST(local.init)}` : ""
-              };
-              `,
+              (local) =>
+                expandToNode`${local.name}: ${convertTypeRefToST(
+                  local.typeRef
+                )}${
+                  local.init ? ` := ${this.convertExprToST(local.init)}` : ""
+                };`,
               { appendNewLineIfNotEmpty: true }
-            )}
-            ${joinToNode(
-              loopVarsToDeclare,
-              ([name, { type, init }]) => expandToNode`
-                ${name}: ${type}${
-                init ? ` := ${this.convertExprToST(init)}` : ""
-              };
-              `,
-              { appendNewLineIfNotEmpty: true }
-            )}
+            )}${joinToNode(
+        loopVarsToDeclare,
+        ([name, { type, init }]) =>
+          expandToNode`${name}: ${type}${
+            init ? ` := ${this.convertExprToST(init)}` : ""
+          };`,
+        { appendNewLineIfNotEmpty: true }
+      )}${joinToNode(
+        fbInstanceDecls,
+        (decl: { instanceName: string; fbType: string }) =>
+          expandToNode`${decl.instanceName}: ${decl.fbType}; (* Function block instance *)`,
+        { appendNewLineIfNotEmpty: true }
+      )}${joinToNode(
+        afterStmtDecls,
+        (decl: { tonName: string; ptValue: any }) =>
+          expandToNode`${decl.tonName}: TON := (PT := ${decl.ptValue}); (* Function block instance *)`,
+        { appendNewLineIfNotEmpty: true }
+      )}
         END_VAR
       `
     );
     fs.writeFileSync(declFilePath, declContent);
-    files.push(declFilePath);
-
-    // Write implementation file
+    files.push(declFilePath); // Write implementation file
     const implFilePath = path.join(
       this.destination,
       "FunctionBlocks",
       `${fbDecl.name}_impl.st`
     );
-    const implContent = (logic?.stmts || [])
-      .map((stmt) => this.convertStatementToST(stmt, 0).trimEnd())
+    // Create a custom converter function that uses the function block's instance mapping
+    const convertFBStatementToST = (stmt: any, indent: number): string => {
+      switch (stmt.$type) {
+        case "OnRisingEdgeStmt": {
+          const rTrigInstance = fbInstanceMap.get(stmt);
+          if (!rTrigInstance) return "";
+          const rTrigSignal = this.convertExprToST(stmt.signal);
+          const rTrigBody = (stmt.stmts ?? [])
+            .map((s: any) => convertFBStatementToST(s, indent + 1))
+            .join("\n");
+          return `${rTrigInstance}(CLK := ${rTrigSignal});\nIF ${rTrigInstance}.Q THEN\n${rTrigBody}\nEND_IF;`;
+        }
+
+        case "OnFallingEdgeStmt": {
+          const fTrigInstance = fbInstanceMap.get(stmt);
+          if (!fTrigInstance) return "";
+          const fTrigSignal = this.convertExprToST(stmt.signal);
+          const fTrigBody = (stmt.stmts ?? [])
+            .map((s: any) => convertFBStatementToST(s, indent + 1))
+            .join("\n");
+          return `${fTrigInstance}(CLK := ${fTrigSignal});\nIF ${fTrigInstance}.Q THEN\n${fTrigBody}\nEND_IF;`;
+        }
+
+        case "AfterStmt": {
+          const tonInstance = fbAfterMap.get(stmt);
+          if (!tonInstance) return "";
+          const condition = this.convertExprToST(stmt.condition);
+          const afterBody = (stmt.stmts ?? [])
+            .map((s: any) => convertFBStatementToST(s, indent + 1))
+            .join("\n");
+          return `${tonInstance}(IN := ${condition});\nIF ${tonInstance}.Q THEN\n${afterBody}\n    ${tonInstance}(IN := FALSE);\nEND_IF`;
+        }
+
+        default:
+          // For all other statements, use the default converter
+          return this.convertStatementToST(stmt, indent);
+      }
+    };
+    const implContent = (logic?.stmts ?? [])
+      .map((stmt) => convertFBStatementToST(stmt, 0).trimEnd())
       .join("\n");
     fs.writeFileSync(implFilePath, implContent);
     files.push(implFilePath);

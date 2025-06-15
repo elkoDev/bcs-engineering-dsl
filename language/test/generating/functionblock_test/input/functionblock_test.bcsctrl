@@ -8,8 +8,20 @@ control FunctionBlockTestController {
         outputs {
             var oOutput: BOOL;
         }
+        locals {
+            var iInputNegated: BOOL;
+        }
         logic {
             oOutput = iInput;
+            after T#1s if (oOutput == true) then {
+                oOutput = false;
+            }
+            on_rising(iInput) {
+                oOutput = true;
+            }
+            on_falling(iInput) {
+                oOutput = false;
+            }
         }
     }
 
@@ -22,5 +34,9 @@ control FunctionBlockTestController {
         var output2: BOOL;
         use SimpleLogicFB(iInput: input, iInput2: input2) -> { oOutput: output };
         use SimpleLogicFB(iInput: input3, iInput2: input4) -> { oOutput: output2 };
+
+        on_falling(input) {
+            output = false;
+        }
     }
 }
