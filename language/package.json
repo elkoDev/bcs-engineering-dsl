@@ -9,7 +9,8 @@
     "bin",
     "out",
     "syntaxes",
-    "icon.png"
+    "icon.png",
+    "language-configuration.json"
   ],
   "categories": [
     "Programming Languages"
