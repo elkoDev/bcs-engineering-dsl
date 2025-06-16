@@ -92,7 +92,7 @@ control KBusController {
         }
     }
     unit DelayedStartup once when (now >= TOD#07:05:00) {
-        after T#5m if (true) then {
+        after T#5m if (true) {
             heater = true;
             Lights.Room1 = false;
         }

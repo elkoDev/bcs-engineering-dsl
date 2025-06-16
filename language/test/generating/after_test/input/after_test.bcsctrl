@@ -4,12 +4,12 @@ control AfterTestController {
 
     unit AfterUnit {
         var x: INT;
-        after T#5s if (conditionA) then {
+        after T#5s if (conditionA) {
             conditionB = true;
             conditionA = false;
         }
 
-        after T#10s if (conditionB == true) then {
+        after T#10s if (conditionB == true) {
             conditionA = true;
             conditionB = false;
         }
