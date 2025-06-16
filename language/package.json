@@ -114,7 +114,6 @@
     ]
   },
   "activationEvents": [
-    "onLanguage:bcs-engineering",
     "onLanguage:bcs-control-lang",
     "onLanguage:bcs-hardware-lang"
   ],
