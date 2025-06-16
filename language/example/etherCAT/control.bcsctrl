@@ -4,9 +4,21 @@ import library Tc3_EventLogger;
 extern type BYTE as INT;
 extern type UDINT as INT;
 extern type DWORD as INT;
-extern enum E_DALIAddressType { Short, Group, Broadcast, BroadcastUnaddr }
-extern enum E_DALICommandPriority { High, MiddleHigh, Middle, MiddleLow, Low, Unknown }
-extern struct ST_DALIChangeAddressList { 
+extern enum E_DALIAddressType {
+    Short,
+    Group,
+    Broadcast,
+    BroadcastUnaddr
+}
+extern enum E_DALICommandPriority {
+    High,
+    MiddleHigh,
+    Middle,
+    MiddleLow,
+    Low,
+    Unknown
+}
+extern struct ST_DALIChangeAddressList {
     nOldAddress       : BYTE,
     nNewAddress       : BYTE,
     nRandomAddress    : UDINT,
@@ -18,27 +30,29 @@ extern struct I_TcMessage {
 
 extern functionblock FB_DALI207QueryFailureStatus from Tc3_DALI {
     inputs {
-        var bStart : BOOL;
-        var nAddress : BYTE;
-        var eAddressType : E_DALIAddressType;
-        var eCommandPriority  : E_DALICommandPriority;
+        var bStart: BOOL;
+        var nAddress: BYTE;
+        var eAddressType: E_DALIAddressType;
+        var eCommandPriority: E_DALICommandPriority;
     }
     outputs {
-        var bError : BOOL;
-        var ipResultMessage : I_TcMessage;
-        var bBusy : BOOL;
-        var nFailureStatus : BYTE;
+        var bError: BOOL;
+        var ipResultMessage: I_TcMessage;
+        var bBusy: BOOL;
+        var nFailureStatus: BYTE;
     }
 }
 
 control EtherCATController {
-
-    enum OperatingMode { OFF, ECO, COMFORT }
+    enum OperatingMode {
+        OFF,
+        ECO,
+        COMFORT
+    }
     struct Temperatures {
         Room1: REAL,
         Room2: REAL
     }
-
     var mode: OperatingMode = OperatingMode.OFF;
     var lightLevel: INT = 0;
     var heater: BOOL;
@@ -46,7 +60,6 @@ control EtherCATController {
     var heatingEnabled: BOOL;
     var arrayOfLights: BOOL[10];
     var temperaturesArray: Temperatures[10];
-
     functionblock HeatingLogic {
         inputs {
             var iTemp: REAL;
@@ -56,25 +69,23 @@ control EtherCATController {
             var oHeating: BOOL;
         }
         logic {
-            if (iMode == OperatingMode.COMFORT && iTemp < 21.0) {
+            if (iMode == OperatingMode.COMFORT && iTemp < 21.0){
                 oHeating = true;
-            } else if (iMode == OperatingMode.ECO && iTemp < 18.0) {
+            } else if(iMode == OperatingMode.ECO && iTemp < 18.0){
                 oHeating = true;
             } else {
                 oHeating = false;
             }
         }
     }
-
     unit ToggleLightsOnButtonPress {
-        on_rising(Buttons.Room1) {
+        on_rising(Buttons.Room1){
             Lights.Room1 = !Lights.Room1;
         }
-        on_rising(Buttons.Room2) {
+        on_rising(Buttons.Room2){
             Lights.Room2 = !Lights.Room2;
         }
     }
-
     unit TurnOnLightsScheduled at TOD#06:30:00 {
         Lights.Room1 = true;
         arrayOfLights[0] = true;
@@ -83,34 +94,30 @@ control EtherCATController {
         temperaturesArray[0].Room1 = 20.5;
         temperaturesArray[1].Room2 = 22.0;
     }
-
     unit RetryHeaterStartup when (mode != OperatingMode.OFF) {
         var retries: INT = 0;
-        while (retries < 3) {
+        while (retries < 3){
             heater = true;
             retries = retries + 1;
-            if (retries == 2) {
+            if (retries == 2){
                 break;
             }
         }
     }
-
     unit DimLightsGradually {
-        for (var i: INT = 0 to 5 by 1) {
+        for (var i: INT = 0 to 5 by 1){
             lightLevel = i * 20;
-            if (i == 2) {
+            if (i == 2){
                 continue;
             }
         }
     }
-
     unit ControlHeating {
         use HeatingLogic(iTemp: temperaturesArray[0].Room1, iMode: mode) -> heatingEnabled;
         heater = heatingEnabled;
     }
-
     unit AdjustLightLevelByMode {
-        switch (mode) {
+        switch (mode){
             case OperatingMode.COMFORT: {
                 lightLevel = 100;
             }
@@ -122,66 +129,45 @@ control EtherCATController {
             }
         }
     }
-
     unit MorningPresenceCheck {
-        if (now >= TOD#07:00:00) {
+        if (now >= TOD#07:00:00){
             Lights.Room2 = true;
         }
     }
-
     unit DelayedStartup once when (now >= TOD#07:05:00) {
-        after T#5m if (true) then {
+        after T#5m if(true){
             heater = true;
             Lights.Room1 = false;
         }
     }
-
     unit UseDaliLibrary {
         var daliAddress: E_DALIAddressType;
         var daliPriority: E_DALICommandPriority = E_DALICommandPriority.High;
-        var addressList: ST_DALIChangeAddressList = {
-            nOldAddress: 1,
-            nNewAddress: 2,
-            nRandomAddress: 3,
-            nErrors: 0
-        };
+        var addressList: ST_DALIChangeAddressList = { nOldAddress: 1, nNewAddress: 2, nRandomAddress: 3, nErrors: 0 };
         var status: BOOL;
         var resultMessage: I_TcMessage;
         var failureStatus: BYTE;
-        use FB_DALI207QueryFailureStatus(
-            bStart: true,
-            nAddress: 1,
-            eAddressType: daliAddress,
-            eCommandPriority: daliPriority
-        ) -> {
+        use FB_DALI207QueryFailureStatus(bStart: true, nAddress: 1, eAddressType: daliAddress, eCommandPriority: daliPriority) -> {
             bBusy: status,
             bError: status,
             nFailureStatus: failureStatus,
             ipResultMessage: resultMessage
         };
-        use FB_DALI207QueryFailureStatus(
-            bStart: false,
-            nAddress: 2,
-            eAddressType: daliAddress,
-            eCommandPriority: daliPriority
-        ) -> {
+        use FB_DALI207QueryFailureStatus(bStart: false, nAddress: 2, eAddressType: daliAddress, eCommandPriority: daliPriority) -> {
             bBusy: status,
             bError: status,
             nFailureStatus: failureStatus,
             ipResultMessage: resultMessage
         };
     }
-
     unit ButtonReleaseHandler {
-        on_falling(Buttons.Room2) {
+        on_falling(Buttons.Room2){
             Lights.Room2 = false;
         }
     }
-
     unit ValidateSensorDistance {
         var distance: INT = UltrasonicSensor.Distance;
-
-        if (!UltrasonicSensor.Error) {
+        if (!UltrasonicSensor.Error){
             lightLevel = distance;
         }
     }

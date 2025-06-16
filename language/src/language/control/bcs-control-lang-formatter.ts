@@ -59,8 +59,7 @@ export class BCSControlLangFormatter extends AbstractFormatter {
       return true;
     }
     return false;
-  }
-  private formatStatements(node: AstNode): boolean {
+  }  private formatStatements(node: AstNode): boolean {
     if (ast.isAssignmentStmt(node)) {
       this.formatAssignmentStmt(node);
       return true;
@@ -87,6 +86,14 @@ export class BCSControlLangFormatter extends AbstractFormatter {
     }
     if (ast.isSwitchStmt(node)) {
       this.formatSwitchStmt(node);
+      return true;
+    }
+    if (ast.isCaseOption(node)) {
+      this.formatCaseOption(node);
+      return true;
+    }
+    if (ast.isDefaultOption(node)) {
+      this.formatDefaultOption(node);
       return true;
     }
     if (ast.isAfterStmt(node)) {
@@ -408,7 +415,6 @@ export class BCSControlLangFormatter extends AbstractFormatter {
     // Format closing brace
     closeBrace.prepend(Formatting.newLine());
   }
-
   private formatSwitchStmt(node: ast.SwitchStmt): void {
     const formatter = this.getNodeFormatter(node);
     const openParen = formatter.keyword("(");
@@ -436,6 +442,53 @@ export class BCSControlLangFormatter extends AbstractFormatter {
     const colons = formatter.keywords(":");
     colons.prepend(Formatting.noSpace());
     colons.append(Formatting.oneSpace());
+  }
+
+  private formatCaseOption(node: ast.CaseOption): void {
+    const formatter = this.getNodeFormatter(node);
+    const openBrace = formatter.keyword("{");
+    const closeBrace = formatter.keyword("}");
+
+    // Format colon
+    const colon = formatter.keyword(":");
+    colon.prepend(Formatting.noSpace());
+    colon.append(Formatting.oneSpace());
+
+    // Format braces
+    openBrace.prepend(Formatting.noSpace());
+    openBrace.append(Formatting.newLine());
+
+    // Indent statements inside case
+    formatter.interior(openBrace, closeBrace).prepend(Formatting.indent());
+
+    // Format closing brace
+    closeBrace.prepend(Formatting.newLine());
+
+    // Format commas between case literals
+    const commas = formatter.keywords(",");
+    commas.prepend(Formatting.noSpace());
+    commas.append(Formatting.oneSpace());
+  }
+
+  private formatDefaultOption(node: ast.DefaultOption): void {
+    const formatter = this.getNodeFormatter(node);
+    const openBrace = formatter.keyword("{");
+    const closeBrace = formatter.keyword("}");
+
+    // Format colon
+    const colon = formatter.keyword(":");
+    colon.prepend(Formatting.noSpace());
+    colon.append(Formatting.oneSpace());
+
+    // Format braces
+    openBrace.prepend(Formatting.noSpace());
+    openBrace.append(Formatting.newLine());
+
+    // Indent statements inside default
+    formatter.interior(openBrace, closeBrace).prepend(Formatting.indent());
+
+    // Format closing brace
+    closeBrace.prepend(Formatting.newLine());
   }
 
   private formatAfterStmt(node: ast.AfterStmt): void {
