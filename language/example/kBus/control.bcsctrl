@@ -1,11 +1,13 @@
 control KBusController {
-
-    enum OperatingMode { OFF, ECO, COMFORT }
+    enum OperatingMode {
+        OFF,
+        ECO,
+        COMFORT
+    }
     struct Temperatures {
         Room1: REAL,
         Room2: REAL
     }
-
     var mode: OperatingMode = OperatingMode.OFF;
     var lightLevel: INT = 0;
     var heater: BOOL;
@@ -13,7 +15,6 @@ control KBusController {
     var heatingEnabled: BOOL;
     var arrayOfLights: BOOL[10];
     var temperaturesArray: Temperatures[10];
-
     functionblock HeatingLogic {
         inputs {
             var iTemp: REAL;
@@ -25,14 +26,13 @@ control KBusController {
         logic {
             if (iMode == OperatingMode.COMFORT && iTemp < 21.0) {
                 oHeating = true;
-            } else if (iMode == OperatingMode.ECO && iTemp < 18.0) {
+            } else if(iMode == OperatingMode.ECO && iTemp < 18.0) {
                 oHeating = true;
             } else {
                 oHeating = false;
             }
         }
     }
-
     unit ToggleLightsOnButtonPress {
         on_rising(Buttons.Room1) {
             Lights.Room1 = !Lights.Room1;
@@ -41,7 +41,6 @@ control KBusController {
             Lights.Room2 = !Lights.Room2;
         }
     }
-
     unit TurnOnLightsScheduled at TOD#06:30:00 {
         Lights.Room1 = true;
         arrayOfLights[0] = true;
@@ -50,7 +49,6 @@ control KBusController {
         temperaturesArray[0].Room1 = 20.5;
         temperaturesArray[1].Room2 = 22.0;
     }
-
     unit RetryHeaterStartup when (mode != OperatingMode.OFF) {
         var retries: INT = 0;
         while (retries < 3) {
@@ -61,7 +59,6 @@ control KBusController {
             }
         }
     }
-
     unit DimLightsGradually {
         for (var i: INT = 0 to 5 by 1) {
             lightLevel = i * 20;
@@ -70,26 +67,23 @@ control KBusController {
             }
         }
     }
-
     unit ControlHeating {
         use HeatingLogic(iTemp: temperaturesArray[0].Room1, iMode: mode) -> heatingEnabled;
         heater = heatingEnabled;
     }
-
     unit AdjustLightLevelByMode {
         switch (mode) {
-            case OperatingMode.COMFORT: {
+            case OperatingMode.COMFORT:{
                 lightLevel = 100;
             }
-            case OperatingMode.ECO: {
+            case OperatingMode.ECO:{
                 lightLevel = 50;
             }
-            default: {
+            default:{
                 lightLevel = 0;
             }
         }
     }
-
     unit MorningPresenceCheck {
         if (now >= TOD#07:00:00) {
             Lights.Room2 = true;
@@ -97,25 +91,23 @@ control KBusController {
             TemperatureSetpoints.Room1Ctrl = true;
         }
     }
-
     unit DelayedStartup once when (now >= TOD#07:05:00) {
-        after T#5m if (true) then {
+        after T#5m if (true) {
             heater = true;
             Lights.Room1 = false;
         }
     }
-
     unit ButtonReleaseHandler {
         on_falling(Buttons.Room2) {
             Lights.Room2 = false;
         }
     }
-
     unit ValidateSensorDistance {
         var distance: INT = UltrasonicSensor.Distance_Value;
-
         if (UltrasonicSensor.Distance_State == 0) {
             lightLevel = distance;
+        } else {
+            lightLevel = 0;
         }
     }
 }

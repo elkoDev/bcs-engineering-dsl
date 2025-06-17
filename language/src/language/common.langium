@@ -1,6 +1,6 @@
-type PrimitiveType = 'BOOL' | 'INT' | 'REAL' | 'STRING' | 'TIME' | 'TOD' | 'DT';
+type PrimitiveType = 'BOOL' | 'INT' | 'REAL' | 'STRING' | 'TIME' | 'TOD';
 PrimitiveType returns string:
-    'BOOL' | 'INT' | 'REAL' | 'STRING' | 'TIME' | 'TOD' | 'DT';
+    'BOOL' | 'INT' | 'REAL' | 'STRING' | 'TIME' | 'TOD';
 
 
 // ==========================================================================

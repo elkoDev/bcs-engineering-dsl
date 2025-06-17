@@ -1,5 +1,5 @@
 {
-  "version": "0.0.8",
+  "version": "0.0.12",
   "name": "bcs-engineering-dsl",
   "displayName": "BCS Engineering DSL",
   "icon": "icon.png",
@@ -9,7 +9,8 @@
     "bin",
     "out",
     "syntaxes",
-    "icon.png"
+    "icon.png",
+    "language-configuration.json"
   ],
   "categories": [
     "Programming Languages"
@@ -114,7 +115,6 @@
     ]
   },
   "activationEvents": [
-    "onLanguage:bcs-engineering",
     "onLanguage:bcs-control-lang",
     "onLanguage:bcs-hardware-lang"
   ],

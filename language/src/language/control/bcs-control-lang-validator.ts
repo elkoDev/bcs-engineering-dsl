@@ -43,6 +43,9 @@ import {
   isCaseLiteral,
   isEnumDecl,
   Channel,
+  OnRisingEdgeStmt,
+  OnFallingEdgeStmt,
+  isOnRisingEdgeStmt,
 } from "../generated/ast.js";
 
 export function registerBCSControlValidationChecks(
@@ -67,10 +70,11 @@ export function registerBCSControlValidationChecks(
       validator.checkAssignmentTypes,
       validator.checkNoWriteToInputDatapoints,
     ],
-    VarDecl: [validator.checkVarDeclTypes],
-    UseStmt: [validator.checkUseStmtTypes],
+    VarDecl: [validator.checkVarDeclTypes],    UseStmt: [validator.checkUseStmtTypes],
     SwitchStmt: [validator.checkSwitchCaseTypes],
     ForStmt: [validator.checkToExprType],
+    OnRisingEdgeStmt: [validator.checkEdgeSignalType],
+    OnFallingEdgeStmt: [validator.checkEdgeSignalType],
   };
   registry.register(checks, validator);
 }
@@ -480,6 +484,24 @@ export class BCSControlLangValidator {
 
       // Validate index bounds when possible
       validateArrayIndex(expr, indexExpr, sizeExpr, accept);
+    }
+  }
+
+  checkEdgeSignalType(
+    stmt: OnRisingEdgeStmt | OnFallingEdgeStmt,
+    accept: ValidationAcceptor
+  ) {
+    const signal = stmt.signal;
+    if (!signal) return;
+
+    const signalType = this.inferType(signal, accept);
+    if (signalType && signalType !== "BOOL") {
+      const stmtType = isOnRisingEdgeStmt(stmt) ? "on_rising" : "on_falling";
+      accept(
+        "error",
+        `Signal in '${stmtType}' must be of type BOOL, but got '${signalType}'.`,
+        { node: signal }
+      );
     }
   }
 }
