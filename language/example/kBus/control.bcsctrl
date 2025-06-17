@@ -24,9 +24,9 @@ control KBusController {
             var oHeating: BOOL;
         }
         logic {
-            if (iMode == OperatingMode.COMFORT && iTemp < 21.0){
+            if (iMode == OperatingMode.COMFORT && iTemp < 21.0) {
                 oHeating = true;
-            } else if(iMode == OperatingMode.ECO && iTemp < 18.0){
+            } else if(iMode == OperatingMode.ECO && iTemp < 18.0) {
                 oHeating = true;
             } else {
                 oHeating = false;
@@ -34,10 +34,10 @@ control KBusController {
         }
     }
     unit ToggleLightsOnButtonPress {
-        on_rising(Buttons.Room1){
+        on_rising(Buttons.Room1) {
             Lights.Room1 = !Lights.Room1;
         }
-        on_rising(Buttons.Room2){
+        on_rising(Buttons.Room2) {
             Lights.Room2 = !Lights.Room2;
         }
     }
@@ -51,18 +51,18 @@ control KBusController {
     }
     unit RetryHeaterStartup when (mode != OperatingMode.OFF) {
         var retries: INT = 0;
-        while (retries < 3){
+        while (retries < 3) {
             heater = true;
             retries = retries + 1;
-            if (retries == 2){
+            if (retries == 2) {
                 break;
             }
         }
     }
     unit DimLightsGradually {
-        for (var i: INT = 0 to 5 by 1){
+        for (var i: INT = 0 to 5 by 1) {
             lightLevel = i * 20;
-            if (i == 2){
+            if (i == 2) {
                 continue;
             }
         }
@@ -72,39 +72,39 @@ control KBusController {
         heater = heatingEnabled;
     }
     unit AdjustLightLevelByMode {
-        switch (mode){
-            case OperatingMode.COMFORT: {
+        switch (mode) {
+            case OperatingMode.COMFORT:{
                 lightLevel = 100;
             }
-            case OperatingMode.ECO: {
+            case OperatingMode.ECO:{
                 lightLevel = 50;
             }
-            default: {
+            default:{
                 lightLevel = 0;
             }
         }
     }
     unit MorningPresenceCheck {
-        if (now >= TOD#07:00:00){
+        if (now >= TOD#07:00:00) {
             Lights.Room2 = true;
             TemperatureSetpoints.Room1Value = 21;
             TemperatureSetpoints.Room1Ctrl = true;
         }
     }
     unit DelayedStartup once when (now >= TOD#07:05:00) {
-        after T#5m if(true){
+        after T#5m if (true) {
             heater = true;
             Lights.Room1 = false;
         }
     }
     unit ButtonReleaseHandler {
-        on_falling(Buttons.Room2){
+        on_falling(Buttons.Room2) {
             Lights.Room2 = false;
         }
     }
     unit ValidateSensorDistance {
         var distance: INT = UltrasonicSensor.Distance_Value;
-        if (UltrasonicSensor.Distance_State == 0){
+        if (UltrasonicSensor.Distance_State == 0) {
             lightLevel = distance;
         } else {
             lightLevel = 0;
