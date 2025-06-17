@@ -13,7 +13,7 @@ control FunctionBlockTestController {
         }
         logic {
             oOutput = iInput;
-            after T#1s if (oOutput == true) then {
+            after T#1s if (oOutput == true) {
                 oOutput = false;
             }
             on_rising(iInput) {

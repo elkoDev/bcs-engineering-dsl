@@ -225,7 +225,7 @@ MappingUseResult:
 // Timing and Edge Statements
 // --------------------------------------------------------------------------
 AfterStmt:
-    'after' time=TimeLiteral 'if' '(' condition=Expr ')' 'then' Block
+    'after' time=TimeLiteral 'if' '(' condition=Expr ')' Block
 ;
 
 EdgeStmt:
