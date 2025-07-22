@@ -11,7 +11,6 @@ import {
   isDatapoint,
   isChannel,
   isPortGroup,
-  isBitRange,
   isBus,
   isBox,
   isModule,
@@ -82,18 +81,6 @@ export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenP
       acceptor({
         node,
         property: "channels",
-        type: SemanticTokenTypes.number,
-      });
-    }
-    if (isBitRange(node)) {
-      acceptor({
-        node,
-        property: "start",
-        type: SemanticTokenTypes.number,
-      });
-      acceptor({
-        node,
-        property: "end",
         type: SemanticTokenTypes.number,
       });
     }

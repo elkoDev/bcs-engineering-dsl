@@ -41,10 +41,6 @@ Channel:
 ;
 
 
-BitRange:
-    start=IntLiteral ('..' end=IntLiteral)?
-;
-
 type IOType = 'ANALOG_INPUT' | 'ANALOG_OUTPUT' |'DIGITAL_INPUT' | 'DIGITAL_OUTPUT';
 IOType returns string:
     'ANALOG_INPUT' | 'ANALOG_OUTPUT' | 'DIGITAL_INPUT' | 'DIGITAL_OUTPUT';
@@ -72,7 +68,7 @@ Module:
     'module' name=ID '{'
         'product:' product=ID           // e.g. EL1008, KL2408
         ('revision:' rev=StringLiteral)?
-        'position:' slot=IntLiteral         // term slot number
+        'slot:' slot=IntLiteral         // term slot number
     '}'
 ;
 

@@ -4,23 +4,23 @@ bus FieldBus type EtherCAT {
         product: EK1100
         module IOModule_AI1 {
             product: EL3074
-            position: 1
+            slot: 1
         } 
         module IOModule_DI1 {
             product: EL1008
-            position: 2
+            slot: 2
         }
         module IOModule_DO1 {
             product: EL2024
-            position: 3
+            slot: 3
         }
         module IOModule_AO1 {
             product: EL4024
-            position: 4
+            slot: 4
         }
         module IOModule_DALI {
             product: EL6821
-            position: 5
+            slot: 5
         }
     }
 }

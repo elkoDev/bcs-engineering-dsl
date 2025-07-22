@@ -4,23 +4,23 @@ bus FieldBus type KBus {
         product: KBusTerminals
         module Zwei_Kanal_Digital_Eingang_Modul {
             product: KL1002
-            position: 1
+            slot: 1
         } 
         module Zwei_Kanal_Relais_Ausgang_Modul {
             product: KL2622
-            position: 2
+            slot: 2
         }
         module Vier_Kanal_Analog_Eingang_Modul {
             product: KL3044
-            position: 3
+            slot: 3
         }
         module Vier_Kanal_Analog_Ausgang_Modul {
             product: KL4004
-            position: 4
+            slot: 4
         }
         module Endklemme {
             product: KL9010
-            position: 5
+            slot: 5
         }
     }
 }
