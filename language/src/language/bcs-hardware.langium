@@ -62,7 +62,7 @@ Bus:
 
 Box:
     'box' name=ID '{'
-        'product:' productCode=ID           // e.g. EK1100, CU1128
+        'product:' product=ID           // e.g. EK1100, CU1128
         ('revision:' rev=StringLiteral)?    // optional explicit rev
         modules+=Module*
     '}'
@@ -70,7 +70,7 @@ Box:
 
 Module:
     'module' name=ID '{'
-        'product:' productCode=ID           // e.g. EL1008, KL2408
+        'product:' product=ID           // e.g. EL1008, KL2408
         ('revision:' rev=StringLiteral)?
         'position:' slot=IntLiteral         // term slot number
     '}'

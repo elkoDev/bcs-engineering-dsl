@@ -122,7 +122,7 @@ export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenP
       });
       acceptor({
         node,
-        property: "productCode",
+        property: "product",
         type: SemanticTokenTypes.enumMember,
       });
       acceptor({
@@ -139,7 +139,7 @@ export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenP
       });
       acceptor({
         node,
-        property: "productCode",
+        property: "product",
         type: SemanticTokenTypes.enumMember,
       });
       acceptor({

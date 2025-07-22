@@ -71,13 +71,13 @@ export class TcConfigGenerator {
         };
         for (const box of def.boxes) {
           const boxObj: any = {
-            product: box.productCode,
+            product: box.product,
             name: box.name,
             modules: [] as any[],
           };
           for (const mod of box.modules) {
             boxObj.modules.push({
-              product: mod.productCode,
+              product: mod.product,
               name: mod.name,
               slot: mod.slot,
             });

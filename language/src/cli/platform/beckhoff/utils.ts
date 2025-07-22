@@ -40,8 +40,8 @@ export function detectDaliComType(
     for (const portGroup of getPortGroups(ctrl)) {
       if (portGroup.module?.ref) {
         const module = portGroup.module.ref;
-        if (module && mapping[module.productCode]) {
-          return mapping[module.productCode];
+        if (module && mapping[module.product]) {
+          return mapping[module.product];
         }
       }
     }
