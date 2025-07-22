@@ -1,0 +1,85 @@
+<svg class="railroad-diagram" xmlns="http://www.w3.org/2000/svg" width="349" height="81" viewBox="0 0 349 81">
+<style>
+    svg.railroad-diagram {
+        background-color: hsl(30,20%,95%);
+    }
+    svg.railroad-diagram path {
+        stroke-width: 3;
+        stroke: black;
+        fill: rgba(0,0,0,0);
+    }
+    svg.railroad-diagram text {
+        font: bold 14px monospace;
+        text-anchor: middle;
+    }
+    svg.railroad-diagram text.label {
+        text-anchor: start;
+    }
+    svg.railroad-diagram text.comment {
+        font: italic 12px monospace;
+    }
+    svg.railroad-diagram rect {
+        stroke-width: 3;
+        stroke: black;
+        fill: hsl(120,100%,90%);
+    }
+</style>
+<g transform="translate(.5 .5)">
+<path d="M 20 31 v 20 m 10 -20 v 20 m -10 -10 h 20.5"></path>
+<g>
+<path d="M40 41h0"></path>
+<path d="M308 41h0"></path>
+<path d="M40 41h10"></path>
+<g>
+<path d="M50 41h0"></path>
+<path d="M78 41h0"></path>
+<rect x="50" y="30" width="28" height="22" rx="10" ry="10"></rect>
+<text x="64" y="45">{</text>
+</g>
+<path d="M78 41h10"></path>
+<g>
+<path d="M88 41h0"></path>
+<path d="M260 41h0"></path>
+<path d="M88 41a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M108 21h132"></path>
+</g>
+<path d="M240 21a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M88 41h20"></path>
+<g>
+<path d="M108 41h0"></path>
+<path d="M240 41h0"></path>
+<path d="M108 41h10"></path>
+<g>
+<path d="M118 41h0"></path>
+<path d="M230 41h0"></path>
+<path d="M118 41h10"></path>
+<g>
+<path d="M128 41h0"></path>
+<path d="M220 41h0"></path>
+<rect x="128" y="30" width="92" height="22"></rect>
+<text x="174" y="45">Statement</text>
+</g>
+<path d="M220 41h10"></path>
+</g>
+<path d="M230 41h10"></path>
+<path d="M118 41a10 10 0 0 0 -10 10v0a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M118 61h112"></path>
+</g>
+<path d="M230 61a10 10 0 0 0 10 -10v0a10 10 0 0 0 -10 -10"></path>
+</g>
+<path d="M240 41h20"></path>
+</g>
+<path d="M260 41h10"></path>
+<g>
+<path d="M270 41h0"></path>
+<path d="M298 41h0"></path>
+<rect x="270" y="30" width="28" height="22" rx="10" ry="10"></rect>
+<text x="284" y="45">}</text>
+</g>
+<path d="M298 41h10"></path>
+</g>
+<path d="M 308 41 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
+</g>
+</svg>

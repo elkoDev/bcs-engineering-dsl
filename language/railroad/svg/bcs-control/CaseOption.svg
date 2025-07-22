@@ -1,0 +1,117 @@
+<svg class="railroad-diagram" xmlns="http://www.w3.org/2000/svg" width="645" height="81" viewBox="0 0 645 81">
+<style>
+    svg.railroad-diagram {
+        background-color: hsl(30,20%,95%);
+    }
+    svg.railroad-diagram path {
+        stroke-width: 3;
+        stroke: black;
+        fill: rgba(0,0,0,0);
+    }
+    svg.railroad-diagram text {
+        font: bold 14px monospace;
+        text-anchor: middle;
+    }
+    svg.railroad-diagram text.label {
+        text-anchor: start;
+    }
+    svg.railroad-diagram text.comment {
+        font: italic 12px monospace;
+    }
+    svg.railroad-diagram rect {
+        stroke-width: 3;
+        stroke: black;
+        fill: hsl(120,100%,90%);
+    }
+</style>
+<g transform="translate(.5 .5)">
+<path d="M 20 31 v 20 m 10 -20 v 20 m -10 -10 h 20.5"></path>
+<g>
+<path d="M40 41h0"></path>
+<path d="M604 41h0"></path>
+<path d="M40 41h10"></path>
+<g>
+<path d="M50 41h0"></path>
+<path d="M102 41h0"></path>
+<rect x="50" y="30" width="52" height="22" rx="10" ry="10"></rect>
+<text x="76" y="45">case</text>
+</g>
+<path d="M102 41h10"></path>
+<g>
+<path d="M112 41h0"></path>
+<path d="M476 41h0"></path>
+<path d="M112 41h10"></path>
+<g>
+<path d="M122 41h0"></path>
+<path d="M230 41h0"></path>
+<rect x="122" y="30" width="108" height="22"></rect>
+<text x="176" y="45">CaseLiteral</text>
+</g>
+<path d="M230 41h10"></path>
+<g>
+<path d="M240 41h0"></path>
+<path d="M476 41h0"></path>
+<path d="M240 41a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M260 21h196"></path>
+</g>
+<path d="M456 21a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M240 41h20"></path>
+<g>
+<path d="M260 41h0"></path>
+<path d="M456 41h0"></path>
+<path d="M260 41h10"></path>
+<g>
+<path d="M270 41h0"></path>
+<path d="M446 41h0"></path>
+<g>
+<path d="M270 41h0"></path>
+<path d="M446 41h0"></path>
+<path d="M270 41h10"></path>
+<g>
+<path d="M280 41h0"></path>
+<path d="M308 41h0"></path>
+<rect x="280" y="30" width="28" height="22" rx="10" ry="10"></rect>
+<text x="294" y="45">,</text>
+</g>
+<path d="M308 41h10"></path>
+<path d="M318 41h10"></path>
+<g>
+<path d="M328 41h0"></path>
+<path d="M436 41h0"></path>
+<rect x="328" y="30" width="108" height="22"></rect>
+<text x="382" y="45">CaseLiteral</text>
+</g>
+<path d="M436 41h10"></path>
+</g>
+</g>
+<path d="M446 41h10"></path>
+<path d="M270 41a10 10 0 0 0 -10 10v0a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M270 61h176"></path>
+</g>
+<path d="M446 61a10 10 0 0 0 10 -10v0a10 10 0 0 0 -10 -10"></path>
+</g>
+<path d="M456 41h20"></path>
+</g>
+</g>
+<path d="M476 41h10"></path>
+<g>
+<path d="M486 41h0"></path>
+<path d="M514 41h0"></path>
+<rect x="486" y="30" width="28" height="22" rx="10" ry="10"></rect>
+<text x="500" y="45">:</text>
+</g>
+<path d="M514 41h10"></path>
+<path d="M524 41h10"></path>
+<g>
+<path d="M534 41h0"></path>
+<path d="M594 41h0"></path>
+<rect x="534" y="30" width="60" height="22"></rect>
+<text x="564" y="45">Block</text>
+</g>
+<path d="M594 41h10"></path>
+</g>
+<path d="M 604 41 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
+</g>
+</svg>

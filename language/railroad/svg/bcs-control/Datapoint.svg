@@ -1,0 +1,161 @@
+<svg class="railroad-diagram" xmlns="http://www.w3.org/2000/svg" width="1029" height="81" viewBox="0 0 1029 81">
+<style>
+    svg.railroad-diagram {
+        background-color: hsl(30,20%,95%);
+    }
+    svg.railroad-diagram path {
+        stroke-width: 3;
+        stroke: black;
+        fill: rgba(0,0,0,0);
+    }
+    svg.railroad-diagram text {
+        font: bold 14px monospace;
+        text-anchor: middle;
+    }
+    svg.railroad-diagram text.label {
+        text-anchor: start;
+    }
+    svg.railroad-diagram text.comment {
+        font: italic 12px monospace;
+    }
+    svg.railroad-diagram rect {
+        stroke-width: 3;
+        stroke: black;
+        fill: hsl(120,100%,90%);
+    }
+</style>
+<g transform="translate(.5 .5)">
+<path d="M 20 31 v 20 m 10 -20 v 20 m -10 -10 h 20.5"></path>
+<g>
+<path d="M40 41h0"></path>
+<path d="M988 41h0"></path>
+<path d="M40 41h10"></path>
+<g>
+<path d="M50 41h0"></path>
+<path d="M142 41h0"></path>
+<rect x="50" y="30" width="92" height="22" rx="10" ry="10"></rect>
+<text x="96" y="45">datapoint</text>
+</g>
+<path d="M142 41h10"></path>
+<path d="M152 41h10"></path>
+<g>
+<path d="M162 41h0"></path>
+<path d="M198 41h0"></path>
+<rect x="162" y="30" width="36" height="22"></rect>
+<text x="180" y="45">ID</text>
+</g>
+<path d="M198 41h10"></path>
+<path d="M208 41h10"></path>
+<g>
+<path d="M218 41h0"></path>
+<path d="M246 41h0"></path>
+<rect x="218" y="30" width="28" height="22" rx="10" ry="10"></rect>
+<text x="232" y="45">{</text>
+</g>
+<path d="M246 41h10"></path>
+<path d="M256 41h10"></path>
+<g>
+<path d="M266 41h0"></path>
+<path d="M366 41h0"></path>
+<rect x="266" y="30" width="100" height="22" rx="10" ry="10"></rect>
+<text x="316" y="45">portgroup:</text>
+</g>
+<path d="M366 41h10"></path>
+<path d="M376 41h10"></path>
+<g>
+<path d="M386 41h0"></path>
+<path d="M422 41h0"></path>
+<rect x="386" y="30" width="36" height="22"></rect>
+<text x="404" y="45">ID</text>
+</g>
+<path d="M422 41h10"></path>
+<path d="M432 41h10"></path>
+<g>
+<path d="M442 41h0"></path>
+<path d="M534 41h0"></path>
+<rect x="442" y="30" width="92" height="22" rx="10" ry="10"></rect>
+<text x="488" y="45">channels:</text>
+</g>
+<path d="M534 41h10"></path>
+<path d="M544 41h10"></path>
+<g>
+<path d="M554 41h0"></path>
+<path d="M582 41h0"></path>
+<rect x="554" y="30" width="28" height="22" rx="10" ry="10"></rect>
+<text x="568" y="45">{</text>
+</g>
+<path d="M582 41h10"></path>
+<path d="M592 41h10"></path>
+<g>
+<path d="M602 41h0"></path>
+<path d="M678 41h0"></path>
+<rect x="602" y="30" width="76" height="22"></rect>
+<text x="640" y="45">Channel</text>
+</g>
+<path d="M678 41h10"></path>
+<g>
+<path d="M688 41h0"></path>
+<path d="M892 41h0"></path>
+<path d="M688 41a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M708 21h164"></path>
+</g>
+<path d="M872 21a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M688 41h20"></path>
+<g>
+<path d="M708 41h0"></path>
+<path d="M872 41h0"></path>
+<path d="M708 41h10"></path>
+<g>
+<path d="M718 41h0"></path>
+<path d="M862 41h0"></path>
+<g>
+<path d="M718 41h0"></path>
+<path d="M862 41h0"></path>
+<path d="M718 41h10"></path>
+<g>
+<path d="M728 41h0"></path>
+<path d="M756 41h0"></path>
+<rect x="728" y="30" width="28" height="22" rx="10" ry="10"></rect>
+<text x="742" y="45">,</text>
+</g>
+<path d="M756 41h10"></path>
+<path d="M766 41h10"></path>
+<g>
+<path d="M776 41h0"></path>
+<path d="M852 41h0"></path>
+<rect x="776" y="30" width="76" height="22"></rect>
+<text x="814" y="45">Channel</text>
+</g>
+<path d="M852 41h10"></path>
+</g>
+</g>
+<path d="M862 41h10"></path>
+<path d="M718 41a10 10 0 0 0 -10 10v0a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M718 61h144"></path>
+</g>
+<path d="M862 61a10 10 0 0 0 10 -10v0a10 10 0 0 0 -10 -10"></path>
+</g>
+<path d="M872 41h20"></path>
+</g>
+<path d="M892 41h10"></path>
+<g>
+<path d="M902 41h0"></path>
+<path d="M930 41h0"></path>
+<rect x="902" y="30" width="28" height="22" rx="10" ry="10"></rect>
+<text x="916" y="45">}</text>
+</g>
+<path d="M930 41h10"></path>
+<path d="M940 41h10"></path>
+<g>
+<path d="M950 41h0"></path>
+<path d="M978 41h0"></path>
+<rect x="950" y="30" width="28" height="22" rx="10" ry="10"></rect>
+<text x="964" y="45">}</text>
+</g>
+<path d="M978 41h10"></path>
+</g>
+<path d="M 988 41 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
+</g>
+</svg>

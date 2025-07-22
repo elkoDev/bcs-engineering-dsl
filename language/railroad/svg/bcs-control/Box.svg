@@ -1,0 +1,152 @@
+<svg class="railroad-diagram" xmlns="http://www.w3.org/2000/svg" width="901" height="81" viewBox="0 0 901 81">
+<style>
+    svg.railroad-diagram {
+        background-color: hsl(30,20%,95%);
+    }
+    svg.railroad-diagram path {
+        stroke-width: 3;
+        stroke: black;
+        fill: rgba(0,0,0,0);
+    }
+    svg.railroad-diagram text {
+        font: bold 14px monospace;
+        text-anchor: middle;
+    }
+    svg.railroad-diagram text.label {
+        text-anchor: start;
+    }
+    svg.railroad-diagram text.comment {
+        font: italic 12px monospace;
+    }
+    svg.railroad-diagram rect {
+        stroke-width: 3;
+        stroke: black;
+        fill: hsl(120,100%,90%);
+    }
+</style>
+<g transform="translate(.5 .5)">
+<path d="M 20 31 v 20 m 10 -20 v 20 m -10 -10 h 20.5"></path>
+<g>
+<path d="M40 41h0"></path>
+<path d="M860 41h0"></path>
+<path d="M40 41h10"></path>
+<g>
+<path d="M50 41h0"></path>
+<path d="M94 41h0"></path>
+<rect x="50" y="30" width="44" height="22" rx="10" ry="10"></rect>
+<text x="72" y="45">box</text>
+</g>
+<path d="M94 41h10"></path>
+<path d="M104 41h10"></path>
+<g>
+<path d="M114 41h0"></path>
+<path d="M150 41h0"></path>
+<rect x="114" y="30" width="36" height="22"></rect>
+<text x="132" y="45">ID</text>
+</g>
+<path d="M150 41h10"></path>
+<path d="M160 41h10"></path>
+<g>
+<path d="M170 41h0"></path>
+<path d="M198 41h0"></path>
+<rect x="170" y="30" width="28" height="22" rx="10" ry="10"></rect>
+<text x="184" y="45">{</text>
+</g>
+<path d="M198 41h10"></path>
+<path d="M208 41h10"></path>
+<g>
+<path d="M218 41h0"></path>
+<path d="M302 41h0"></path>
+<rect x="218" y="30" width="84" height="22" rx="10" ry="10"></rect>
+<text x="260" y="45">product:</text>
+</g>
+<path d="M302 41h10"></path>
+<path d="M312 41h10"></path>
+<g>
+<path d="M322 41h0"></path>
+<path d="M358 41h0"></path>
+<rect x="322" y="30" width="36" height="22"></rect>
+<text x="340" y="45">ID</text>
+</g>
+<path d="M358 41h10"></path>
+<g>
+<path d="M368 41h0"></path>
+<path d="M664 41h0"></path>
+<path d="M368 41a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M388 21h256"></path>
+</g>
+<path d="M644 21a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M368 41h20"></path>
+<g>
+<path d="M388 41h0"></path>
+<path d="M644 41h0"></path>
+<g>
+<path d="M388 41h0"></path>
+<path d="M644 41h0"></path>
+<path d="M388 41h10"></path>
+<g>
+<path d="M398 41h0"></path>
+<path d="M490 41h0"></path>
+<rect x="398" y="30" width="92" height="22" rx="10" ry="10"></rect>
+<text x="444" y="45">revision:</text>
+</g>
+<path d="M490 41h10"></path>
+<path d="M500 41h10"></path>
+<g>
+<path d="M510 41h0"></path>
+<path d="M634 41h0"></path>
+<rect x="510" y="30" width="124" height="22"></rect>
+<text x="572" y="45">StringLiteral</text>
+</g>
+<path d="M634 41h10"></path>
+</g>
+</g>
+<path d="M644 41h20"></path>
+</g>
+<g>
+<path d="M664 41h0"></path>
+<path d="M812 41h0"></path>
+<path d="M664 41a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M684 21h108"></path>
+</g>
+<path d="M792 21a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M664 41h20"></path>
+<g>
+<path d="M684 41h0"></path>
+<path d="M792 41h0"></path>
+<path d="M684 41h10"></path>
+<g>
+<path d="M694 41h0"></path>
+<path d="M782 41h0"></path>
+<path d="M694 41h10"></path>
+<g>
+<path d="M704 41h0"></path>
+<path d="M772 41h0"></path>
+<rect x="704" y="30" width="68" height="22"></rect>
+<text x="738" y="45">Module</text>
+</g>
+<path d="M772 41h10"></path>
+</g>
+<path d="M782 41h10"></path>
+<path d="M694 41a10 10 0 0 0 -10 10v0a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M694 61h88"></path>
+</g>
+<path d="M782 61a10 10 0 0 0 10 -10v0a10 10 0 0 0 -10 -10"></path>
+</g>
+<path d="M792 41h20"></path>
+</g>
+<path d="M812 41h10"></path>
+<g>
+<path d="M822 41h0"></path>
+<path d="M850 41h0"></path>
+<rect x="822" y="30" width="28" height="22" rx="10" ry="10"></rect>
+<text x="836" y="45">}</text>
+</g>
+<path d="M850 41h10"></path>
+</g>
+<path d="M 860 41 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
+</g>
+</svg>

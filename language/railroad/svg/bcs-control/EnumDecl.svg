@@ -1,0 +1,121 @@
+<svg class="railroad-diagram" xmlns="http://www.w3.org/2000/svg" width="717" height="81" viewBox="0 0 717 81">
+<style>
+    svg.railroad-diagram {
+        background-color: hsl(30,20%,95%);
+    }
+    svg.railroad-diagram path {
+        stroke-width: 3;
+        stroke: black;
+        fill: rgba(0,0,0,0);
+    }
+    svg.railroad-diagram text {
+        font: bold 14px monospace;
+        text-anchor: middle;
+    }
+    svg.railroad-diagram text.label {
+        text-anchor: start;
+    }
+    svg.railroad-diagram text.comment {
+        font: italic 12px monospace;
+    }
+    svg.railroad-diagram rect {
+        stroke-width: 3;
+        stroke: black;
+        fill: hsl(120,100%,90%);
+    }
+</style>
+<g transform="translate(.5 .5)">
+<path d="M 20 31 v 20 m 10 -20 v 20 m -10 -10 h 20.5"></path>
+<g>
+<path d="M40 41h0"></path>
+<path d="M676 41h0"></path>
+<path d="M40 41h10"></path>
+<g>
+<path d="M50 41h0"></path>
+<path d="M102 41h0"></path>
+<rect x="50" y="30" width="52" height="22" rx="10" ry="10"></rect>
+<text x="76" y="45">enum</text>
+</g>
+<path d="M102 41h10"></path>
+<path d="M112 41h10"></path>
+<g>
+<path d="M122 41h0"></path>
+<path d="M158 41h0"></path>
+<rect x="122" y="30" width="36" height="22"></rect>
+<text x="140" y="45">ID</text>
+</g>
+<path d="M158 41h10"></path>
+<path d="M168 41h10"></path>
+<g>
+<path d="M178 41h0"></path>
+<path d="M206 41h0"></path>
+<rect x="178" y="30" width="28" height="22" rx="10" ry="10"></rect>
+<text x="192" y="45">{</text>
+</g>
+<path d="M206 41h10"></path>
+<path d="M216 41h10"></path>
+<g>
+<path d="M226 41h0"></path>
+<path d="M358 41h0"></path>
+<rect x="226" y="30" width="132" height="22"></rect>
+<text x="292" y="45">EnumMemberDecl</text>
+</g>
+<path d="M358 41h10"></path>
+<g>
+<path d="M368 41h0"></path>
+<path d="M628 41h0"></path>
+<path d="M368 41a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M388 21h220"></path>
+</g>
+<path d="M608 21a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M368 41h20"></path>
+<g>
+<path d="M388 41h0"></path>
+<path d="M608 41h0"></path>
+<path d="M388 41h10"></path>
+<g>
+<path d="M398 41h0"></path>
+<path d="M598 41h0"></path>
+<g>
+<path d="M398 41h0"></path>
+<path d="M598 41h0"></path>
+<path d="M398 41h10"></path>
+<g>
+<path d="M408 41h0"></path>
+<path d="M436 41h0"></path>
+<rect x="408" y="30" width="28" height="22" rx="10" ry="10"></rect>
+<text x="422" y="45">,</text>
+</g>
+<path d="M436 41h10"></path>
+<path d="M446 41h10"></path>
+<g>
+<path d="M456 41h0"></path>
+<path d="M588 41h0"></path>
+<rect x="456" y="30" width="132" height="22"></rect>
+<text x="522" y="45">EnumMemberDecl</text>
+</g>
+<path d="M588 41h10"></path>
+</g>
+</g>
+<path d="M598 41h10"></path>
+<path d="M398 41a10 10 0 0 0 -10 10v0a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M398 61h200"></path>
+</g>
+<path d="M598 61a10 10 0 0 0 10 -10v0a10 10 0 0 0 -10 -10"></path>
+</g>
+<path d="M608 41h20"></path>
+</g>
+<path d="M628 41h10"></path>
+<g>
+<path d="M638 41h0"></path>
+<path d="M666 41h0"></path>
+<rect x="638" y="30" width="28" height="22" rx="10" ry="10"></rect>
+<text x="652" y="45">}</text>
+</g>
+<path d="M666 41h10"></path>
+</g>
+<path d="M 676 41 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
+</g>
+</svg>

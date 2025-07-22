@@ -12,8 +12,8 @@
         "out": "syntaxes/bcs-hardware.monarch.ts"
       },
       "railroad": {
-        "out": "railroad/bcs-hardware.html",
-        "mode": "html"
+        "out": "railroad/svg/bcs-hardware",
+        "mode": "svg"
       }
     },
     {
@@ -27,8 +27,8 @@
         "out": "syntaxes/bcs-control.monarch.ts"
       },
       "railroad": {
-        "out": "railroad/bcs-control.html",
-        "mode": "html"
+        "out": "railroad/svg/bcs-control",
+        "mode": "svg"
       }
     }
   ],
