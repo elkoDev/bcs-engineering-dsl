@@ -10,6 +10,10 @@
       },
       "monarch": {
         "out": "syntaxes/bcs-hardware.monarch.ts"
+      },
+      "railroad": {
+        "out": "railroad/bcs-hardware.html",
+        "mode": "html"
       }
     },
     {
@@ -21,6 +25,10 @@
       },
       "monarch": {
         "out": "syntaxes/bcs-control.monarch.ts"
+      },
+      "railroad": {
+        "out": "railroad/bcs-control.html",
+        "mode": "html"
       }
     }
   ],
