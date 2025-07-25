@@ -1,4 +1,4 @@
-@startuml BCS Hardware Metamodel
+@startuml bcs-hardware-metamodel
 skinparam linetype ortho
 hide empty members
 

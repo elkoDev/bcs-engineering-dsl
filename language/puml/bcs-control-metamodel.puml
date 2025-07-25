@@ -1,4 +1,4 @@
-@startuml
+@startuml bcs-control-metamodel
 skinparam linetype ortho
 hide empty members
 
