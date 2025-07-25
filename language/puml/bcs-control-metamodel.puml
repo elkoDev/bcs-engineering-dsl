@@ -117,11 +117,10 @@ package "Statements & Expressions" {
     e2: Expr
     op: string
   }
-  abstract class Primary extends Expr {
+  class Primary extends Expr {
     isNow: string
     val: ArrayLiteral | StructLiteral | boolean | number | string
   }
-  class Ref extends Primary
   class NegExpr extends Primary {
     expr: Expr
   }
@@ -131,6 +130,7 @@ package "Statements & Expressions" {
   class ParenExpr extends Primary {
     expr: Expr
   }
+  class Ref extends Primary
 }
 
 ' ===== LITERALS =====
@@ -156,37 +156,23 @@ NamedElement <|-- Datapoint
 ' ===== RELATIONSHIPS =====
 
 ' --- Core Structure ---
-ControlModel "1" *-- "0..*" ImportDecl
-ControlModel "1" *-- "0..*" TypeDecl : externTypeDecls
-ControlModel "1" *-- "1" ControlBlock
-ControlBlock "1" *-- "0..*" ControlItem
-ControlBlock "1" ..> "1" Controller : controller
-ControlItem <|-- Declaration
-ControlItem <|-- ControlUnit
+ControlModel "1" *--- "0..*" ImportDecl
+ControlModel "1" *--- "0..*" TypeDecl : externTypeDecls
+ControlModel "1" *--- "1" ControlBlock
+ControlBlock "1" *--- "0..*" ControlItem
+ControlBlock "1" ...> "1" Controller : controller
 
 ' --- Declarations ---
-Declaration <|-- VarDecl
-Declaration <|-- TypeDecl
-TypeDecl <|-- EnumDecl
-TypeDecl <|-- StructDecl
-TypeDecl <|-- FunctionBlockDecl
-TypeDecl <|-- TypeAlias
-
-' Declaration Compositions
-StructDecl "1" *-- "0..*" StructFieldDecl : fields
-EnumDecl "1" *-- "1..*" EnumMemberDecl : members
-VarDecl "1" *-- "1" TypeRef
-StructFieldDecl "1" *-- "1" TypeRef
-TypeRef "1" ..> "0..1" TypeDecl : ref
-TypeRef "1" *-- "0..*" Expr : sizes
+StructDecl "1" *--- "0..*" StructFieldDecl : fields
+EnumDecl "1" *--- "1..*" EnumMemberDecl : members
+VarDecl "1" *--- "1" TypeRef
+StructFieldDecl "1" *--- "1" TypeRef
+TypeRef "1" ...> "0..1" TypeDecl : ref
+TypeRef "1" *--- "0..*" Expr : sizes
 
 ' FunctionBlock Compositions
 FunctionBlockDecl "1" *-- "0..*" FunctionBlockMember : members
 FunctionBlockDecl "1" ..> "0..1" ImportDecl : libRef
-FunctionBlockMember <|-- FunctionBlockInputs
-FunctionBlockMember <|-- FunctionBlockOutputs
-FunctionBlockMember <|-- FunctionBlockLocals
-FunctionBlockMember <|-- FunctionBlockLogic
 FunctionBlockInputs  "1" *-- "0..*" VarDecl : inputs
 FunctionBlockOutputs "1" *-- "0..*" VarDecl : outputs
 FunctionBlockLocals  "1" *-- "0..*" VarDecl : locals
@@ -204,16 +190,7 @@ IfStmt "1" *-- "0..*" Statement : stmts
 OnFallingEdgeStmt "1" *-- "0..*" Statement : stmts
 OnRisingEdgeStmt "1" *-- "0..*" Statement : stmts
 WhileStmt "1" *-- "0..*" Statement : stmts
-Statement <|-- AssignmentStmt
-Statement <|-- IfStmt
-Statement <|-- WhileStmt
-Statement <|-- ForStmt
-Statement <|-- SwitchStmt
-Statement <|-- UseStmt
-Statement <|-- AfterStmt
-Statement <|-- EdgeStmt
-Statement <|-- LoopControlStmt
-Statement <|-- ExpressionStmt
+' VarDecl extends both Declaration and Statement (dual classification)
 Statement <|-- VarDecl 
 ' This represents LocalVarDeclStmt
 
@@ -236,12 +213,6 @@ MappingUseResult "1" ..> "1" VarDecl : targetOutputVar
 EdgeStmt "1" *-- "1" Ref : signal
 
 ' --- Expressions ---
-Expr <|-- BinExpr
-Expr <|-- Primary
-Primary <|-- Ref
-Primary <|-- NegExpr
-Primary <|-- NotExpr
-Primary <|-- ParenExpr
 Ref "1" ..> "1" NamedElement : ref
 Ref "1" ..> "0..*" NamedElement : properties
 Ref "1" *-- "0..*" Expr : indices
