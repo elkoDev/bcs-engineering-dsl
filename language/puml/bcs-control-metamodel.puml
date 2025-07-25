@@ -9,7 +9,7 @@ package "Core Structure" {
   abstract class "ControlItem" as C1
   class ControlUnit {
     name: string
-    isOnce: string
+    isOnce: boolean
     condition: Expr
     time: string
   }
@@ -159,7 +159,7 @@ NamedElement <|-- Datapoint
 ControlModel "1" *--- "0..*" ImportDecl
 ControlModel "1" *--- "0..*" TypeDecl : externTypeDecls
 ControlModel "1" *--- "1" ControlBlock
-ControlBlock "1" *--- "0..*" ControlItem
+ControlBlock "1" *--- "0..*" C1
 ControlBlock "1" ...> "1" Controller : controller
 C1 <|-- ControlUnit
 C1 <|-- Declaration
@@ -199,8 +199,8 @@ Statement <|-- VarDecl
 IfStmt "1" *-- "0..*" ElseIfStmt
 IfStmt "1" *-- "0..1" ElseStmt
 ForStmt "1" *-- "1" VarDecl : loopVar
-SwitchStmt "1" *-- "1..*" CaseOption
-SwitchStmt "1" *-- "0..1" DefaultOption
+SwitchStmt "1" *-- "1..*" CaseOption : cases
+SwitchStmt "1" *-- "0..1" DefaultOption : default
 CaseOption "1" *-- "1..*" CaseLiteral : literals
 UseStmt "1" ..> "1" FunctionBlockDecl : functionBlockRef
 UseStmt "1" *-- "0..*" InputMapping : inputArgs
