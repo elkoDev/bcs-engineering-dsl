@@ -141,9 +141,7 @@ package "Literals" {
       name: string
       value: Expr
     }
-  class EnumMemberLiteral {
-    op: string
-  }
+  class EnumMemberLiteral
 }
 
 ' Abstract element for what can be referenced by name
@@ -186,7 +184,7 @@ CaseOption "1" *-- "0..*" Statement : stmts
 DefaultOption "1" *-- "0..*" Statement : stmts
 ElseIfStmt "1" *-- "0..*" Statement : stmts
 ElseStmt "1" *-- "0..*" Statement : stmts
-ForStmt "1" *-- "0..*" Statement : stmts
+ForStmt "1" *---- "0..*" Statement : stmts
 IfStmt "1" *-- "0..*" Statement : stmts
 OnFallingEdgeStmt "1" *-- "0..*" Statement : stmts
 OnRisingEdgeStmt "1" *-- "0..*" Statement : stmts
@@ -196,8 +194,8 @@ Statement <|-- VarDecl
 ' This represents LocalVarDeclStmt
 
 ' Statement Compositions and References
-IfStmt "1" *-- "0..*" ElseIfStmt
-IfStmt "1" *-- "0..1" ElseStmt
+IfStmt "1" *-- "0..*" ElseIfStmt : elseIfStmts
+IfStmt "1" *-- "0..1" ElseStmt : elseStmt
 ForStmt "1" *-- "1" VarDecl : loopVar
 SwitchStmt "1" *-- "1..*" CaseOption : cases
 SwitchStmt "1" *-- "0..1" DefaultOption : default
