@@ -32,11 +32,8 @@ ControlItem:
 // 3) Declarations (types, vars, function blocks)
 // ==========================================================================
 Declaration:
-      EnumDecl
-    | StructDecl
+      TypeDecl
     | VarDecl
-    | FunctionBlockDecl
-    | TypeAlias
 ;
 
 TypeDecl:
