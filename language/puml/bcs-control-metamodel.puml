@@ -156,20 +156,20 @@ NamedElement <|-- Datapoint
 ' ===== RELATIONSHIPS =====
 
 ' --- Core Structure ---
-ControlModel "1" *--- "0..*" ImportDecl
-ControlModel "1" *--- "0..*" TypeDecl : externTypeDecls
-ControlModel "1" *--- "1" ControlBlock
-ControlBlock "1" *--- "0..*" C1
-ControlBlock "1" ...> "1" Controller : controller
+ControlModel "1" *-- "0..*" ImportDecl
+ControlModel "1" *-- "0..*" TypeDecl : externTypeDecls
+ControlModel "1" *-- "1" ControlBlock
+ControlBlock "1" *-- "0..*" C1
+ControlBlock "1" ..> "1" Controller : controller
 C1 <|-- ControlUnit
 C1 <|-- Declaration
 
 ' --- Declarations ---
-StructDecl "1" *--- "0..*" StructFieldDecl : fields
-EnumDecl "1" *--- "1..*" EnumMemberDecl : members
-VarDecl "1" *--- "1" TypeRef : typeRef
-StructFieldDecl "1" *--- "1" TypeRef : typeRef
-TypeRef "1" ...> "0..1" TypeDecl : ref
+StructDecl "1" *-- "0..*" StructFieldDecl : fields
+EnumDecl "1" *-- "1..*" EnumMemberDecl : members
+VarDecl "1" *-- "1" TypeRef : typeRef
+StructFieldDecl "1" *-- "1" TypeRef : typeRef
+TypeRef "1" ..> "0..1" TypeDecl : ref
 
 ' FunctionBlock Compositions
 FunctionBlockDecl "1" *-- "0..*" FunctionBlockMember : members
@@ -186,7 +186,7 @@ CaseOption "1" *-- "0..*" Statement : stmts
 DefaultOption "1" *-- "0..*" Statement : stmts
 ElseIfStmt "1" *-- "0..*" Statement : stmts
 ElseStmt "1" *-- "0..*" Statement : stmts
-ForStmt "1" *---- "0..*" Statement : stmts
+ForStmt "1" *-- "0..*" Statement : stmts
 IfStmt "1" *-- "0..*" Statement : stmts
 OnFallingEdgeStmt "1" *-- "0..*" Statement : stmts
 OnRisingEdgeStmt "1" *-- "0..*" Statement : stmts
