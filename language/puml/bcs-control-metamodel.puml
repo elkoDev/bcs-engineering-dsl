@@ -2,49 +2,6 @@
 skinparam linetype ortho
 hide empty members
 
-' ===== HARDWARE MODEL =====
-package "Hardware Model" {
-  class HardwareModel
-  abstract class HardwareDefinition
-  class Controller {
-    name: string
-  }
-  class Bus {
-    name: string
-    busType: BusType
-    master: string
-  }
-  class Box {
-    name: string
-    product: string
-    rev: string
-  }
-  class Module {
-    name: string
-    product: string
-    rev: string
-    slot: number
-  }
-  class NetworkSettings {
-    hostname: string
-    ipAddress: string
-  }
-  abstract class Component
-  class PortGroup {
-    name: string
-    channels: number
-    ioType: IOType
-  }
-  class Datapoint {
-    name: string
-  }
-  class Channel {
-    name: string
-    dataType: PrimitiveType
-    link: string
-  }
-}
-
 ' ===== CORE STRUCTURE =====
 package "Core Structure" {
   class ControlModel
@@ -52,9 +9,9 @@ package "Core Structure" {
   abstract class ControlItem
   class ControlUnit {
     name: string
-    isOnce: boolean
+    isOnce: string
     condition: Expr
-    time: TodLiteral
+    time: string
   }
   class ImportDecl {
     name: string
@@ -97,38 +54,96 @@ package "Declarations & Types" {
       name: string
       primitive: PrimitiveType
   }
-  class TypeRef
+  class TypeRef {
+    type: PrimitiveType
+    sizes: Expr[]
+  }
 }
 
 ' ===== STATEMENTS & EXPRESSIONS =====
 package "Statements & Expressions" {
   abstract class Statement
-  class AssignmentStmt extends Statement
-  class IfStmt extends Statement
-    class ElseIfStmt
+  class AssignmentStmt extends Statement {
+    target: Ref
+    value: Expr
+  }
+  class IfStmt extends Statement {
+    condition: Expr
+  }
+    class ElseIfStmt {
+      condition: Expr
+    }
     class ElseStmt
-  class WhileStmt extends Statement
-  class ForStmt extends Statement
-  class SwitchStmt extends Statement
+  class WhileStmt extends Statement {
+    condition: Expr
+  }
+  class ForStmt extends Statement {
+    toExpr: Expr
+    step: Expr
+  }
+  class SwitchStmt extends Statement {
+    expr: Expr
+  }
     class CaseOption
+    class CaseLiteral {
+      val: EnumMemberLiteral | boolean | number | string
+    }
     class DefaultOption
   class UseStmt extends Statement
-  class AfterStmt extends Statement
+  class AfterStmt extends Statement {
+    time: string
+    condition: Expr
+  }
   abstract class EdgeStmt extends Statement
   class OnRisingEdgeStmt extends EdgeStmt
   class OnFallingEdgeStmt extends EdgeStmt
   abstract class LoopControlStmt extends Statement
   class ContinueStmt extends LoopControlStmt
   class BreakStmt extends LoopControlStmt
-  class ExpressionStmt extends Statement
+  class ExpressionStmt extends Statement {
+    expr: Expr
+  }
   
-  class InputMapping
+  class InputMapping {
+    value: Expr
+  }
   class UseOutput
   class SimpleUseResult
   class MappingUseResult
 
   abstract class Expr
-  class Ref extends Expr
+  class BinExpr extends Expr {
+    e1: Expr
+    e2: Expr
+    op: string
+  }
+  abstract class Primary extends Expr {
+    isNow: string
+    val: ArrayLiteral | StructLiteral | boolean | number | string
+  }
+  class Ref extends Primary
+  class NegExpr extends Primary {
+    expr: Expr
+  }
+  class NotExpr extends Primary {
+    expr: Expr
+  }
+  class ParenExpr extends Primary {
+    expr: Expr
+  }
+}
+
+' ===== LITERALS =====
+package "Literals" {
+  class ArrayLiteral
+  class StructLiteral
+    class StructFieldInit {
+      name: string
+      value: Expr
+    }
+  class EnumMemberLiteral {
+    op: string
+  }
 }
 
 ' Abstract element for what can be referenced by name
@@ -136,7 +151,7 @@ abstract class NamedElement
 NamedElement <|-- VarDecl
 NamedElement <|-- StructDecl
 NamedElement <|-- EnumDecl
-' NamedElement <|-- Datapoint (from Hardware DSL) is implied
+NamedElement <|-- Datapoint
 
 ' ===== RELATIONSHIPS =====
 
@@ -163,6 +178,7 @@ EnumDecl "1" *-- "1..*" EnumMemberDecl : members
 VarDecl "1" *-- "1" TypeRef
 StructFieldDecl "1" *-- "1" TypeRef
 TypeRef "1" ..> "0..1" TypeDecl : ref
+TypeRef "1" *-- "0..*" Expr : sizes
 
 ' FunctionBlock Compositions
 FunctionBlockDecl "1" *-- "0..*" FunctionBlockMember : members
@@ -178,6 +194,16 @@ FunctionBlockLogic   "1" *-- "0..*" Statement : stmts
 
 ' --- Statements ---
 ControlUnit "1" *-- "0..*" Statement : stmts
+AfterStmt "1" *-- "0..*" Statement : stmts
+CaseOption "1" *-- "0..*" Statement : stmts
+DefaultOption "1" *-- "0..*" Statement : stmts
+ElseIfStmt "1" *-- "0..*" Statement : stmts
+ElseStmt "1" *-- "0..*" Statement : stmts
+ForStmt "1" *-- "0..*" Statement : stmts
+IfStmt "1" *-- "0..*" Statement : stmts
+OnFallingEdgeStmt "1" *-- "0..*" Statement : stmts
+OnRisingEdgeStmt "1" *-- "0..*" Statement : stmts
+WhileStmt "1" *-- "0..*" Statement : stmts
 Statement <|-- AssignmentStmt
 Statement <|-- IfStmt
 Statement <|-- WhileStmt
@@ -194,19 +220,39 @@ Statement <|-- VarDecl
 ' Statement Compositions and References
 IfStmt "1" *-- "0..*" ElseIfStmt
 IfStmt "1" *-- "0..1" ElseStmt
-WhileStmt "1" *-- "1" Expr : condition
 ForStmt "1" *-- "1" VarDecl : loopVar
 SwitchStmt "1" *-- "1..*" CaseOption
 SwitchStmt "1" *-- "0..1" DefaultOption
+CaseOption "1" *-- "1..*" CaseLiteral : literals
 UseStmt "1" ..> "1" FunctionBlockDecl : functionBlockRef
 UseStmt "1" *-- "0..*" InputMapping : inputArgs
 UseStmt "1" *-- "1" UseOutput
+InputMapping "1" ..> "1" VarDecl : inputVar
+UseOutput "1" *-- "0..1" SimpleUseResult : singleOutput
+UseOutput "1" *-- "0..*" MappingUseResult : mappingOutputs
+SimpleUseResult "1" ..> "1" VarDecl : targetOutputVar
+MappingUseResult "1" ..> "1" VarDecl : fbOutputVar
+MappingUseResult "1" ..> "1" VarDecl : targetOutputVar
 EdgeStmt "1" *-- "1" Ref : signal
-Ref ..> NamedElement : ref
 
-note bottom of Expr
-  The Expr hierarchy (BinExpr, Primary, etc.)
-  is simplified to this abstract class for clarity.
-end note
+' --- Expressions ---
+Expr <|-- BinExpr
+Expr <|-- Primary
+Primary <|-- Ref
+Primary <|-- NegExpr
+Primary <|-- NotExpr
+Primary <|-- ParenExpr
+Ref "1" ..> "1" NamedElement : ref
+Ref "1" ..> "0..*" NamedElement : properties
+Ref "1" *-- "0..*" Expr : indices
+
+' --- Literals ---
+Primary "1" *-- "0..1" ArrayLiteral : val
+Primary "1" *-- "0..1" StructLiteral : val
+ArrayLiteral "1" *-- "0..*" Expr : elements
+StructLiteral "1" *-- "0..*" StructFieldInit : fields
+CaseLiteral "1" *-- "0..1" EnumMemberLiteral : val
+EnumMemberLiteral "1" ..> "1" EnumDecl : enumDecl
+EnumMemberLiteral "1" ..> "1" EnumMemberDecl : member
 
 @enduml
