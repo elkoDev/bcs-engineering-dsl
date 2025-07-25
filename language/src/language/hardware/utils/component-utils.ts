@@ -1,6 +1,6 @@
 import {
   Controller,
-  Component,
+  ControllerComponent,
   isPortGroup,
   isDatapoint,
   PortGroup,
@@ -11,8 +11,8 @@ import {
  * Get all components (PortGroup or Datapoint) from a controller or array of components.
  */
 export function getComponents(
-  controllerOrComponents: Controller | Component[]
-): Component[] {
+  controllerOrComponents: Controller | ControllerComponent[]
+): ControllerComponent[] {
   const components = Array.isArray(controllerOrComponents)
     ? controllerOrComponents
     : controllerOrComponents.components ?? [];
@@ -24,7 +24,7 @@ export function getComponents(
  * Get all PortGroups from a controller or array of components.
  */
 export function getPortGroups(
-  controllerOrComponents: Controller | Component[]
+  controllerOrComponents: Controller | ControllerComponent[]
 ): PortGroup[] {
   const components = Array.isArray(controllerOrComponents)
     ? controllerOrComponents
@@ -36,7 +36,7 @@ export function getPortGroups(
  * Get all Datapoints from a controller or array of components.
  */
 export function getDatapoints(
-  controllerOrComponents: Controller | Component[]
+  controllerOrComponents: Controller | ControllerComponent[]
 ): Datapoint[] {
   const components = Array.isArray(controllerOrComponents)
     ? controllerOrComponents

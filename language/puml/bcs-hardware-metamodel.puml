@@ -1,0 +1,91 @@
+@startuml BCS Hardware Metamodel
+skinparam linetype ortho
+hide empty members
+
+' ===== ENUMS =====
+enum BusType {
+  EtherCAT
+  Profinet
+  Profibus
+  KBus
+}
+
+enum IOType {
+  ANALOG_INPUT
+  ANALOG_OUTPUT
+  DIGITAL_INPUT
+  DIGITAL_OUTPUT
+}
+
+package "Physical View" {
+  class Bus {
+    name: string
+    busType: BusType
+    master: string
+  }
+  class Box {
+    name: string
+    product: string
+    rev: string
+  }
+  class Module {
+    name: string
+    product: string
+    rev: string
+    slot: number
+  }
+  class NetworkSettings {
+    hostname: string
+    ipAddress: string
+  }
+}
+
+package "Logical View" {
+  class Controller {
+    name: string
+  }
+  class PortGroup {
+    name: string
+    ioType: IOType
+    channels: number
+  }
+  class Datapoint {
+    name: string
+  }
+  class Channel {
+    name: string
+    dataType: PrimitiveType
+    link: string
+  }
+}
+
+' ===== ABSTRACT CLASSES =====
+class HardwareModel
+abstract class HardwareDefinition
+abstract class ControllerComponent
+
+' ===== INHERITANCE =====
+HardwareDefinition <|-- Bus
+HardwareDefinition <|-- Controller  
+HardwareDefinition <|-- NetworkSettings
+ControllerComponent <|--- PortGroup
+ControllerComponent <|--- Datapoint
+
+' ===== COMPOSITIONS =====
+HardwareModel "1" *-- "0..*" HardwareDefinition
+
+Bus "1" *-- "0..*" Box
+Box "1" *-- "0..*" Module
+Controller "1" *--- "0..*" ControllerComponent
+
+' ===== REFERENCES =====
+' A PortGroup references a Module (cross-reference in grammar: module=[Module])
+PortGroup "0..*" ..> "1" Module : module
+
+' A Datapoint references a PortGroup (cross-reference in grammar: portgroup=[PortGroup])
+Datapoint "0..*" ..> "1" PortGroup : portgroup
+
+' A Datapoint contains Channels (composition)
+Datapoint "1" *-- "1..*" Channel : channels
+
+@enduml

@@ -2,6 +2,49 @@
 skinparam linetype ortho
 hide empty members
 
+' ===== HARDWARE MODEL =====
+package "Hardware Model" {
+  class HardwareModel
+  abstract class HardwareDefinition
+  class Controller {
+    name: string
+  }
+  class Bus {
+    name: string
+    busType: BusType
+    master: string
+  }
+  class Box {
+    name: string
+    product: string
+    rev: string
+  }
+  class Module {
+    name: string
+    product: string
+    rev: string
+    slot: number
+  }
+  class NetworkSettings {
+    hostname: string
+    ipAddress: string
+  }
+  abstract class Component
+  class PortGroup {
+    name: string
+    channels: number
+    ioType: IOType
+  }
+  class Datapoint {
+    name: string
+  }
+  class Channel {
+    name: string
+    dataType: PrimitiveType
+    link: string
+  }
+}
+
 ' ===== CORE STRUCTURE =====
 package "Core Structure" {
   class ControlModel
