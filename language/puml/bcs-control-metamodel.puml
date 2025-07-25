@@ -165,10 +165,9 @@ ControlBlock "1" ...> "1" Controller : controller
 ' --- Declarations ---
 StructDecl "1" *--- "0..*" StructFieldDecl : fields
 EnumDecl "1" *--- "1..*" EnumMemberDecl : members
-VarDecl "1" *--- "1" TypeRef
-StructFieldDecl "1" *--- "1" TypeRef
+VarDecl "1" *--- "1" TypeRef : typeRef
+StructFieldDecl "1" *--- "1" TypeRef : typeRef
 TypeRef "1" ...> "0..1" TypeDecl : ref
-TypeRef "1" *--- "0..*" Expr : sizes
 
 ' FunctionBlock Compositions
 FunctionBlockDecl "1" *-- "0..*" FunctionBlockMember : members
@@ -218,11 +217,8 @@ Ref "1" ..> "0..*" NamedElement : properties
 Ref "1" *-- "0..*" Expr : indices
 
 ' --- Literals ---
-Primary "1" *-- "0..1" ArrayLiteral : val
-Primary "1" *-- "0..1" StructLiteral : val
 ArrayLiteral "1" *-- "0..*" Expr : elements
 StructLiteral "1" *-- "0..*" StructFieldInit : fields
-CaseLiteral "1" *-- "0..1" EnumMemberLiteral : val
 EnumMemberLiteral "1" ..> "1" EnumDecl : enumDecl
 EnumMemberLiteral "1" ..> "1" EnumMemberDecl : member
 
