@@ -28,7 +28,7 @@ package "Declarations & Types" {
     name: string
     init: Expr
   }
-  note bottom of VarDecl: The AST also classifies VarDecl as a Statement
+  note bottom of VarDecl: Also classifies as Statement
   class StructDecl extends TypeDecl {
     name: string
   }
