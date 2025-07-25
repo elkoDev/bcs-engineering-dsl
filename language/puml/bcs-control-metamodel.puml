@@ -135,7 +135,9 @@ package "Statements & Expressions" {
 
 ' ===== LITERALS =====
 package "Literals" {
-  class ArrayLiteral
+  class ArrayLiteral {
+    elements: Expr[]
+  }
   class StructLiteral
     class StructFieldInit {
       name: string
@@ -202,7 +204,7 @@ SwitchStmt "1" *-- "0..1" DefaultOption : default
 CaseOption "1" *-- "1..*" CaseLiteral : literals
 UseStmt "1" ..> "1" FunctionBlockDecl : functionBlockRef
 UseStmt "1" *-- "0..*" InputMapping : inputArgs
-UseStmt "1" *-- "1" UseOutput
+UseStmt "1" *-- "1" UseOutput : useOutput
 InputMapping "1" ..> "1" VarDecl : inputVar
 UseOutput "1" *-- "0..1" SimpleUseResult : singleOutput
 UseOutput "1" *-- "0..*" MappingUseResult : mappingOutputs
@@ -217,7 +219,6 @@ Ref "1" ..> "0..*" NamedElement : properties
 Ref "1" *-- "0..*" Expr : indices
 
 ' --- Literals ---
-ArrayLiteral "1" *-- "0..*" Expr : elements
 StructLiteral "1" *-- "0..*" StructFieldInit : fields
 EnumMemberLiteral "1" ..> "1" EnumDecl : enumDecl
 EnumMemberLiteral "1" ..> "1" EnumMemberDecl : member
