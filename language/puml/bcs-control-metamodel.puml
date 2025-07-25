@@ -6,7 +6,7 @@ hide empty members
 package "Core Structure" {
   class ControlModel
   class ControlBlock
-  abstract class ControlItem
+  abstract class "ControlItem" as C1
   class ControlUnit {
     name: string
     isOnce: string
@@ -161,6 +161,8 @@ ControlModel "1" *--- "0..*" TypeDecl : externTypeDecls
 ControlModel "1" *--- "1" ControlBlock
 ControlBlock "1" *--- "0..*" ControlItem
 ControlBlock "1" ...> "1" Controller : controller
+C1 <|-- ControlUnit
+C1 <|-- Declaration
 
 ' --- Declarations ---
 StructDecl "1" *--- "0..*" StructFieldDecl : fields
