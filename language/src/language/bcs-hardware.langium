@@ -14,10 +14,10 @@ HardwareDefinition:
 // ----------------------------------------------------------------
 Controller:
     'controller' name=ID '{'
-        (components+=Component)*
+        (components+=ControllerComponent)*
     '}';
 
-Component:
+ControllerComponent:
     PortGroup | Datapoint
 ;
 

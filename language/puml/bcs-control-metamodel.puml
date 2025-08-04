@@ -1,0 +1,226 @@
+@startuml bcs-control-metamodel
+skinparam linetype ortho
+hide empty members
+
+' ===== CORE STRUCTURE =====
+package "Core Structure" {
+  class ControlModel
+  class ControlBlock
+  abstract class "ControlItem" as C1
+  class ControlUnit {
+    name: string
+    isOnce: boolean
+    condition: Expr
+    time: string
+  }
+  class ImportDecl {
+    name: string
+  }
+}
+
+' ===== DECLARATIONS & TYPES =====
+package "Declarations & Types" {
+  abstract class Declaration
+  abstract class TypeDecl extends Declaration {
+    isExtern: boolean
+  }
+  class VarDecl extends Declaration {
+    name: string
+    init: Expr
+  }
+  note bottom of VarDecl: Also classifies as Statement
+  class StructDecl extends TypeDecl {
+    name: string
+  }
+    class StructFieldDecl {
+        name: string
+        init: Expr
+    }
+  class EnumDecl extends TypeDecl {
+    name: string
+  }
+    class EnumMemberDecl {
+        name: string
+    }
+  class FunctionBlockDecl extends TypeDecl {
+    name: string
+  }
+    abstract class FunctionBlockMember
+    class FunctionBlockInputs extends FunctionBlockMember
+    class FunctionBlockOutputs extends FunctionBlockMember
+    class FunctionBlockLocals extends FunctionBlockMember
+    class FunctionBlockLogic extends FunctionBlockMember
+  class TypeAlias extends TypeDecl {
+      name: string
+      primitive: PrimitiveType
+  }
+  class TypeRef {
+    type: PrimitiveType
+    sizes: Expr[]
+  }
+}
+
+' ===== STATEMENTS & EXPRESSIONS =====
+package "Statements & Expressions" {
+  abstract class Statement
+  class AssignmentStmt extends Statement {
+    target: Ref
+    value: Expr
+  }
+  class IfStmt extends Statement {
+    condition: Expr
+  }
+    class ElseIfStmt {
+      condition: Expr
+    }
+    class ElseStmt
+  class WhileStmt extends Statement {
+    condition: Expr
+  }
+  class ForStmt extends Statement {
+    toExpr: Expr
+    step: Expr
+  }
+  class SwitchStmt extends Statement {
+    expr: Expr
+  }
+    class CaseOption
+    class CaseLiteral {
+      val: EnumMemberLiteral | boolean | number | string
+    }
+    class DefaultOption
+  class UseStmt extends Statement
+  class AfterStmt extends Statement {
+    time: string
+    condition: Expr
+  }
+  abstract class EdgeStmt extends Statement
+  class OnRisingEdgeStmt extends EdgeStmt
+  class OnFallingEdgeStmt extends EdgeStmt
+  abstract class LoopControlStmt extends Statement
+  class ContinueStmt extends LoopControlStmt
+  class BreakStmt extends LoopControlStmt
+  class ExpressionStmt extends Statement {
+    expr: Expr
+  }
+  
+  class InputMapping {
+    value: Expr
+  }
+  class UseOutput
+  class SimpleUseResult
+  class MappingUseResult
+
+  abstract class Expr
+  class BinExpr extends Expr {
+    e1: Expr
+    e2: Expr
+    op: string
+  }
+  class Primary extends Expr {
+    isNow: string
+    val: ArrayLiteral | StructLiteral | boolean | number | string
+  }
+  class NegExpr extends Primary {
+    expr: Expr
+  }
+  class NotExpr extends Primary {
+    expr: Expr
+  }
+  class ParenExpr extends Primary {
+    expr: Expr
+  }
+  class Ref extends Primary
+}
+
+' ===== LITERALS =====
+package "Literals" {
+  class ArrayLiteral {
+    elements: Expr[]
+  }
+  class StructLiteral
+    class StructFieldInit {
+      name: string
+      value: Expr
+    }
+  class EnumMemberLiteral
+}
+
+' Abstract element for what can be referenced by name
+abstract class NamedElement
+NamedElement <|-- VarDecl
+NamedElement <|-- StructDecl
+NamedElement <|-- EnumDecl
+NamedElement <|-- Datapoint
+
+' ===== RELATIONSHIPS =====
+
+' --- Core Structure ---
+ControlModel "1" *-- "0..*" ImportDecl
+ControlModel "1" *-- "0..*" TypeDecl : externTypeDecls
+ControlModel "1" *-- "1" ControlBlock
+ControlBlock "1" *-- "0..*" C1
+ControlBlock "1" ..> "1" Controller : controller
+C1 <|-- ControlUnit
+C1 <|-- Declaration
+
+' --- Declarations ---
+StructDecl "1" *-- "0..*" StructFieldDecl : fields
+EnumDecl "1" *-- "1..*" EnumMemberDecl : members
+VarDecl "1" *-- "1" TypeRef : typeRef
+StructFieldDecl "1" *-- "1" TypeRef : typeRef
+TypeRef "1" ..> "0..1" TypeDecl : ref
+
+' FunctionBlock Compositions
+FunctionBlockDecl "1" *-- "0..*" FunctionBlockMember : members
+FunctionBlockDecl "1" ..> "0..1" ImportDecl : libRef
+FunctionBlockInputs  "1" *-- "0..*" VarDecl : inputs
+FunctionBlockOutputs "1" *-- "0..*" VarDecl : outputs
+FunctionBlockLocals  "1" *-- "0..*" VarDecl : locals
+FunctionBlockLogic   "1" *-- "0..*" Statement : stmts
+
+' --- Statements ---
+ControlUnit "1" *-- "0..*" Statement : stmts
+AfterStmt "1" *-- "0..*" Statement : stmts
+CaseOption "1" *-- "0..*" Statement : stmts
+DefaultOption "1" *-- "0..*" Statement : stmts
+ElseIfStmt "1" *-- "0..*" Statement : stmts
+ElseStmt "1" *-- "0..*" Statement : stmts
+ForStmt "1" *-- "0..*" Statement : stmts
+IfStmt "1" *-- "0..*" Statement : stmts
+OnFallingEdgeStmt "1" *-- "0..*" Statement : stmts
+OnRisingEdgeStmt "1" *-- "0..*" Statement : stmts
+WhileStmt "1" *-- "0..*" Statement : stmts
+' VarDecl extends both Declaration and Statement (dual classification)
+Statement <|-- VarDecl 
+' This represents LocalVarDeclStmt
+
+' Statement Compositions and References
+IfStmt "1" *-- "0..*" ElseIfStmt : elseIfStmts
+IfStmt "1" *-- "0..1" ElseStmt : elseStmt
+ForStmt "1" *-- "1" VarDecl : loopVar
+SwitchStmt "1" *-- "1..*" CaseOption : cases
+SwitchStmt "1" *-- "0..1" DefaultOption : default
+CaseOption "1" *-- "1..*" CaseLiteral : literals
+UseStmt "1" ..> "1" FunctionBlockDecl : functionBlockRef
+UseStmt "1" *-- "0..*" InputMapping : inputArgs
+UseStmt "1" *-- "1" UseOutput : useOutput
+InputMapping "1" ..> "1" VarDecl : inputVar
+UseOutput "1" *-- "0..1" SimpleUseResult : singleOutput
+UseOutput "1" *-- "0..*" MappingUseResult : mappingOutputs
+SimpleUseResult "1" ..> "1" VarDecl : targetOutputVar
+MappingUseResult "1" ..> "1" VarDecl : fbOutputVar
+MappingUseResult "1" ..> "1" VarDecl : targetOutputVar
+EdgeStmt "1" *-- "1" Ref : signal
+
+' --- Expressions ---
+Ref "1" ..> "1" NamedElement : ref
+Ref "1" ..> "0..*" NamedElement : properties
+Ref "1" *-- "0..*" Expr : indices
+
+' --- Literals ---
+StructLiteral "1" *-- "0..*" StructFieldInit : fields
+EnumMemberLiteral "1" ..> "1" EnumDecl : enumDecl
+EnumMemberLiteral "1" ..> "1" EnumMemberDecl : member
+
+@enduml
