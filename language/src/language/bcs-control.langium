@@ -337,7 +337,7 @@ ParenExpr:
 Ref:
     ref=[NamedElement] ('.' properties+=[NamedElement] | '[' indices+=Expr ']')*;
 
-type NamedElement = VarDecl | EnumDecl | StructDecl | Datapoint;
+type NamedElement = VarDecl | EnumDecl | Datapoint;
 
 ComparisonOperator returns string:
     '<' | '<=' | '==' | '!=' | '>=' | '>'

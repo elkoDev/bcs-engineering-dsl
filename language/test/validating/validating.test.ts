@@ -290,7 +290,7 @@ describe("BCS Control Validation Tests", () => {
     const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
-    expect(allDiagnostics.length).toBe(13);
+    expect(allDiagnostics.length).toBe(12);
 
     const expectedErrors = [
       "Unexpected field 'f' in struct literal for 'Rectangle'.",
@@ -299,7 +299,6 @@ describe("BCS Control Validation Tests", () => {
       "Missing field 'y' in struct literal for 'Rectangle'.",
       'Type mismatch: Cannot assign "STRUCT:Point" to "STRUCT:Rectangle".',
       "Unexpected field 'z' in struct literal for 'Rectangle'.",
-      "Cannot use struct declaration 'Rectangle' as a value for input 'i'.",
     ];
 
     for (const expected of expectedErrors) {

@@ -3,8 +3,6 @@ import {
   UseStmt,
   FunctionBlockDecl,
   UseOutput,
-  isRef,
-  isStructDecl,
 } from "../../generated/ast.js";
 import { getInputs, getOutputs } from "./function-block-utils.js";
 import { DuplicationValidator } from "./duplication-validation-utils.js";
@@ -58,16 +56,6 @@ export class UseStmtValidationUtils {
       const paramDecl = getInputs(fb).find((i) => i.name === inputVarName);
       const expectedType = inferVarDeclType(paramDecl);
       const actualType = inferType(arg.value, accept);
-
-      // Check for struct type misuse
-      if (isRef(arg.value) && isStructDecl(arg.value.ref.ref)) {
-        accept(
-          "error",
-          `Cannot use struct declaration '${arg.value.ref?.ref.name}' as a value for input '${inputVarName}'.`,
-          { node: arg.value }
-        );
-        continue;
-      }
 
       if (
         expectedType &&

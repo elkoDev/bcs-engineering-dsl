@@ -148,10 +148,9 @@ package "Literals" {
 
 ' Abstract element for what can be referenced by name
 abstract class NamedElement
-NamedElement <|-- VarDecl
-NamedElement <|-- StructDecl
-NamedElement <|-- EnumDecl
-NamedElement <|-- Datapoint
+NamedElement <|--- VarDecl
+NamedElement <|--- EnumDecl
+NamedElement <|--- Datapoint
 
 ' ===== RELATIONSHIPS =====
 

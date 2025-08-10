@@ -87,10 +87,6 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
           return this.createScopeForNodes(structDecl.fields);
         }
       }
-      if (isStructDecl(namedElement)) {
-        const structDecl = namedElement;
-        return this.createScopeForNodes(structDecl.fields);
-      }
       if (isEnumDecl(namedElement)) {
         const enumDecl = namedElement;
         return this.createScopeForNodes(enumDecl.members);
