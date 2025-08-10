@@ -78,10 +78,9 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
       const namedElement = container.ref.ref;
       if (isVarDecl(namedElement)) {
         const typeRef = namedElement.typeRef;
-        const structDecl = typeRef?.ref?.ref;
-
-        if (structDecl && isStructDecl(structDecl)) {
-          return this.createScopeForNodes(structDecl.fields);
+        const typeDecl = typeRef?.ref?.ref;
+        if (typeDecl && isStructDecl(typeDecl)) {
+          return this.createScopeForNodes(typeDecl.fields);
         }
       }
       if (isEnumDecl(namedElement)) {
