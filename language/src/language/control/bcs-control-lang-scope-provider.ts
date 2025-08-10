@@ -51,16 +51,13 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
 
       const enumDecls =
         controlModel?.controlBlock?.items.filter(isEnumDecl) ?? [];
-      const structDecls =
-        controlModel?.controlBlock?.items.filter(isStructDecl) ?? [];
 
-      const externalTypeDecls = controlModel?.externTypeDecls ?? [];
+      const externalEnumDecls = controlModel?.externTypeDecls.filter(isEnumDecl) ?? [];
 
       const scopeNodes: AstNode[] = [
         ...localVars,
         ...enumDecls,
-        ...structDecls,
-        ...externalTypeDecls,
+        ...externalEnumDecls,
       ];
 
       const isInsideFunctionBlock =
@@ -150,7 +147,7 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
       }
     }
 
-    // Collect variables from the enclosing function block (inputs, outputs, locals)
+    // Collect variables from the enclosing function block (inputs, outputs, locals) if the container is inside the function block
     const fb = AstUtils.getContainerOfType(container, isFunctionBlockDecl);
     if (fb) {
       vars.push(...getInputs(fb), ...getOutputs(fb), ...getLocals(fb));
