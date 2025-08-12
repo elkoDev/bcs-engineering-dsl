@@ -52,7 +52,8 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
       const enumDecls =
         controlModel?.controlBlock?.items.filter(isEnumDecl) ?? [];
 
-      const externalEnumDecls = controlModel?.externTypeDecls.filter(isEnumDecl) ?? [];
+      const externalEnumDecls =
+        controlModel?.externTypeDecls.filter(isEnumDecl) ?? [];
 
       const scopeNodes: AstNode[] = [
         ...localVars,
@@ -84,12 +85,10 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
         }
       }
       if (isEnumDecl(namedElement)) {
-        const enumDecl = namedElement;
-        return this.createScopeForNodes(enumDecl.members);
+        return this.createScopeForNodes(namedElement.members);
       }
       if (isDatapoint(namedElement)) {
-        const datapoint = namedElement;
-        return this.createScopeForNodes(datapoint.channels);
+        return this.createScopeForNodes(namedElement.channels);
       }
     }
 

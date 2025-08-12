@@ -278,7 +278,7 @@ export class StatementConverter {
         .map((s: any) => this.convertStatementToST(s, indent + 1))
         .join("\n") +
       `\n${pad(indent + 1)}${tonName}(IN := FALSE);\n` +
-      `${pad(indent)}END_IF\n`
+      `${pad(indent)}END_IF;\n`
     );
   }
 

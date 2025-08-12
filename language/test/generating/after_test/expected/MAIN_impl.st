@@ -13,11 +13,11 @@ IF tonAfter1.Q THEN
     conditionB := TRUE;
     conditionA := FALSE;
     tonAfter1(IN := FALSE);
-END_IF
+END_IF;
 
 tonAfter2(IN := conditionB = TRUE);
 IF tonAfter2.Q THEN
     conditionA := TRUE;
     conditionB := FALSE;
     tonAfter2(IN := FALSE);
-END_IF
+END_IF;
