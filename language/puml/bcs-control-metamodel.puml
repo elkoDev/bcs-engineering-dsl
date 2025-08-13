@@ -30,10 +30,10 @@ package "Declarations & Types" {
   }
   note bottom of VarDecl
     Can be declared at:
-    • Global scope (ControlBlock)
-    • Top-level of ControlUnits  
-    • Function block sections (inputs/outputs/locals)
-    • For loop variable declarations
+    - Global scope (ControlBlock)
+    - Top-level of ControlUnits  
+    - Function block sections (inputs/outputs/locals)
+    - For loop variable declarations
   end note
   class StructDecl extends TypeDecl {
     name: string
