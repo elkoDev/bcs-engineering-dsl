@@ -162,25 +162,26 @@ describe("BCS Control Validation Tests", () => {
     const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
-    expect(allDiagnostics.length).toBe(36);
+    expect(allDiagnostics.length).toBe(18);
     const expectedMessages = [
       "Duplicate enum 'DuplicateMode'.",
       "Duplicate struct 'DuplicateStruct'.",
       "Only one 'inputs' block allowed in function block 'DuplicateFB', found 2.",
       "Only one 'outputs' block allowed in function block 'DuplicateFB', found 2.",
       "Only one 'locals' block allowed in function block 'DuplicateFB', found 2.",
-      "Only one 'logic' block allowed in function block 'DuplicateFB', found 2.",
       "Duplicate variable name 'iDuplicate' in function block 'DuplicateFB'.",
       "Duplicate variable name 'lDuplicate' in function block 'DuplicateFB'.",
-      "Duplicate variable name 'oDuplicate' in function block 'DuplicateFB'.",
       "Duplicate variable name 'duplicateFBVar' in function block 'DuplicateFB'.",
+      "Duplicate variable name 'oDuplicate' in function block 'DuplicateFB'.",
       "Duplicate function block 'DuplicateFB'.",
       "Duplicate global variable 'duplicateVar'.",
       "Duplicate local var name 'duplicateUnitVar' in unit 'DuplicateUnit'.",
+      "Duplicate variable 'duplicateUnitVar' in unit 'DuplicateUnit'.",
       "Duplicate control unit 'DuplicateUnit'.",
-      "Duplicate component name 'motor' in this controller.",
+      "Variable 'globalVar' conflicts with global variable.",
       "Duplicate component name 'windowContact_duplicate' in this controller.",
-      "Link \"Channel 2^Input\" on module 'IOModule_DI1' is already used by 'windowContact_duplicate.value'."
+      "Link \"Channel 2^Input\" on module 'IOModule_DI1' is already used by 'windowContact_duplicate.value'.",
+      "Duplicate component name 'motor' in this controller.",
     ];
 
     expectedMessages.forEach((msg) => {

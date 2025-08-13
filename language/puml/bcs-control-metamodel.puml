@@ -28,7 +28,13 @@ package "Declarations & Types" {
     name: string
     init: Expr
   }
-  note bottom of VarDecl: Also classifies as Statement
+  note bottom of VarDecl
+    Can be declared at:
+    - Global scope (ControlBlock)
+    - Top-level of ControlUnits  
+    - Function block sections (inputs/outputs/locals)
+    - For loop variable declarations
+  end note
   class StructDecl extends TypeDecl {
     name: string
   }

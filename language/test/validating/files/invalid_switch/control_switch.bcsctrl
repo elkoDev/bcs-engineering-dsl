@@ -1,25 +1,36 @@
 control InvalidSwitchTestController {
-    enum Mode { OFF, ECO, COMFORT }
-    enum Status { ON, OFF }
-
-    var mode_should_fail : Mode;
-
+    enum Mode {
+        OFF,
+        ECO,
+        COMFORT
+    }
+    enum Status {
+        ON,
+        OFF
+    }
+    var mode_should_fail: Mode;
     unit TestUnit {
-        switch (mode_should_fail) {
-            case Status.OFF: {
-                var status_should_fail : Status;
+        var status_should_fail: Status; // Moved to unit level
+        switch (mode_should_fail){
+            case Status.OFF:{
+            // Nested variable declarations no longer allowed
+                status_should_fail = Status.ON;
             }
-            case Mode.ECO: {
-                var status_should_fail : Status;
+            case Mode.ECO:{
+            // Nested variable declarations no longer allowed
+                status_should_fail = Status.OFF;
             }
-            case Mode.ECO: {
-                var status_should_fail : Status;
+            case Mode.ECO:{
+            // Nested variable declarations no longer allowed  
+                status_should_fail = Status.ON;
             }
-            case true: {
-                var status_should_fail : Status;
+            case true:{
+            // Nested variable declarations no longer allowed
+                status_should_fail = Status.OFF;
             }
-            default: {
-                var status_should_fail : Status;
+            default:{
+            // Nested variable declarations no longer allowed
+                status_should_fail = Status.ON;
             }
         }
     }

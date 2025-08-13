@@ -63,14 +63,15 @@ export function registerBCSControlValidationChecks(
       validator.checkUniqueVarNamesInUnit,
       validator.checkScanCycleUnits,
       validator.checkWhenConditionType,
-      validator.checkNestedVarDuplicates,
+      validator.checkTopLevelVarDuplicates,
     ],
     ControlModel: [validator.checkUniqueEnumsAndTypesAndUnits],
     AssignmentStmt: [
       validator.checkAssignmentTypes,
       validator.checkNoWriteToInputDatapoints,
     ],
-    VarDecl: [validator.checkVarDeclTypes],    UseStmt: [validator.checkUseStmtTypes],
+    VarDecl: [validator.checkVarDeclTypes],
+    UseStmt: [validator.checkUseStmtTypes],
     SwitchStmt: [validator.checkSwitchCaseTypes],
     ForStmt: [validator.checkToExprType],
     OnRisingEdgeStmt: [validator.checkEdgeSignalType],
@@ -175,8 +176,8 @@ export class BCSControlLangValidator {
       }
     }
   }
-  checkNestedVarDuplicates(unit: ControlUnit, accept: ValidationAcceptor) {
-    DuplicationValidator.checkNestedScopeVariableDuplicates(unit, accept);
+  checkTopLevelVarDuplicates(unit: ControlUnit, accept: ValidationAcceptor) {
+    DuplicationValidator.checkTopLevelVarDuplicates(unit, accept);
   }
 
   checkUniqueVarNamesInFunctionBlock(
