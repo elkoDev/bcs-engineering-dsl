@@ -158,7 +158,11 @@ export class MainProgramGenerator {
     for (const item of this.controlModel.controlBlock.items) {
       if (!isControlUnit(item)) continue;
       const controlUnit = item;
-      mainStatements.push(...controlUnit.stmts);
+      // Filter out variable declarations and only add executable statements
+      const executableStmts = controlUnit.stmts.filter(
+        (stmt) => !isVarDecl(stmt)
+      ) as Statement[];
+      mainStatements.push(...executableStmts);
       this.addVarDeclsFromControlUnit(controlUnit, mainVars);
       this.instanceManager.assignFBInstancesFromControlUnit(controlUnit);
     }

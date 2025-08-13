@@ -98,8 +98,9 @@ control KBusController {
         }
     }
     unit ButtonReleaseHandler {
+        var desiredState: BOOL = false;
         on_falling(Buttons.Room2) {
-            Lights.Room2 = false;
+            Lights.Room2 = desiredState;
         }
     }
     unit ValidateSensorDistance {

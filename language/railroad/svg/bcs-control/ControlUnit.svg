@@ -1,4 +1,4 @@
-<svg class="railroad-diagram" xmlns="http://www.w3.org/2000/svg" width="721" height="112" viewBox="0 0 721 112">
+<svg class="railroad-diagram" xmlns="http://www.w3.org/2000/svg" width="809" height="112" viewBox="0 0 809 112">
 <style>
     svg.railroad-diagram {
         background-color: hsl(30,20%,95%);
@@ -28,7 +28,7 @@
 <path d="M 20 41 v 20 m 10 -20 v 20 m -10 -10 h 20.5"></path>
 <g>
 <path d="M40 51h0"></path>
-<path d="M680 51h0"></path>
+<path d="M768 51h0"></path>
 <path d="M40 51h10"></path>
 <g>
 <path d="M50 51h0"></path>
@@ -150,12 +150,12 @@
 <path d="M600 51h10"></path>
 <g>
 <path d="M610 51h0"></path>
-<path d="M670 51h0"></path>
-<rect x="610" y="40" width="60" height="22"></rect>
-<text x="640" y="55">Block</text>
+<path d="M758 51h0"></path>
+<rect x="610" y="40" width="148" height="22"></rect>
+<text x="684" y="55">ControlUnitBlock</text>
 </g>
-<path d="M670 51h10"></path>
+<path d="M758 51h10"></path>
 </g>
-<path d="M 680 51 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
+<path d="M 768 51 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
 </g>
 </svg>

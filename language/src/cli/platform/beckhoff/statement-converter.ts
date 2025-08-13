@@ -9,7 +9,6 @@ import {
   isExpressionStmt,
   isOnRisingEdgeStmt,
   isOnFallingEdgeStmt,
-  isVarDecl,
   isBreakStmt,
   isContinueStmt,
   isAfterStmt,
@@ -22,7 +21,6 @@ import {
   isEnumMemberLiteral,
   Expr,
 } from "../../../language/generated/ast.js";
-import { convertTypeRefToST } from "./type-converter.js";
 import { getOutputs } from "../../../language/control/utils/function-block-utils.js";
 import { InstanceManager } from "./instance-manager.js";
 import { ExpressionConverter } from "./expression-converter.js";
@@ -65,15 +63,6 @@ export class StatementConverter {
     if (isUseStmt(stmt)) return this.stUse(stmt, indent);
     if (isOnRisingEdgeStmt(stmt)) return this.stEdge(stmt, indent, true);
     if (isOnFallingEdgeStmt(stmt)) return this.stEdge(stmt, indent, false);
-    if (isVarDecl(stmt))
-      return (
-        pad(indent) +
-        `${stmt.name}: ${convertTypeRefToST(stmt.typeRef)}${
-          stmt.init
-            ? ` := ${this.expressionConverter.convertExprToST(stmt.init)}`
-            : ""
-        };`
-      );
     return (
       pad(indent) + `// Unsupported statement type: ${(stmt as any).$type}`
     );
