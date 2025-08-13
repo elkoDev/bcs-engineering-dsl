@@ -31,22 +31,54 @@ import {
  */
 export class DuplicationValidator {
   /**
-   * Validates that variable names within a block don't conflict with variables
-   * from outer scopes or duplicate declarations within the same scope.
+   * Validates that top-level variable names within a control unit are unique
+   * and don't conflict with global variables.
    *
    * @param unit The control unit to check
    * @param accept The validation acceptor for reporting errors
    */
-  static checkNestedScopeVariableDuplicates(
+  static checkTopLevelVarDuplicates(
     unit: ControlUnit,
     accept: ValidationAcceptor
   ) {
     const model = unit.$container;
-    const globalNames = new Set(
+    const globalVarNames = new Set(
       model.items.filter(isVarDecl).map((v) => v.name)
     );
 
-    this.validateScopeBlockVariables(unit.stmts, globalNames, accept);
+    const localVarNames = new Set<string>();
+
+    // Check only top-level variable declarations in the unit
+    for (const stmt of unit.stmts) {
+      if (isVarDecl(stmt)) {
+        const name = stmt.name;
+
+        // Check for conflicts with global variables
+        if (globalVarNames.has(name)) {
+          accept(
+            "error",
+            `Variable '${name}' conflicts with global variable.`,
+            {
+              node: stmt,
+              property: "name",
+            }
+          );
+        }
+        // Check for duplicates within the same unit
+        else if (localVarNames.has(name)) {
+          accept(
+            "error",
+            `Duplicate variable '${name}' in unit '${unit.name}'.`,
+            {
+              node: stmt,
+              property: "name",
+            }
+          );
+        } else {
+          localVarNames.add(name);
+        }
+      }
+    }
   }
 
   /**
