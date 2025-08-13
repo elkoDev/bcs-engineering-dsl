@@ -162,7 +162,7 @@ describe("BCS Control Validation Tests", () => {
     const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
-    expect(allDiagnostics.length).toBe(35);
+    expect(allDiagnostics.length).toBe(36);
     const expectedMessages = [
       "Duplicate enum 'DuplicateMode'.",
       "Duplicate struct 'DuplicateStruct'.",
@@ -180,6 +180,7 @@ describe("BCS Control Validation Tests", () => {
       "Duplicate control unit 'DuplicateUnit'.",
       "Duplicate component name 'motor' in this controller.",
       "Duplicate component name 'windowContact_duplicate' in this controller.",
+      "Link \"Channel 2^Input\" on module 'IOModule_DI1' is already used by 'windowContact_duplicate.value'."
     ];
 
     expectedMessages.forEach((msg) => {

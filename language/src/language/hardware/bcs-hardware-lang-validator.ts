@@ -4,6 +4,8 @@ import {
   BCSEngineeringDSLAstType,
   Controller,
   Datapoint,
+  isDatapoint,
+  Module,
   PortGroup,
 } from "../generated/ast.js";
 
@@ -16,6 +18,7 @@ export function registerBCSHardwareValidationChecks(
     Controller: [
       validator.checkControllerHasName,
       validator.checkUniqueComponentNames,
+      validator.checkModuleScopedLinkUniqueness,
     ],
     PortGroup: [validator.checkPortgroupChannelCount],
     Datapoint: [validator.checkDatapointChannelsValid],
@@ -105,5 +108,99 @@ export class BCSHardwareLangValidator {
         { node: portGroup, property: "channels" }
       );
     }
+  }
+
+  /**
+   * Ensures that no two channels (possibly in different datapoints/portgroups)
+   * map to the same physical module link. Multiple portgroups may reference
+   * the same Module, but links on that Module must be globally unique.
+   */
+  checkModuleScopedLinkUniqueness(
+    controller: Controller,
+    accept: ValidationAcceptor
+  ): void {
+    const moduleLinksRegistry = new ModuleLinksRegistry();
+
+    for (const datapoint of this.getDatapoints(controller)) {
+      const module = this.getModuleFromDatapoint(datapoint);
+      if (!module) continue;
+
+      this.validateDatapointChannelLinks(
+        datapoint,
+        module,
+        moduleLinksRegistry,
+        accept
+      );
+    }
+  }
+
+  private getDatapoints(controller: Controller): Datapoint[] {
+    return controller.components.filter(isDatapoint);
+  }
+
+  private getModuleFromDatapoint(datapoint: Datapoint): Module | null {
+    return datapoint.portgroup?.ref?.module?.ref ?? null;
+  }
+
+  private validateDatapointChannelLinks(
+    datapoint: Datapoint,
+    module: Module,
+    registry: ModuleLinksRegistry,
+    accept: ValidationAcceptor
+  ): void {
+    for (const channel of datapoint.channels ?? []) {
+      const link = channel.link?.trim();
+      if (!link) continue; // empty links handled by per-datapoint check
+
+      const existingOwner = registry.getLinkOwner(module, link);
+      if (!existingOwner) {
+        registry.registerLink(module, link, datapoint, channel.name);
+        continue;
+      }
+
+      // Report only the later occurrence to avoid double-reporting
+      accept(
+        "error",
+        `Link ${link} on module '${module.name}' is already used by '${existingOwner.datapoint.name}.${existingOwner.channelName}'.`,
+        { node: channel, property: "link" }
+      );
+    }
+  }
+}
+
+interface LinkOwner {
+  datapoint: Datapoint;
+  channelName: string;
+}
+
+class ModuleLinksRegistry {
+  private readonly linksByModule = new Map<string, Map<string, LinkOwner>>();
+
+  getLinkOwner(module: Module, link: string): LinkOwner | undefined {
+    const moduleKey = this.getModuleKey(module);
+    return this.linksByModule.get(moduleKey)?.get(link);
+  }
+
+  registerLink(
+    module: Module,
+    link: string,
+    datapoint: Datapoint,
+    channelName: string
+  ): void {
+    const moduleKey = this.getModuleKey(module);
+    const moduleLinks = this.getOrCreateModuleLinks(moduleKey);
+    moduleLinks.set(link, { datapoint, channelName });
+  }
+
+  private getModuleKey(module: Module): string {
+    const boxName = (module.$container as any)?.name ?? "";
+    return `${boxName}::${module.name}`;
+  }
+
+  private getOrCreateModuleLinks(moduleKey: string): Map<string, LinkOwner> {
+    if (!this.linksByModule.has(moduleKey)) {
+      this.linksByModule.set(moduleKey, new Map());
+    }
+    return this.linksByModule.get(moduleKey)!;
   }
 }
