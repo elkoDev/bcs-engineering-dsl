@@ -1,41 +1,77 @@
 control InvalidArrayTestController {
-    enum Mode { OFF, ECO, COMFORT }
-
+    enum Mode {
+        OFF,
+        ECO,
+        COMFORT
+    }
     unit TestInvalidArrayUnit {
+        // 1. Assignment type mismatch: assigning INT to BOOL array element
         var arr1: BOOL[5][5][5];
-        arr1[0][0][0] = 1;
+        arr1[0][0][0] = 1; // ERROR: Type mismatch: Cannot assign "INT" to "BOOL"
 
-        var arr2: BOOL[3] = [true, true];
+        // 2. Array size mismatch: array literal has wrong number of elements
+        var arr2: BOOL[3] = [true, true]; // ERROR: Array size mismatch: expected 3 elements, but got 2
+        // ERROR: Type mismatch: Cannot assign "ARRAY<BOOL>[2]" to "ARRAY<BOOL>[3]"
 
+        // 3. Array type mismatch: assigning INT array to BOOL array
         var arr3: INT[5][5][5];
-        arr1 = arr3;
+        arr1 = arr3; // ERROR: Type mismatch: Cannot assign "ARRAY<INT>[5][5][5]" to "ARRAY<BOOL>[5][5][5]"
 
+        // 4. Array index out of bounds: negative index
         var arr4: REAL[3] = [1.0, 2.0, 3.0];
-        var realVal : REAL = arr4[-1];
+        var realVal: REAL = arr4[-1]; // ERROR: Array index [-1] out of bounds: allowed range is 0 to 2
+
+        // 5. Multi-dimensional array index out of bounds: all indices exceed bounds
         var arr5: REAL[1][2][3];
-        arr5[2][3][4] = 5.0;
+        arr5[2][3][4] = 5.0; // ERROR: Array index [2] out of bounds: allowed range is 0 to 0
+        // ERROR: Array index [3] out of bounds: allowed range is 0 to 1  
+        // ERROR: Array index [4] out of bounds: allowed range is 0 to 2
 
-        var arr6: BOOL[5][5][5] = [true, false, true, false, true];
-        var arr7: INT[5][5][5] = [1, 2, 3, 4, 5];
-        var arr8: REAL[5][5][5] = [1.0, 2.0, 3.0, 4.0, 5.0];
-        var arr9: BOOL[5][5] = [true, false, true, [true, false, true, true, false], true];
-        var arr10: Mode[5][5][5] = [Mode.OFF, Mode.ECO, Mode.COMFORT, Mode.OFF, Mode.ECO];
-        var arr11: BOOL[5][5] = [[false, false, false, false, true], [false, false, false, false, true], [true, false, "wrong_datatype", false, true], [false, true, false, true, false], [true, false, true, false, true]];
+        // 6. Array dimension mismatch: flat array assigned to 3D array
+        var arr6: BOOL[5][5][5] = [true, false, true, false, true]; // ERROR: Expected nested array with 3 dimensions
+        // ERROR: Type mismatch: Cannot assign "ARRAY<BOOL>[5]" to "ARRAY<BOOL>[5][5][5]"
 
+        // 7. Array dimension mismatch: flat INT array assigned to 3D INT array
+        var arr7: INT[5][5][5] = [1, 2, 3, 4, 5]; // ERROR: Expected nested array with 3 dimensions
+        // ERROR: Type mismatch: Cannot assign "ARRAY<INT>[5]" to "ARRAY<INT>[5][5][5]"
 
+        // 8. Array dimension mismatch: flat REAL array assigned to 3D REAL array
+        var arr8: REAL[5][5][5] = [1.0, 2.0, 3.0, 4.0, 5.0]; // ERROR: Expected nested array with 3 dimensions
+        // ERROR: Type mismatch: Cannot assign "ARRAY<REAL>[5]" to "ARRAY<REAL>[5][5][5]"
+
+        // 9. Mixed array types: nested array mixed with primitives
+        var arr9: BOOL[5][5] = [true, false, true, [true, false, true, true, false], true]; // ERROR: Expected nested array with 2 dimensions
+        // ERROR: Type mismatch: Cannot assign "ARRAY<mixed>[5]" to "ARRAY<BOOL>[5][5]"
+
+        // 10. Enum array dimension mismatch: flat enum array assigned to 3D enum array
+        var arr10: Mode[5][5][5] = [Mode.OFF, Mode.ECO, Mode.COMFORT, Mode.OFF, Mode.ECO]; // ERROR: Expected nested array with 3 dimensions
+        // ERROR: Type mismatch: Cannot assign "ARRAY<ENUM:Mode>[5]" to "ARRAY<ENUM:Mode>[5][5][5]"
+
+        // 11. Mixed types in nested array: string mixed with booleans
+        var arr11: BOOL[5][5] = [[false, false, false, false, true], [false, false, false, false, true], [true, false, "wrong_datatype", false, true], [false, true, false, true, false], [true, false, true, false, true]]; // ERROR: Type mismatch: Cannot assign "ARRAY<mixed>[5]" to "ARRAY<BOOL>[5][5]"
+
+        // 12. Indexing non-array type: trying to index a scalar INT
         var x: INT = 5;
-        var invalidIndex : INT = x[1]; // invalid: x is scalar
+        var invalidIndex: INT = x[1]; // ERROR: Cannot index into non-array type 'INT'
+        // ERROR: Cannot infer type for variable initialization: invalidIndex = x[1]
 
-        var boolArray: BOOL[2] = [1, 2]; // invalid: 1 and 2 are INT, not BOOL
+        // 13. Element type mismatch: INT elements in BOOL array
+        var boolArray: BOOL[2] = [1, 2]; // ERROR: Type mismatch: Cannot assign "ARRAY<INT>[2]" to "ARRAY<BOOL>[2]"
 
-        var badNested: BOOL[3][3] = [[true, true, true]]; // invalid: missing inner dimension
+        // 14. Nested array size mismatch: wrong outer dimension size
+        var badNested: BOOL[3][3] = [[true, true, true]]; // ERROR: Array size mismatch: expected 3 elements, but got 1
+        // ERROR: Type mismatch: Cannot assign "ARRAY<BOOL>[1][3]" to "ARRAY<BOOL>[3][3]"
 
+        // 15. Indexing non-array type: trying to index a scalar BOOL
         var invalidScalarIndex: BOOL = true;
-        var invalidAccess : BOOL = invalidScalarIndex[0]; // invalid: scalar indexed
+        var invalidAccess: BOOL = invalidScalarIndex[0]; // ERROR: Cannot index into non-array type 'BOOL'
+        // ERROR: Cannot infer type for variable initialization: invalidAccess = invalidScalarIndex[0]
 
-        var arrStrings: BOOL[2] = [true, 0];
-        var z : BOOL = arrStrings["notANumber"]; // invalid: string index
+        // 16. Mixed types in array literal: BOOL and INT mixed
+        var arrStrings: BOOL[2] = [true, 0]; // ERROR: Type mismatch: Cannot assign "ARRAY<mixed>[2]" to "ARRAY<BOOL>[2]"
 
+        // 17. Invalid index type: string used as array index
+        var z: BOOL = arrStrings["notANumber"]; // ERROR: Array index must be of type INT, but got "STRING"
     }
 }
  

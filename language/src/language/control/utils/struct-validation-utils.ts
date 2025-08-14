@@ -220,7 +220,7 @@ export class StructValidationUtils {
     initType: string
   ): boolean {
     return (
-      initType.startsWith("ARRAY<STRUCT>") &&
+      initType.startsWith("ARRAY<STRUCT:") &&
       declaredType.startsWith("ARRAY<STRUCT:")
     );
   }

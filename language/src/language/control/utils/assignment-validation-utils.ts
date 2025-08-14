@@ -2,7 +2,7 @@ import { ValidationAcceptor } from "langium";
 import { VarDecl, AssignmentStmt } from "../../generated/ast.js";
 import { StructValidationUtils } from "./struct-validation-utils.js";
 import { ArrayValidationUtils } from "./array-validation-utils.js";
-import { inferVarDeclType, isTypeAssignable } from "./type-inference-utils.js";
+import { TypeInferenceUtils } from "./type-inference-utils.js";
 
 /**
  * Utility class for validating variable declarations and assignments in the BCS control language.
@@ -15,11 +15,10 @@ export class AssignmentValidationUtils {
    */
   static validateVarDeclTypes(
     varDecl: VarDecl,
-    accept: ValidationAcceptor,
-    inferType: (expr: any, accept: ValidationAcceptor) => string | undefined
+    accept: ValidationAcceptor
   ): void {
     // 1. Infer and validate the declared type
-    const type = inferVarDeclType(varDecl);
+    const type = TypeInferenceUtils.inferVarDeclType(varDecl);
     if (!type) {
       this.reportNoTypeError(varDecl, accept);
       return;
@@ -31,7 +30,7 @@ export class AssignmentValidationUtils {
     }
 
     // 3. Check the initialization type and compatibility
-    this.checkInitializerTypeCompatibility(varDecl, type, accept, inferType);
+    this.checkInitializerTypeCompatibility(varDecl, type, accept);
 
     // 4. Check array size if applicable
     ArrayValidationUtils.checkArraySizeConsistency(varDecl, accept);
@@ -43,14 +42,13 @@ export class AssignmentValidationUtils {
   static validateAssignmentTypes(
     stmt: AssignmentStmt,
     accept: ValidationAcceptor,
-    inferType: (expr: any, accept: ValidationAcceptor) => string | undefined,
     stringifyExpression: (expr: any) => string
   ): void {
-    const leftType = inferType(stmt.target, accept);
-    const rightType = inferType(stmt.value, accept);
+    const leftType = TypeInferenceUtils.inferType(stmt.target, accept);
+    const rightType = TypeInferenceUtils.inferType(stmt.value, accept);
 
-    ArrayValidationUtils.checkArrayIndexTypes(stmt.target, accept, inferType);
-    ArrayValidationUtils.checkArrayIndexTypes(stmt.value, accept, inferType);
+    ArrayValidationUtils.checkArrayIndexTypes(stmt.target, accept);
+    ArrayValidationUtils.checkArrayIndexTypes(stmt.value, accept);
 
     if (!leftType || !rightType) {
       accept(
@@ -68,7 +66,7 @@ export class AssignmentValidationUtils {
       return;
     }
 
-    if (!isTypeAssignable(rightType, leftType)) {
+    if (!TypeInferenceUtils.isTypeAssignable(rightType, leftType)) {
       accept(
         "error",
         `Type mismatch: Cannot assign "${rightType}" to "${leftType}".`,
@@ -94,10 +92,9 @@ export class AssignmentValidationUtils {
   static checkInitializerTypeCompatibility(
     varDecl: VarDecl,
     declaredType: string,
-    accept: ValidationAcceptor,
-    inferType: (expr: any, accept: ValidationAcceptor) => string | undefined
+    accept: ValidationAcceptor
   ): void {
-    const initType = inferType(varDecl.init, accept);
+    const initType = TypeInferenceUtils.inferType(varDecl.init, accept);
     if (!initType) {
       this.reportNoInitTypeError(varDecl, accept);
       return;
@@ -120,7 +117,7 @@ export class AssignmentValidationUtils {
     }
 
     // Regular type compatibility check
-    if (!isTypeAssignable(initType, declaredType)) {
+    if (!TypeInferenceUtils.isTypeAssignable(initType, declaredType)) {
       this.reportTypeMismatchError(varDecl, initType, declaredType, accept);
     }
   }

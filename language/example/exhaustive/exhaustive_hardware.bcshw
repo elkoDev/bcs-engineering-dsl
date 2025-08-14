@@ -1,0 +1,41 @@
+bus FieldBus type EtherCAT {
+    masterDevice: "Device 1 (EtherCAT)"
+    box Coupler {
+        product: EK1100
+        module IOModule_AI1 {
+            product: EL3074
+            slot: 1
+        }
+        module IOModule_DI1 {
+            product: EL1008
+            slot: 2
+        }
+        module IOModule_DO1 {
+            product: EL2024
+            slot: 3
+        }
+        module IOModule_AO1 {
+            product: EL4024
+            slot: 4
+        }
+        module IOModule_DALI {
+            product: EL6821
+            slot: 5
+        }
+    }
+}
+
+controller ExhaustiveController {
+    portgroup DigitalInputs {
+        module: IOModule_DO1
+        ioType: DIGITAL_INPUT
+        channels: 8
+    }
+
+    datapoint windowContact {
+        portgroup: DigitalInputs
+        channels: {
+            channel value: BOOL link "Channel 1^Input"
+        }
+    }
+}
