@@ -26,6 +26,8 @@ import {
   OnRisingEdgeStmt,
   OnFallingEdgeStmt,
   isOnRisingEdgeStmt,
+  Ref,
+  isVarDecl,
 } from "../generated/ast.js";
 import { TypeInferenceUtils } from "./utils/type-inference-utils.js";
 
@@ -52,6 +54,7 @@ export function registerBCSControlValidationChecks(
     ],
     VarDecl: [validator.checkVarDeclTypes],
     UseStmt: [validator.checkUseStmtTypes],
+    Ref: [validator.checkArrayIndexTypes],
     SwitchStmt: [validator.checkSwitchCaseTypes],
     ForStmt: [validator.checkToExprType],
     OnRisingEdgeStmt: [validator.checkEdgeSignalType],
@@ -303,12 +306,27 @@ export class BCSControlLangValidator {
     );
   }
 
-  checkArrayIndexTypes(expr: any, accept: ValidationAcceptor) {
-    ArrayValidationUtils.checkArrayIndexTypes(
-      expr,
-      accept,
-      TypeInferenceUtils.inferType
-    );
+  checkArrayIndexTypes(expr: Ref, accept: ValidationAcceptor) {
+    // Only validate if this is actually an array access (has indices)
+    if (expr.indices && expr.indices.length > 0) {
+      const namedElement = expr.ref?.ref;
+      if (isVarDecl(namedElement) && namedElement.typeRef?.sizes?.length > 0) {
+        // This is an array variable with indices - validate both type and bounds
+        ArrayValidationUtils.validateArrayIndices(
+          namedElement,
+          expr,
+          accept,
+          TypeInferenceUtils.inferType
+        );
+      } else {
+        // Just validate index types (for the case where it's not a proper array)
+        ArrayValidationUtils.checkArrayIndexTypes(
+          expr,
+          accept,
+          TypeInferenceUtils.inferType
+        );
+      }
+    }
   }
 
   checkEdgeSignalType(

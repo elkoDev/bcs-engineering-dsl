@@ -246,7 +246,7 @@ describe("BCS Control Validation Tests", () => {
     const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
-    expect(allDiagnostics.length).toBe(47);
+    expect(allDiagnostics.length).toBe(28);
 
     const expectedErrors = [
       'Type mismatch: Cannot assign "INT" to "BOOL".',

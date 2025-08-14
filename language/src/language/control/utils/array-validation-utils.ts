@@ -43,43 +43,6 @@ export class ArrayValidationUtils {
   }
 
   /**
-   * Handles array indexing, checking array bounds and index types
-   *
-   * @param expr The array expression being indexed
-   * @param indexExpr The index expression
-   * @param sizeExpr The size expression from the array definition
-   * @param accept Function to report validation issues
-   * @returns The type after applying array indexing
-   */
-  private static validateArrayIndex(
-    expr: any,
-    indexExpr: any,
-    sizeExpr: any,
-    accept: ValidationAcceptor
-  ): void {
-    // Only check if both index and size are simple numbers
-    if (
-      isPrimary(indexExpr) &&
-      typeof indexExpr.val === "number" &&
-      isPrimary(sizeExpr) &&
-      typeof sizeExpr.val === "number"
-    ) {
-      const indexVal = indexExpr.val;
-      const maxVal = sizeExpr.val;
-
-      if (indexVal < 0 || indexVal >= maxVal) {
-        accept(
-          "error",
-          `Array index [${indexVal}] out of bounds: allowed range is 0 to ${
-            maxVal - 1
-          }.`,
-          { node: expr }
-        );
-      }
-    }
-  }
-
-  /**
    * Checks array index types for expressions
    */
   static checkArrayIndexTypes(
@@ -183,6 +146,7 @@ export class ArrayValidationUtils {
 
     if (expectedDimensions.length > 1) {
       // We expect nested arrays
+      let hasNonArrayElement = false;
       for (const element of arrayLiteral.elements) {
         if (isPrimary(element) && isArrayLiteral(element.val)) {
           this.validateArrayLiteralSize(
@@ -192,12 +156,53 @@ export class ArrayValidationUtils {
             node
           );
         } else {
-          accept(
-            "error",
-            `Expected nested array with ${expectedDimensions.length} dimensions.`,
-            { node }
-          );
+          hasNonArrayElement = true;
         }
+      }
+
+      // Report only one error for the entire array if it has non-array elements
+      if (hasNonArrayElement) {
+        accept(
+          "error",
+          `Expected nested array with ${expectedDimensions.length} dimensions.`,
+          { node }
+        );
+      }
+    }
+  }
+
+  /**
+   * Handles array indexing, checking array bounds and index types
+   *
+   * @param expr The array expression being indexed
+   * @param indexExpr The index expression
+   * @param sizeExpr The size expression from the array definition
+   * @param accept Function to report validation issues
+   */
+  private static validateArrayIndex(
+    expr: any,
+    indexExpr: any,
+    sizeExpr: any,
+    accept: ValidationAcceptor
+  ): void {
+    // Only check if both index and size are simple numbers
+    if (
+      isPrimary(indexExpr) &&
+      typeof indexExpr.val === "number" &&
+      isPrimary(sizeExpr) &&
+      typeof sizeExpr.val === "number"
+    ) {
+      const indexVal = indexExpr.val;
+      const maxVal = sizeExpr.val;
+
+      if (indexVal < 0 || indexVal >= maxVal) {
+        accept(
+          "error",
+          `Array index [${indexVal}] out of bounds: allowed range is 0 to ${
+            maxVal - 1
+          }.`,
+          { node: expr }
+        );
       }
     }
   }
