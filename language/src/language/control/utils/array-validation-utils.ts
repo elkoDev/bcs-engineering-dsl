@@ -6,6 +6,7 @@ import {
   isPrimary,
   isArrayLiteral,
 } from "../../generated/ast.js";
+import { TypeInferenceUtils } from "./type-inference-utils.js";
 
 /**
  * Utility class for validating array-related operations in the BCS control language.
@@ -18,8 +19,7 @@ export class ArrayValidationUtils {
   static validateArrayIndices(
     ref: any,
     expr: any,
-    accept: ValidationAcceptor,
-    inferType: (expr: any, accept: ValidationAcceptor) => string | undefined
+    accept: ValidationAcceptor
   ): void {
     const sizes = ref.typeRef?.sizes ?? [];
 
@@ -28,7 +28,7 @@ export class ArrayValidationUtils {
       const sizeExpr = sizes[i];
 
       // Validate index type
-      const idxType = inferType(indexExpr, accept);
+      const idxType = TypeInferenceUtils.inferType(indexExpr, accept);
       if (idxType !== "INT") {
         accept(
           "error",
@@ -45,14 +45,10 @@ export class ArrayValidationUtils {
   /**
    * Checks array index types for expressions
    */
-  static checkArrayIndexTypes(
-    expr: any,
-    accept: ValidationAcceptor,
-    inferType: (expr: any, accept: ValidationAcceptor) => string | undefined
-  ): void {
+  static checkArrayIndexTypes(expr: any, accept: ValidationAcceptor): void {
     if (expr.$type === "Ref" && expr.indices.length > 0) {
       for (const idxExpr of expr.indices) {
-        const idxType = inferType(idxExpr, accept);
+        const idxType = TypeInferenceUtils.inferType(idxExpr, accept);
         if (idxType !== "INT") {
           accept(
             "error",

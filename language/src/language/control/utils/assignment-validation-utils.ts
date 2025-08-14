@@ -47,16 +47,8 @@ export class AssignmentValidationUtils {
     const leftType = TypeInferenceUtils.inferType(stmt.target, accept);
     const rightType = TypeInferenceUtils.inferType(stmt.value, accept);
 
-    ArrayValidationUtils.checkArrayIndexTypes(
-      stmt.target,
-      accept,
-      TypeInferenceUtils.inferType
-    );
-    ArrayValidationUtils.checkArrayIndexTypes(
-      stmt.value,
-      accept,
-      TypeInferenceUtils.inferType
-    );
+    ArrayValidationUtils.checkArrayIndexTypes(stmt.target, accept);
+    ArrayValidationUtils.checkArrayIndexTypes(stmt.value, accept);
 
     if (!leftType || !rightType) {
       accept(

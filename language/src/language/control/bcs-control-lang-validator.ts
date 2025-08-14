@@ -312,19 +312,10 @@ export class BCSControlLangValidator {
       const namedElement = expr.ref?.ref;
       if (isVarDecl(namedElement) && namedElement.typeRef?.sizes?.length > 0) {
         // This is an array variable with indices - validate both type and bounds
-        ArrayValidationUtils.validateArrayIndices(
-          namedElement,
-          expr,
-          accept,
-          TypeInferenceUtils.inferType
-        );
+        ArrayValidationUtils.validateArrayIndices(namedElement, expr, accept);
       } else {
         // Just validate index types (for the case where it's not a proper array)
-        ArrayValidationUtils.checkArrayIndexTypes(
-          expr,
-          accept,
-          TypeInferenceUtils.inferType
-        );
+        ArrayValidationUtils.checkArrayIndexTypes(expr, accept);
       }
     }
   }
