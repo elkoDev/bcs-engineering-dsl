@@ -12,6 +12,8 @@ import {
   isFunctionBlockDecl,
   isChannel,
   isEnumMemberLiteral,
+  isArrayLiteral,
+  isStructLiteral,
 } from "../../generated/ast.js";
 
 /**
@@ -531,4 +533,132 @@ export function inferCaseLiteralType(
   }
 
   return undefined;
+}
+
+/**
+ * Main type inference engine that orchestrates all type inference operations.
+ * This class consolidates the high-level type inference logic that was previously
+ * scattered across the validator.
+ */
+export class TypeInferenceUtils {
+  /**
+   * Main type inference method - infers the type of any expression
+   * @param expr The expression to analyze
+   * @param accept Function to report validation issues
+   * @returns The inferred type or undefined if type cannot be determined
+   */
+  static inferType(expr: any, accept: ValidationAcceptor): string | undefined {
+    if (!expr) return undefined;
+
+    // 1) Binary expression (e.g., 1 + 2, x > y)
+    if (expr.$type === "BinExpr") {
+      const left = this.inferType(expr.e1, accept);
+      const right = this.inferType(expr.e2, accept);
+      return inferBinaryExpressionType(expr, left, right, expr.op, accept);
+    }
+
+    // 2) Unary expressions (negation, not, parenthesized)
+    if (
+      expr.$type === "NegExpr" ||
+      expr.$type === "NotExpr" ||
+      expr.$type === "ParenExpr"
+    ) {
+      return inferUnaryExpressionType(this.inferType(expr.expr, accept));
+    }
+
+    // 3) Reference expressions (variable, enum, etc.)
+    if (expr.$type === "Ref") {
+      return this.inferReferenceType(expr, accept);
+    }
+
+    // 4) Case literal with enum member
+    if (expr.$type === "CaseLiteral") {
+      return inferCaseLiteralType(expr, accept);
+    }
+
+    // 5) Array literal
+    if (isArrayLiteral(expr.val)) {
+      return inferArrayLiteralType(
+        expr,
+        expr.val,
+        this.inferType.bind(this),
+        accept
+      );
+    }
+
+    // 6) Struct literal
+    if (isStructLiteral(expr.val)) {
+      return "STRUCT";
+    }
+
+    // 7) Primitive literals (numbers, strings, booleans)
+    return inferPrimitiveLiteralType(expr);
+  }
+
+  /**
+   * Infers the type of a reference expression (variable, field access, array indexing)
+   */
+  static inferReferenceType(
+    expr: any,
+    accept: ValidationAcceptor
+  ): string | undefined {
+    const ref = expr.ref?.ref;
+    if (!ref) return undefined;
+
+    const type = this.inferBasicReferenceType(ref, expr, accept);
+
+    // Note: Array indices validation is handled separately at the validation layer
+    // via ArrayValidationUtils to avoid circular dependencies
+
+    return type;
+  }
+
+  /**
+   * Infers the basic type of a reference before processing properties/indexing
+   */
+  static inferBasicReferenceType(
+    ref: any,
+    expr: any,
+    accept: ValidationAcceptor
+  ): string | undefined {
+    // Variable reference
+    if (isVarDecl(ref)) {
+      return this.processVariableReference(ref, expr, accept);
+    }
+    // Datapoint reference
+    else if (ref.$type === "Datapoint") {
+      return inferDatapointChannelType(ref, expr);
+    }
+    // Enum declaration reference
+    else if (isEnumDecl(ref)) {
+      return inferEnumDeclType(ref);
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Processes variable reference with array indexing and struct properties
+   */
+  static processVariableReference(
+    ref: any,
+    expr: any,
+    accept: ValidationAcceptor
+  ): string | undefined {
+    let type = inferVarDeclType(ref);
+
+    // First: Apply array indexing if needed
+    if (expr.indices.length > 0 && type) {
+      type = applyArrayIndexing(expr, type, accept);
+      if (!type) return undefined;
+    }
+
+    // Then: Process struct properties
+    for (const prop of expr.properties) {
+      type = inferStructPropertyType(expr, type!, prop, accept);
+      if (!type) return undefined;
+    }
+
+    return type;
+  }
 }

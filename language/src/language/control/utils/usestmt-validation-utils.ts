@@ -2,7 +2,11 @@ import { ValidationAcceptor } from "langium";
 import { UseStmt, FunctionBlockDecl, UseOutput } from "../../generated/ast.js";
 import { getInputs, getOutputs } from "./function-block-utils.js";
 import { DuplicationValidationUtils } from "./duplication-validation-utils.js";
-import { inferVarDeclType, isTypeAssignable } from "./type-inference-utils.js";
+import {
+  inferVarDeclType,
+  isTypeAssignable,
+  TypeInferenceUtils,
+} from "./type-inference-utils.js";
 
 /**
  * Utility class for validating UseStmt (function block usage) operations.
@@ -15,8 +19,7 @@ export class UseStmtValidationUtils {
   static validateFunctionBlockInputs(
     useStmt: UseStmt,
     fb: FunctionBlockDecl,
-    accept: ValidationAcceptor,
-    inferType: (expr: any, accept: ValidationAcceptor) => string | undefined
+    accept: ValidationAcceptor
   ): void {
     // 1) Check: Number of input arguments vs number of inputs
     if (useStmt.inputArgs.length !== getInputs(fb).length) {
@@ -30,7 +33,7 @@ export class UseStmtValidationUtils {
     }
 
     // 2) Check: Input types
-    this.validateInputTypes(useStmt, fb, accept, inferType);
+    this.validateInputTypes(useStmt, fb, accept);
 
     // 3) Check: Duplicate input mappings
     DuplicationValidationUtils.checkDuplicateInputMappings(useStmt, fb, accept);
@@ -42,8 +45,7 @@ export class UseStmtValidationUtils {
   static validateInputTypes(
     useStmt: UseStmt,
     fb: FunctionBlockDecl,
-    accept: ValidationAcceptor,
-    inferType: (expr: any, accept: ValidationAcceptor) => string | undefined
+    accept: ValidationAcceptor
   ): void {
     for (const arg of useStmt.inputArgs) {
       const inputVarName = arg.inputVar.ref?.name;
@@ -51,7 +53,7 @@ export class UseStmtValidationUtils {
 
       const paramDecl = getInputs(fb).find((i) => i.name === inputVarName);
       const expectedType = inferVarDeclType(paramDecl);
-      const actualType = inferType(arg.value, accept);
+      const actualType = TypeInferenceUtils.inferType(arg.value, accept);
 
       if (
         expectedType &&

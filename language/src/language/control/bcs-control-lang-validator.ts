@@ -12,6 +12,7 @@ import {
   inferEnumDeclType,
   inferCaseLiteralType,
   isTypeAssignable,
+  TypeInferenceUtils,
 } from "./utils/type-inference-utils.js";
 import { DuplicationValidationUtils } from "./utils/duplication-validation-utils.js";
 import { ArrayValidationUtils } from "./utils/array-validation-utils.js";
@@ -95,7 +96,7 @@ export class BCSControlLangValidator {
     const toExpr = stmt.toExpr;
     if (!toExpr) return;
 
-    const type = this.inferType(toExpr, accept);
+    const type = TypeInferenceUtils.inferType(toExpr, accept);
     if (type && type !== "INT") {
       accept(
         "error",
@@ -138,7 +139,7 @@ export class BCSControlLangValidator {
   }
 
   checkSwitchCaseTypes(sw: SwitchStmt, accept: ValidationAcceptor) {
-    const switchType = this.inferType(sw.expr, accept);
+    const switchType = TypeInferenceUtils.inferType(sw.expr, accept);
     if (!switchType) return;
 
     const seen = new Set<string>();
@@ -148,7 +149,7 @@ export class BCSControlLangValidator {
 
     for (const c of sw.cases) {
       for (const lit of c.literals) {
-        const litType = this.inferType(lit, accept);
+        const litType = TypeInferenceUtils.inferType(lit, accept);
         const litKey = keyOf(lit);
 
         if (seen.has(litKey)) {
@@ -197,7 +198,7 @@ export class BCSControlLangValidator {
 
   checkWhenConditionType(unit: ControlUnit, accept: ValidationAcceptor) {
     if (unit.condition) {
-      const type = this.inferType(unit.condition, accept);
+      const type = TypeInferenceUtils.inferType(unit.condition, accept);
       if (type && type !== "BOOL") {
         accept(
           "error",
@@ -278,12 +279,7 @@ export class BCSControlLangValidator {
     const fb = useStmt.functionBlockRef?.ref;
     if (!fb) return;
 
-    UseStmtValidationUtils.validateFunctionBlockInputs(
-      useStmt,
-      fb,
-      accept,
-      this.inferType.bind(this)
-    );
+    UseStmtValidationUtils.validateFunctionBlockInputs(useStmt, fb, accept);
     UseStmtValidationUtils.validateFunctionBlockOutputs(
       useStmt,
       fb,
@@ -302,12 +298,9 @@ export class BCSControlLangValidator {
    *
    * @param varDecl - The variable declaration to validate.
    * @param accept - A function to report validation errors.
-   */ checkVarDeclTypes(varDecl: VarDecl, accept: ValidationAcceptor) {
-    AssignmentValidationUtils.validateVarDeclTypes(
-      varDecl,
-      accept,
-      this.inferType.bind(this)
-    );
+   */
+  checkVarDeclTypes(varDecl: VarDecl, accept: ValidationAcceptor) {
+    AssignmentValidationUtils.validateVarDeclTypes(varDecl, accept);
   }
 
   /**
@@ -324,7 +317,6 @@ export class BCSControlLangValidator {
     AssignmentValidationUtils.validateAssignmentTypes(
       stmt,
       accept,
-      this.inferType.bind(this),
       ExpressionUtils.stringifyExpression
     );
   }
@@ -333,7 +325,7 @@ export class BCSControlLangValidator {
     ArrayValidationUtils.checkArrayIndexTypes(
       expr,
       accept,
-      this.inferType.bind(this)
+      TypeInferenceUtils.inferType
     );
   }
 
