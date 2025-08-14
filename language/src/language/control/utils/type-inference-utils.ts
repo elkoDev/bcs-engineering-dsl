@@ -1,12 +1,10 @@
 import { AstUtils, ValidationAcceptor } from "langium";
 import {
   isControlModel,
-  StructDecl,
   isStructDecl,
   isEnumDecl,
   isTypeAlias,
   isPrimary,
-  ArrayLiteral,
   isVarDecl,
   VarDecl,
   isFunctionBlockDecl,
@@ -14,526 +12,8 @@ import {
   isEnumMemberLiteral,
   isArrayLiteral,
   isStructLiteral,
+  StructDecl,
 } from "../../generated/ast.js";
-
-/**
- * Infers the type of a binary expression by examining both operands and the operator.
- *
- * @param expr The binary expression to analyze
- * @param left The inferred type of the left operand
- * @param right The inferred type of the right operand
- * @param op The operator used in the binary expression
- * @param accept Function to report validation issues
- * @returns The inferred type or undefined if type cannot be determined
- */
-export function inferBinaryExpressionType(
-  expr: any,
-  left: string | undefined,
-  right: string | undefined,
-  op: string,
-  accept: ValidationAcceptor
-): string | undefined {
-  if (!left || !right) {
-    accept("error", `Cannot infer operand types for binary expression.`, {
-      node: expr,
-    });
-    return undefined;
-  }
-
-  // Comparison operators
-  if (["==", "!=", "<", "<=", ">", ">="].includes(op)) {
-    if (areTypesComparable(left, right)) {
-      return "BOOL";
-    } else {
-      accept(
-        "error",
-        `Cannot compare values of types '${left}' and '${right}' with '${op}'.`,
-        { node: expr }
-      );
-      return undefined;
-    }
-  }
-
-  // Logical operators
-  if (op === "&&" || op === "||") {
-    if (left === "BOOL" && right === "BOOL") {
-      return "BOOL";
-    } else {
-      accept(
-        "error",
-        `Logical operator '${op}' can only be applied to BOOL operands, but got '${left}' and '${right}'.`,
-        { node: expr }
-      );
-      return undefined;
-    }
-  }
-
-  // Arithmetic operators
-  if (["+", "-", "*", "/"].includes(op)) {
-    if (
-      (left === "INT" || left === "REAL") &&
-      (right === "INT" || right === "REAL")
-    ) {
-      return left === "REAL" || right === "REAL" ? "REAL" : "INT";
-    } else {
-      accept(
-        "error",
-        `Operator '${op}' not applicable to types '${left}' and '${right}'.`,
-        { node: expr }
-      );
-      return undefined;
-    }
-  }
-
-  return undefined;
-}
-
-/**
- * Infers the type of unary expressions (negation, not, parenthesized)
- *
- * @param expr The expression to analyze
- * @param innerType The type of the inner expression
- * @returns The inferred type, typically the same as the inner expression
- */
-export function inferUnaryExpressionType(
-  innerType: string | undefined
-): string | undefined {
-  return innerType;
-}
-
-/**
- * Handles the property access on structs, validating each property exists
- * and returning the resulting type.
- *
- * @param expr The reference expression
- * @param baseType The starting type of the struct
- * @param prop The property being accessed
- * @param accept Function to report validation issues
- * @returns The type of the property or undefined if invalid
- */
-export function inferStructPropertyType(
-  expr: any,
-  baseType: string,
-  prop: any,
-  accept: ValidationAcceptor
-): string | undefined {
-  if (!baseType?.startsWith("STRUCT:")) {
-    accept(
-      "error",
-      `Cannot access property '${prop.ref?.name}' on non-struct type '${baseType}'.`,
-      { node: expr }
-    );
-    return undefined;
-  }
-
-  const controlModel = AstUtils.getContainerOfType(expr, isControlModel);
-  const structName = baseType.substring("STRUCT:".length);
-  const structDecl: StructDecl | undefined =
-    (controlModel?.controlBlock.items.find(
-      (d) => isStructDecl(d) && d.name === structName
-    ) as StructDecl | undefined) ??
-    (controlModel?.externTypeDecls.find(
-      (d) => isStructDecl(d) && d.name === structName
-    ) as StructDecl | undefined);
-
-  if (!structDecl) {
-    accept(
-      "error",
-      `Cannot access property '${prop.ref?.name}' on unknown struct type '${structName}'.`,
-      { node: expr }
-    );
-    return undefined;
-  }
-
-  const field = structDecl.fields.find((f) => f.name === prop.ref?.name);
-  if (!field) {
-    accept(
-      "error",
-      `Unknown field '${prop.ref?.name}' in struct '${structName}'.`,
-      { node: expr }
-    );
-    return undefined;
-  }
-
-  // Determine the field type
-  if (field.typeRef?.type) {
-    return field.typeRef.type;
-  } else if (field.typeRef?.ref?.ref) {
-    const refTypeDecl = field.typeRef.ref.ref;
-    if (isStructDecl(refTypeDecl)) {
-      return `STRUCT:${refTypeDecl.name}`;
-    } else if (isEnumDecl(refTypeDecl)) {
-      return `ENUM:${refTypeDecl.name}`;
-    } else if (isTypeAlias(refTypeDecl)) {
-      return refTypeDecl.primitive;
-    }
-  }
-
-  return undefined;
-}
-
-/**
- * Handles array indexing, checking array bounds and index types
- *
- * @param expr The array expression being indexed
- * @param indexExpr The index expression
- * @param sizeExpr The size expression from the array definition
- * @param accept Function to report validation issues
- * @returns The type after applying array indexing
- */
-export function validateArrayIndex(
-  expr: any,
-  indexExpr: any,
-  sizeExpr: any,
-  accept: ValidationAcceptor
-): void {
-  // Only check if both index and size are simple numbers
-  if (
-    isPrimary(indexExpr) &&
-    typeof indexExpr.val === "number" &&
-    isPrimary(sizeExpr) &&
-    typeof sizeExpr.val === "number"
-  ) {
-    const indexVal = indexExpr.val;
-    const maxVal = sizeExpr.val;
-
-    if (indexVal < 0 || indexVal >= maxVal) {
-      accept(
-        "error",
-        `Array index [${indexVal}] out of bounds: allowed range is 0 to ${
-          maxVal - 1
-        }.`,
-        { node: expr }
-      );
-    }
-  }
-}
-
-/**
- * Applies array indexing to an array type and returns the resulting type
- *
- * @param expr The expression containing array indices
- * @param type The array type
- * @param accept Function to report validation issues
- * @returns The resulting type after applying array indexing
- */
-export function applyArrayIndexing(
-  expr: any,
-  type: string,
-  accept: ValidationAcceptor
-): string | undefined {
-  let arrayMatch = /^ARRAY<(.+)>(\[(?:\d+|\?)+\])+$/u.exec(type);
-
-  if (arrayMatch) {
-    let baseType = arrayMatch[1];
-    let dims = (type.match(/\[\d+|\?\]/g) || []).map((d) =>
-      d.replace(/[[\]]/g, "")
-    );
-
-    for (const _ of expr.indices) {
-      if (dims.length > 0) {
-        dims.shift(); // remove one dimension
-      } else {
-        accept("error", `Too many indices for type '${type}'.`, {
-          node: expr,
-        });
-        return undefined;
-      }
-    }
-
-    if (dims.length > 0) {
-      // Still an array
-      type = `ARRAY<${baseType}>` + dims.map((d) => `[${d}]`).join("");
-    } else {
-      // Base element
-      type = baseType;
-    }
-  } else if (expr.indices.length > 0) {
-    accept("error", `Cannot index into non-array type '${type}'.`, {
-      node: expr,
-    });
-    return undefined;
-  }
-
-  return type;
-}
-
-/**
- * Infers the type of a primitive literal value
- *
- * @param expr The primary expression representing a literal
- * @returns The inferred type or undefined
- */
-export function inferPrimitiveLiteralType(expr: any): string | undefined {
-  if (typeof expr.val === "number") {
-    const raw = expr.$cstNode?.text;
-    return raw?.includes(".") ? "REAL" : "INT";
-  }
-
-  if (typeof expr.val === "boolean" && expr.$cstNode?.text !== "now") {
-    return "BOOL";
-  }
-
-  if (typeof expr.val === "string") {
-    if (expr.val.startsWith("TOD#")) {
-      return "TOD";
-    } else if (expr.val.startsWith("T#")) {
-      return "TIME";
-    } else {
-      return "STRING";
-    }
-  }
-
-  if (isPrimary(expr) && expr.$cstNode?.text === "now") {
-    return "TOD";
-  }
-
-  return undefined;
-}
-
-/**
- * Infers the type of an array literal by examining its elements
- *
- * @param expr The expression containing the array literal
- * @param arrayLiteral The array literal to analyze
- * @param accept Function to report validation issues
- * @returns The inferred array type
- */
-export function inferArrayLiteralType(
-  expr: any,
-  arrayLiteral: ArrayLiteral,
-  inferType: (expr: any, accept: ValidationAcceptor) => string | undefined,
-  accept: ValidationAcceptor
-): string | undefined {
-  const elements = arrayLiteral.elements;
-  if (elements.length === 0) {
-    return "ARRAY<unknown>[0]";
-  }
-
-  // Infer element types
-  let firstElementType = inferType(elements[0], accept);
-
-  // If first element is STRUCT but surrounded by a known typeRef, use that
-  if (firstElementType === "STRUCT") {
-    const parentVarDecl = AstUtils.getContainerOfType(expr, isVarDecl);
-    const structDecl = parentVarDecl?.typeRef?.ref?.ref;
-    if (isStructDecl(structDecl)) {
-      firstElementType = `STRUCT:${structDecl.name}`;
-    }
-  }
-
-  if (!firstElementType) {
-    return `ARRAY<unknown>[${elements.length}]`;
-  }
-  if (firstElementType.startsWith("ARRAY<")) {
-    // Nested array inside - validate ALL sub-arrays have consistent types
-    const innerMatch = /^ARRAY<(.+)>(\[(.+?)\])+$/.exec(firstElementType);
-    if (innerMatch) {
-      const baseType = innerMatch[1];
-      const innerDims = innerMatch[2]; // [5] or [5][5], etc
-
-      // Validate all elements are arrays with the same base type
-      for (let i = 1; i < elements.length; i++) {
-        const elementType = inferType(elements[i], accept);
-        if (!elementType?.startsWith("ARRAY<")) {
-          return `ARRAY<mixed>[${elements.length}]`;
-        }
-
-        const elementMatch = /^ARRAY<(.+)>(\[(.+?)\])+$/.exec(elementType);
-        if (!elementMatch || elementMatch[1] !== baseType) {
-          return `ARRAY<mixed>[${elements.length}]`;
-        }
-      }
-
-      return `ARRAY<${baseType}>[${elements.length}]${innerDims}`;
-    }
-  }
-
-  // Simple flat array
-  const elementTypes = new Set(elements.map((e) => inferType(e, accept)));
-
-  if (elementTypes.size > 1) {
-    return `ARRAY<mixed>[${elements.length}]`;
-  } else {
-    const singleType = [...elementTypes][0];
-    return `ARRAY<${singleType}>[${elements.length}]`;
-  }
-}
-
-/**
- * Determines if two types can be compared with comparison operators
- *
- * @param type1 First type
- * @param type2 Second type
- * @returns Whether the types are comparable
- */
-export function areTypesComparable(type1: string, type2: string): boolean {
-  const comparableGroups: string[][] = [
-    ["INT", "REAL"],
-    ["STRING"],
-    ["BOOL"],
-    ["TOD"],
-    ["TIME"],
-  ];
-
-  for (const group of comparableGroups) {
-    if (group.includes(type1) && group.includes(type2)) {
-      return true;
-    }
-  }
-
-  if (
-    type1.startsWith("ENUM:") &&
-    type2.startsWith("ENUM:") &&
-    type1 === type2
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-/**
- * Determines if a source type can be assigned to a target type
- *
- * @param sourceType The type being assigned
- * @param targetType The type being assigned to
- * @returns Whether the assignment is valid
- */
-export function isTypeAssignable(
-  sourceType: string,
-  targetType: string
-): boolean {
-  if (sourceType === targetType) return true;
-
-  if (sourceType.startsWith("ARRAY<") && targetType.startsWith("ARRAY<")) {
-    // Extract base type and size
-    const sourceMatch = RegExp(/^ARRAY<(.+?)>\[(.+)\]$/).exec(sourceType);
-    const targetMatch = RegExp(/^ARRAY<(.+?)>\[(.+)\]$/).exec(targetType);
-    if (!sourceMatch || !targetMatch) return false;
-
-    const sourceElement = sourceMatch[1];
-    const sourceSize = sourceMatch[2];
-    const targetElement = targetMatch[1];
-    const targetSize = targetMatch[2];
-
-    // Compare both element types and sizes
-    return sourceElement === targetElement && sourceSize === targetSize;
-  }
-
-  if (sourceType === "INT" && targetType === "REAL") {
-    return true;
-  }
-
-  if (sourceType.startsWith("ENUM:") && targetType === sourceType) {
-    return true;
-  }
-
-  return false;
-}
-
-/**
- * Infers the type of a variable declaration by examining its type reference
- *
- * @param varDecl The variable declaration
- * @returns The inferred type or undefined
- */
-export function inferVarDeclType(
-  varDecl: VarDecl | undefined
-): string | undefined {
-  if (!varDecl) return undefined;
-  if (!varDecl.typeRef) return undefined;
-
-  let baseType: string | undefined;
-
-  // Built-in primitive types
-  if (varDecl.typeRef.type) {
-    baseType = varDecl.typeRef.type;
-  }
-
-  // Referencing user-defined types
-  if (varDecl.typeRef.ref) {
-    const typeDecl = varDecl.typeRef.ref.ref;
-    if (!typeDecl) return undefined;
-    if (isEnumDecl(typeDecl)) {
-      baseType = `ENUM:${typeDecl.name}`;
-    }
-    if (isFunctionBlockDecl(typeDecl)) {
-      baseType = `FB:${typeDecl.name}`;
-    }
-    if (isStructDecl(typeDecl)) {
-      baseType = `STRUCT:${typeDecl.name}`;
-    }
-    if (isTypeAlias(typeDecl)) {
-      baseType = typeDecl.primitive;
-    }
-  }
-
-  if (!baseType) return undefined;
-  if (varDecl.typeRef.sizes.length > 0) {
-    const sizes = varDecl.typeRef.sizes
-      .map((s) =>
-        s.$type === "Primary" && typeof s.val === "number" ? s.val : "?"
-      )
-      .join("][");
-    return `ARRAY<${baseType}>[${sizes}]`;
-  }
-
-  return baseType;
-}
-
-/**
- * Infers the type of a datapoint channel reference
- *
- * @param ref The datapoint reference
- * @param expr The expression containing properties
- * @returns The inferred type or undefined
- */
-export function inferDatapointChannelType(
-  ref: any,
-  expr: any
-): string | undefined {
-  if (expr.properties.length === 1) {
-    const channelRef = expr.properties[0]?.ref;
-    if (isChannel(channelRef)) {
-      return channelRef.dataType;
-    }
-  }
-  return undefined;
-}
-
-/**
- * Infers the type of an enum declaration
- *
- * @param ref The enum declaration reference
- * @returns The inferred type
- */
-export function inferEnumDeclType(ref: any): string {
-  return `ENUM:${ref.name}`;
-}
-
-/**
- * Infers the type of a case literal, which might be an enum member or a primitive value
- *
- * @param expr The case literal expression
- * @param accept Function to report validation issues
- * @returns The inferred type or undefined
- */
-export function inferCaseLiteralType(
-  expr: any,
-  accept: ValidationAcceptor
-): string | undefined {
-  if (isEnumMemberLiteral(expr.val)) {
-    return `ENUM:${expr.val.enumDecl.$refText}`;
-  }
-
-  // Handle primitive literals used as case values
-  if (isPrimary(expr) || (expr.val && typeof expr.val !== "object")) {
-    return inferPrimitiveLiteralType(expr);
-  }
-
-  return undefined;
-}
 
 /**
  * Main type inference engine that orchestrates all type inference operations.
@@ -552,9 +32,15 @@ export class TypeInferenceUtils {
 
     // 1) Binary expression (e.g., 1 + 2, x > y)
     if (expr.$type === "BinExpr") {
-      const left = this.inferType(expr.e1, accept);
-      const right = this.inferType(expr.e2, accept);
-      return inferBinaryExpressionType(expr, left, right, expr.op, accept);
+      const left = TypeInferenceUtils.inferType(expr.e1, accept);
+      const right = TypeInferenceUtils.inferType(expr.e2, accept);
+      return TypeInferenceUtils.inferBinaryExpressionType(
+        expr,
+        left,
+        right,
+        expr.op,
+        accept
+      );
     }
 
     // 2) Unary expressions (negation, not, parenthesized)
@@ -563,27 +49,24 @@ export class TypeInferenceUtils {
       expr.$type === "NotExpr" ||
       expr.$type === "ParenExpr"
     ) {
-      return inferUnaryExpressionType(this.inferType(expr.expr, accept));
+      return TypeInferenceUtils.inferUnaryExpressionType(
+        TypeInferenceUtils.inferType(expr.expr, accept)
+      );
     }
 
     // 3) Reference expressions (variable, enum, etc.)
     if (expr.$type === "Ref") {
-      return this.inferReferenceType(expr, accept);
+      return TypeInferenceUtils.inferReferenceType(expr, accept);
     }
 
     // 4) Case literal with enum member
     if (expr.$type === "CaseLiteral") {
-      return inferCaseLiteralType(expr, accept);
+      return TypeInferenceUtils.inferCaseLiteralType(expr, accept);
     }
 
     // 5) Array literal
     if (isArrayLiteral(expr.val)) {
-      return inferArrayLiteralType(
-        expr,
-        expr.val,
-        this.inferType.bind(this),
-        accept
-      );
+      return TypeInferenceUtils.inferArrayLiteralType(expr, expr.val, accept);
     }
 
     // 6) Struct literal
@@ -592,20 +75,109 @@ export class TypeInferenceUtils {
     }
 
     // 7) Primitive literals (numbers, strings, booleans)
-    return inferPrimitiveLiteralType(expr);
+    return TypeInferenceUtils.inferPrimitiveLiteralType(expr);
+  }
+
+  /**
+   * Determines if a source type can be assigned to a target type
+   *
+   * @param sourceType The type being assigned
+   * @param targetType The type being assigned to
+   * @returns Whether the assignment is valid
+   */
+  static isTypeAssignable(sourceType: string, targetType: string): boolean {
+    if (sourceType === targetType) return true;
+
+    if (sourceType.startsWith("ARRAY<") && targetType.startsWith("ARRAY<")) {
+      // Extract base type and size
+      const sourceMatch = /^ARRAY<(.+?)>\[(.+)\]$/.exec(sourceType);
+      const targetMatch = /^ARRAY<(.+?)>\[(.+)\]$/.exec(targetType);
+      if (!sourceMatch || !targetMatch) return false;
+
+      const sourceElement = sourceMatch[1];
+      const sourceSize = sourceMatch[2];
+      const targetElement = targetMatch[1];
+      const targetSize = targetMatch[2];
+
+      // Allow INT to REAL conversion in arrays
+      const elementTypesCompatible =
+        sourceElement === targetElement ||
+        (sourceElement === "INT" && targetElement === "REAL");
+
+      // Compare both element types and sizes
+      return elementTypesCompatible && sourceSize === targetSize;
+    }
+
+    if (sourceType === "INT" && targetType === "REAL") {
+      return true;
+    }
+
+    if (sourceType.startsWith("ENUM:") && targetType === sourceType) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Infers the type of a variable declaration by examining its type reference
+   *
+   * @param varDecl The variable declaration
+   * @returns The inferred type or undefined
+   */
+  static inferVarDeclType(varDecl: VarDecl | undefined): string | undefined {
+    if (!varDecl) return undefined;
+    if (!varDecl.typeRef) return undefined;
+
+    let baseType: string | undefined;
+
+    // Built-in primitive types
+    if (varDecl.typeRef.type) {
+      baseType = varDecl.typeRef.type;
+    }
+
+    // Referencing user-defined types
+    if (varDecl.typeRef.ref) {
+      const typeDecl = varDecl.typeRef.ref.ref;
+      if (!typeDecl) return undefined;
+      if (isEnumDecl(typeDecl)) {
+        baseType = `ENUM:${typeDecl.name}`;
+      }
+      if (isFunctionBlockDecl(typeDecl)) {
+        baseType = `FB:${typeDecl.name}`;
+      }
+      if (isStructDecl(typeDecl)) {
+        baseType = `STRUCT:${typeDecl.name}`;
+      }
+      if (isTypeAlias(typeDecl)) {
+        baseType = typeDecl.primitive;
+      }
+    }
+
+    if (!baseType) return undefined;
+    if (varDecl.typeRef.sizes.length > 0) {
+      const sizes = varDecl.typeRef.sizes
+        .map((s) =>
+          s.$type === "Primary" && typeof s.val === "number" ? s.val : "?"
+        )
+        .join("][");
+      return `ARRAY<${baseType}>[${sizes}]`;
+    }
+
+    return baseType;
   }
 
   /**
    * Infers the type of a reference expression (variable, field access, array indexing)
    */
-  static inferReferenceType(
+  private static inferReferenceType(
     expr: any,
     accept: ValidationAcceptor
   ): string | undefined {
     const ref = expr.ref?.ref;
     if (!ref) return undefined;
 
-    const type = this.inferBasicReferenceType(ref, expr, accept);
+    const type = TypeInferenceUtils.inferBasicReferenceType(ref, expr, accept);
 
     // Note: Array indices validation is handled separately at the validation layer
     // via ArrayValidationUtils to avoid circular dependencies
@@ -616,22 +188,22 @@ export class TypeInferenceUtils {
   /**
    * Infers the basic type of a reference before processing properties/indexing
    */
-  static inferBasicReferenceType(
+  private static inferBasicReferenceType(
     ref: any,
     expr: any,
     accept: ValidationAcceptor
   ): string | undefined {
     // Variable reference
     if (isVarDecl(ref)) {
-      return this.processVariableReference(ref, expr, accept);
+      return TypeInferenceUtils.processVariableReference(ref, expr, accept);
     }
     // Datapoint reference
     else if (ref.$type === "Datapoint") {
-      return inferDatapointChannelType(ref, expr);
+      return TypeInferenceUtils.inferDatapointChannelType(ref, expr);
     }
     // Enum declaration reference
     else if (isEnumDecl(ref)) {
-      return inferEnumDeclType(ref);
+      return TypeInferenceUtils.inferEnumDeclType(ref);
     }
 
     return undefined;
@@ -640,25 +212,387 @@ export class TypeInferenceUtils {
   /**
    * Processes variable reference with array indexing and struct properties
    */
-  static processVariableReference(
+  private static processVariableReference(
     ref: any,
     expr: any,
     accept: ValidationAcceptor
   ): string | undefined {
-    let type = inferVarDeclType(ref);
+    let type = TypeInferenceUtils.inferVarDeclType(ref);
 
     // First: Apply array indexing if needed
     if (expr.indices.length > 0 && type) {
-      type = applyArrayIndexing(expr, type, accept);
+      type = TypeInferenceUtils.applyArrayIndexing(expr, type, accept);
       if (!type) return undefined;
     }
 
     // Then: Process struct properties
     for (const prop of expr.properties) {
-      type = inferStructPropertyType(expr, type!, prop, accept);
+      type = TypeInferenceUtils.inferStructPropertyType(
+        expr,
+        type!,
+        prop,
+        accept
+      );
       if (!type) return undefined;
     }
 
     return type;
+  }
+
+  /**
+   * Private helper methods for type inference
+   */
+
+  private static inferBinaryExpressionType(
+    expr: any,
+    left: string | undefined,
+    right: string | undefined,
+    op: string,
+    accept: ValidationAcceptor
+  ): string | undefined {
+    if (!left || !right) {
+      accept("error", `Cannot infer operand types for binary expression.`, {
+        node: expr,
+      });
+      return undefined;
+    }
+
+    // Comparison operators
+    if (["==", "!=", "<", "<=", ">", ">="].includes(op)) {
+      if (TypeInferenceUtils.areTypesComparable(left, right)) {
+        return "BOOL";
+      } else {
+        accept(
+          "error",
+          `Cannot compare values of types '${left}' and '${right}' with '${op}'.`,
+          { node: expr }
+        );
+        return undefined;
+      }
+    }
+
+    // Logical operators
+    if (["&&", "||"].includes(op)) {
+      if (left === "BOOL" && right === "BOOL") {
+        return "BOOL";
+      } else {
+        accept(
+          "error",
+          `Logical operator '${op}' requires both operands to be BOOL, but got '${left}' and '${right}'.`,
+          { node: expr }
+        );
+        return undefined;
+      }
+    }
+
+    // Arithmetic operators
+    if (["+", "-", "*", "/", "%"].includes(op)) {
+      return TypeInferenceUtils.inferArithmeticType(
+        left,
+        right,
+        op,
+        accept,
+        expr
+      );
+    }
+
+    accept("error", `Unknown binary operator '${op}'.`, { node: expr });
+    return undefined;
+  }
+
+  private static inferUnaryExpressionType(
+    innerType: string | undefined
+  ): string | undefined {
+    return innerType;
+  }
+
+  private static inferArrayLiteralType(
+    expr: any,
+    arrayLiteral: any,
+    accept: ValidationAcceptor
+  ): string | undefined {
+    const elements = arrayLiteral.elements;
+    if (elements.length === 0) {
+      return "ARRAY<unknown>[0]";
+    }
+
+    // Infer element types
+    let firstElementType = TypeInferenceUtils.inferType(elements[0], accept);
+
+    // If first element is STRUCT but surrounded by a known typeRef, use that
+    if (firstElementType === "STRUCT") {
+      const parentVarDecl = AstUtils.getContainerOfType(expr, isVarDecl);
+      const structDecl = parentVarDecl?.typeRef?.ref?.ref;
+      if (isStructDecl(structDecl)) {
+        firstElementType = `STRUCT:${structDecl.name}`;
+      }
+    }
+
+    if (!firstElementType) {
+      return `ARRAY<unknown>[${elements.length}]`;
+    }
+
+    if (firstElementType.startsWith("ARRAY<")) {
+      // Nested array inside - validate ALL sub-arrays have consistent types
+      const innerMatch = /^ARRAY<(.+)>(\[(.+?)\])+$/.exec(firstElementType);
+      if (innerMatch) {
+        const baseType = innerMatch[1];
+        const innerDims = innerMatch[2]; // [5] or [5][5], etc
+
+        // Validate all elements are arrays with the same base type
+        for (let i = 1; i < elements.length; i++) {
+          const elementType = TypeInferenceUtils.inferType(elements[i], accept);
+          if (!elementType?.startsWith("ARRAY<")) {
+            return `ARRAY<mixed>[${elements.length}]`;
+          }
+
+          const elementMatch = /^ARRAY<(.+)>(\[(.+?)\])+$/.exec(elementType);
+          if (!elementMatch || elementMatch[1] !== baseType) {
+            return `ARRAY<mixed>[${elements.length}]`;
+          }
+        }
+
+        return `ARRAY<${baseType}>[${elements.length}]${innerDims}`;
+      }
+    }
+
+    // Simple flat array
+    const elementTypes = new Set(
+      elements.map((e: any) => {
+        let elementType = TypeInferenceUtils.inferType(e, accept);
+
+        // Apply struct context resolution to all struct elements
+        if (elementType === "STRUCT") {
+          const parentVarDecl = AstUtils.getContainerOfType(expr, isVarDecl);
+          const structDecl = parentVarDecl?.typeRef?.ref?.ref;
+          if (isStructDecl(structDecl)) {
+            elementType = `STRUCT:${structDecl.name}`;
+          }
+        }
+
+        return elementType;
+      })
+    );
+
+    if (elementTypes.size > 1) {
+      return `ARRAY<mixed>[${elements.length}]`;
+    } else {
+      const singleType = [...elementTypes][0];
+      return `ARRAY<${singleType}>[${elements.length}]`;
+    }
+  }
+
+  private static inferPrimitiveLiteralType(expr: any): string | undefined {
+    if (typeof expr.val === "number") {
+      const raw = expr.$cstNode?.text;
+      return raw?.includes(".") ? "REAL" : "INT";
+    }
+
+    if (typeof expr.val === "boolean" && expr.$cstNode?.text !== "now") {
+      return "BOOL";
+    }
+
+    if (typeof expr.val === "string") {
+      if (expr.val.startsWith("TOD#")) {
+        return "TOD";
+      } else if (expr.val.startsWith("T#")) {
+        return "TIME";
+      } else {
+        return "STRING";
+      }
+    }
+
+    if (isPrimary(expr) && expr.$cstNode?.text === "now") {
+      return "TOD";
+    }
+
+    return undefined;
+  }
+
+  private static inferStructPropertyType(
+    expr: any,
+    baseType: string,
+    prop: any,
+    accept: ValidationAcceptor
+  ): string | undefined {
+    if (!baseType?.startsWith("STRUCT:")) {
+      accept(
+        "error",
+        `Cannot access property '${prop.ref?.name}' on non-struct type '${baseType}'.`,
+        { node: expr }
+      );
+      return undefined;
+    }
+
+    const controlModel = AstUtils.getContainerOfType(expr, isControlModel);
+    const structName = baseType.substring("STRUCT:".length);
+    const structDecl: StructDecl | undefined =
+      (controlModel?.controlBlock?.items.find(
+        (d: any) => isStructDecl(d) && d.name === structName
+      ) as StructDecl | undefined) ??
+      (controlModel?.externTypeDecls?.find(
+        (d: any) => isStructDecl(d) && d.name === structName
+      ) as StructDecl | undefined);
+
+    if (!structDecl) {
+      accept(
+        "error",
+        `Cannot access property '${prop.ref?.name}' on unknown struct type '${structName}'.`,
+        { node: expr }
+      );
+      return undefined;
+    }
+
+    const field = structDecl.fields.find((f: any) => f.name === prop.ref?.name);
+    if (!field) {
+      accept(
+        "error",
+        `Unknown field '${prop.ref?.name}' in struct '${structName}'.`,
+        { node: expr }
+      );
+      return undefined;
+    }
+
+    // Determine the field type
+    if (field.typeRef?.type) {
+      return field.typeRef.type;
+    } else if (field.typeRef?.ref?.ref) {
+      const refTypeDecl = field.typeRef.ref.ref;
+      if (isStructDecl(refTypeDecl)) {
+        return `STRUCT:${refTypeDecl.name}`;
+      } else if (isEnumDecl(refTypeDecl)) {
+        return `ENUM:${refTypeDecl.name}`;
+      } else if (isTypeAlias(refTypeDecl)) {
+        return refTypeDecl.primitive;
+      }
+    }
+
+    return undefined;
+  }
+
+  private static inferDatapointChannelType(
+    ref: any,
+    expr: any
+  ): string | undefined {
+    if (expr.properties.length === 1) {
+      const channel = expr.properties[0]?.ref;
+      if (isChannel(channel)) {
+        return channel.dataType; // Fixed property name
+      }
+    }
+    return undefined;
+  }
+
+  private static inferEnumDeclType(ref: any): string | undefined {
+    return `ENUM:${ref.name}`;
+  }
+
+  private static inferCaseLiteralType(
+    expr: any,
+    accept: ValidationAcceptor
+  ): string | undefined {
+    if (isEnumMemberLiteral(expr.val)) {
+      return `ENUM:${expr.val.enumDecl.$refText}`;
+    }
+
+    // Handle primitive literals used as case values
+    if (isPrimary(expr) || (expr.val && typeof expr.val !== "object")) {
+      return TypeInferenceUtils.inferPrimitiveLiteralType(expr);
+    }
+
+    return undefined;
+  }
+
+  private static applyArrayIndexing(
+    expr: any,
+    type: string,
+    accept: ValidationAcceptor
+  ): string | undefined {
+    let arrayMatch = /^ARRAY<(.+)>(\[(?:\d+|\?)+\])+$/u.exec(type);
+
+    if (arrayMatch) {
+      let baseType = arrayMatch[1];
+      let dims = (type.match(/\[\d+|\?\]/g) || []).map((d) =>
+        d.replace(/[[\]]/g, "")
+      );
+
+      for (const _ of expr.indices) {
+        if (dims.length > 0) {
+          dims.shift(); // remove one dimension
+        } else {
+          accept("error", `Too many indices for type '${type}'.`, {
+            node: expr,
+          });
+          return undefined;
+        }
+      }
+
+      if (dims.length > 0) {
+        // Still an array
+        type = `ARRAY<${baseType}>` + dims.map((d) => `[${d}]`).join("");
+      } else {
+        // Base element
+        type = baseType;
+      }
+    } else if (expr.indices.length > 0) {
+      accept("error", `Cannot index into non-array type '${type}'.`, {
+        node: expr,
+      });
+      return undefined;
+    }
+
+    return type;
+  }
+
+  private static areTypesComparable(left: string, right: string): boolean {
+    const comparableGroups: string[][] = [
+      ["INT", "REAL"],
+      ["STRING"],
+      ["BOOL"],
+      ["TOD"],
+      ["TIME"],
+    ];
+
+    for (const group of comparableGroups) {
+      if (group.includes(left) && group.includes(right)) {
+        return true;
+      }
+    }
+
+    if (
+      left.startsWith("ENUM:") &&
+      right.startsWith("ENUM:") &&
+      left === right
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private static inferArithmeticType(
+    left: string,
+    right: string,
+    op: string,
+    accept: ValidationAcceptor,
+    expr: any
+  ): string | undefined {
+    const numericTypes = ["INT", "REAL"];
+
+    if (!numericTypes.includes(left) || !numericTypes.includes(right)) {
+      accept(
+        "error",
+        `Arithmetic operator '${op}' requires numeric operands, but got '${left}' and '${right}'.`,
+        { node: expr }
+      );
+      return undefined;
+    }
+
+    // If either operand is REAL, result is REAL
+    if (left === "REAL" || right === "REAL") {
+      return "REAL";
+    }
+
+    return "INT";
   }
 }

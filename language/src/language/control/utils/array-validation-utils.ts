@@ -6,7 +6,6 @@ import {
   isPrimary,
   isArrayLiteral,
 } from "../../generated/ast.js";
-import { validateArrayIndex } from "./type-inference-utils.js";
 
 /**
  * Utility class for validating array-related operations in the BCS control language.
@@ -39,7 +38,44 @@ export class ArrayValidationUtils {
       }
 
       // Validate index bounds when possible
-      validateArrayIndex(expr, indexExpr, sizeExpr, accept);
+      this.validateArrayIndex(expr, indexExpr, sizeExpr, accept);
+    }
+  }
+
+  /**
+   * Handles array indexing, checking array bounds and index types
+   *
+   * @param expr The array expression being indexed
+   * @param indexExpr The index expression
+   * @param sizeExpr The size expression from the array definition
+   * @param accept Function to report validation issues
+   * @returns The type after applying array indexing
+   */
+  private static validateArrayIndex(
+    expr: any,
+    indexExpr: any,
+    sizeExpr: any,
+    accept: ValidationAcceptor
+  ): void {
+    // Only check if both index and size are simple numbers
+    if (
+      isPrimary(indexExpr) &&
+      typeof indexExpr.val === "number" &&
+      isPrimary(sizeExpr) &&
+      typeof sizeExpr.val === "number"
+    ) {
+      const indexVal = indexExpr.val;
+      const maxVal = sizeExpr.val;
+
+      if (indexVal < 0 || indexVal >= maxVal) {
+        accept(
+          "error",
+          `Array index [${indexVal}] out of bounds: allowed range is 0 to ${
+            maxVal - 1
+          }.`,
+          { node: expr }
+        );
+      }
     }
   }
 

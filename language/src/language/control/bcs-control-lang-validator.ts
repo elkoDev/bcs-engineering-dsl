@@ -1,9 +1,5 @@
 import { ValidationAcceptor, ValidationChecks } from "langium";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
-import {
-  isTypeAssignable,
-  TypeInferenceUtils,
-} from "./utils/type-inference-utils.js";
 import { DuplicationValidationUtils } from "./utils/duplication-validation-utils.js";
 import { ArrayValidationUtils } from "./utils/array-validation-utils.js";
 import { UseStmtValidationUtils } from "./utils/usestmt-validation-utils.js";
@@ -31,6 +27,7 @@ import {
   OnFallingEdgeStmt,
   isOnRisingEdgeStmt,
 } from "../generated/ast.js";
+import { TypeInferenceUtils } from "./utils/type-inference-utils.js";
 
 export function registerBCSControlValidationChecks(
   services: BCSControlLangServices
@@ -147,7 +144,7 @@ export class BCSControlLangValidator {
           // exact match
           litType === switchType ||
           // INT can stand in for REAL, etc.
-          isTypeAssignable(litType, switchType);
+          TypeInferenceUtils.isTypeAssignable(litType, switchType);
 
         if (!ok) {
           accept(

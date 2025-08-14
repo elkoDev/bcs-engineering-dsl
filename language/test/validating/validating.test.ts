@@ -122,7 +122,7 @@ describe("BCS Control Validation Tests", () => {
       // 3. Wrong input types
       "Type mismatch for input 'iWindow': expected 'BOOL', got 'REAL'.",
       "Type mismatch for input 'iMode': expected 'ENUM:Mode', got 'ENUM:Status'.",
-      "Logical operator '||' can only be applied to BOOL operands, but got 'INT' and 'INT'.",
+      "Logical operator '||' requires both operands to be BOOL, but got 'INT' and 'INT'.",
       "Type mismatch for input 'iTemp': expected 'REAL', got 'BOOL'.",
       // 4. Output count mismatch for single assignment
       "Function block 'LightLogicFB' has 2 outputs, cannot use direct assignment. Use mapping instead.",

@@ -2,11 +2,7 @@ import { ValidationAcceptor } from "langium";
 import { VarDecl, AssignmentStmt } from "../../generated/ast.js";
 import { StructValidationUtils } from "./struct-validation-utils.js";
 import { ArrayValidationUtils } from "./array-validation-utils.js";
-import {
-  inferVarDeclType,
-  isTypeAssignable,
-  TypeInferenceUtils,
-} from "./type-inference-utils.js";
+import { TypeInferenceUtils } from "./type-inference-utils.js";
 
 /**
  * Utility class for validating variable declarations and assignments in the BCS control language.
@@ -22,7 +18,7 @@ export class AssignmentValidationUtils {
     accept: ValidationAcceptor
   ): void {
     // 1. Infer and validate the declared type
-    const type = inferVarDeclType(varDecl);
+    const type = TypeInferenceUtils.inferVarDeclType(varDecl);
     if (!type) {
       this.reportNoTypeError(varDecl, accept);
       return;
@@ -78,7 +74,7 @@ export class AssignmentValidationUtils {
       return;
     }
 
-    if (!isTypeAssignable(rightType, leftType)) {
+    if (!TypeInferenceUtils.isTypeAssignable(rightType, leftType)) {
       accept(
         "error",
         `Type mismatch: Cannot assign "${rightType}" to "${leftType}".`,
@@ -129,7 +125,7 @@ export class AssignmentValidationUtils {
     }
 
     // Regular type compatibility check
-    if (!isTypeAssignable(initType, declaredType)) {
+    if (!TypeInferenceUtils.isTypeAssignable(initType, declaredType)) {
       this.reportTypeMismatchError(varDecl, initType, declaredType, accept);
     }
   }
