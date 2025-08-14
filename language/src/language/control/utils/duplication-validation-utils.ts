@@ -29,7 +29,7 @@ import {
  * Utility class for checking duplications in various AST constructs.
  * Contains methods to validate unique variable names across different scopes.
  */
-export class DuplicationValidator {
+export class DuplicationValidationUtils {
   /**
    * Validates that top-level variable names within a control unit are unique
    * and don't conflict with global variables.

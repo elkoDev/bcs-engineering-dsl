@@ -1,11 +1,7 @@
 import { ValidationAcceptor } from "langium";
-import {
-  UseStmt,
-  FunctionBlockDecl,
-  UseOutput,
-} from "../../generated/ast.js";
+import { UseStmt, FunctionBlockDecl, UseOutput } from "../../generated/ast.js";
 import { getInputs, getOutputs } from "./function-block-utils.js";
-import { DuplicationValidator } from "./duplication-validation-utils.js";
+import { DuplicationValidationUtils } from "./duplication-validation-utils.js";
 import { inferVarDeclType, isTypeAssignable } from "./type-inference-utils.js";
 
 /**
@@ -37,7 +33,7 @@ export class UseStmtValidationUtils {
     this.validateInputTypes(useStmt, fb, accept, inferType);
 
     // 3) Check: Duplicate input mappings
-    DuplicationValidator.checkDuplicateInputMappings(useStmt, fb, accept);
+    DuplicationValidationUtils.checkDuplicateInputMappings(useStmt, fb, accept);
   }
 
   /**
@@ -176,7 +172,7 @@ export class UseStmtValidationUtils {
     }
 
     // Check for duplicates and type compatibility
-    DuplicationValidator.checkDuplicateOutputMappings(
+    DuplicationValidationUtils.checkDuplicateOutputMappings(
       useStmt,
       fb,
       output,

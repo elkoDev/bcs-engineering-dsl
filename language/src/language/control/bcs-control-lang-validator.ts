@@ -14,7 +14,7 @@ import {
   inferCaseLiteralType,
   isTypeAssignable,
 } from "./utils/type-inference-utils.js";
-import { DuplicationValidator } from "./utils/duplication-validation-utils.js";
+import { DuplicationValidationUtils } from "./utils/duplication-validation-utils.js";
 import { ArrayValidationUtils } from "./utils/array-validation-utils.js";
 import { UseStmtValidationUtils } from "./utils/usestmt-validation-utils.js";
 import { AssignmentValidationUtils } from "./utils/assignment-validation-utils.js";
@@ -175,22 +175,25 @@ export class BCSControlLangValidator {
       }
     }
   }
-  checkControlUnitVariableConflicts(unit: ControlUnit, accept: ValidationAcceptor) {
-    DuplicationValidator.checkControlUnitVariableConflicts(unit, accept);
+  checkControlUnitVariableConflicts(
+    unit: ControlUnit,
+    accept: ValidationAcceptor
+  ) {
+    DuplicationValidationUtils.checkControlUnitVariableConflicts(unit, accept);
   }
 
   checkUniqueVarNamesInFunctionBlock(
     fb: FunctionBlockDecl,
     accept: ValidationAcceptor
   ) {
-    DuplicationValidator.checkUniqueVarNamesInFunctionBlock(fb, accept);
+    DuplicationValidationUtils.checkUniqueVarNamesInFunctionBlock(fb, accept);
   }
 
   checkUniqueEnumsAndTypesAndUnits(
     model: ControlModel,
     accept: ValidationAcceptor
   ) {
-    DuplicationValidator.checkUniqueGlobalDeclarations(model, accept);
+    DuplicationValidationUtils.checkUniqueGlobalDeclarations(model, accept);
   }
 
   checkWhenConditionType(unit: ControlUnit, accept: ValidationAcceptor) {
