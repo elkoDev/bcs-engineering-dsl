@@ -64,7 +64,7 @@ export function registerBCSControlValidationChecks(
       validator.checkWhenConditionType,
       validator.checkControlUnitVariableConflicts,
     ],
-    ControlModel: [validator.checkUniqueEnumsAndTypesAndUnits],
+    ControlModel: [validator.checkUniqueGlobalDeclarations],
     AssignmentStmt: [
       validator.checkAssignmentTypes,
       validator.checkNoWriteToInputDatapoints,
@@ -189,7 +189,7 @@ export class BCSControlLangValidator {
     DuplicationValidationUtils.checkUniqueVarNamesInFunctionBlock(fb, accept);
   }
 
-  checkUniqueEnumsAndTypesAndUnits(
+  checkUniqueGlobalDeclarations(
     model: ControlModel,
     accept: ValidationAcceptor
   ) {
