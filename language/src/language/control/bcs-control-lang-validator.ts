@@ -10,7 +10,6 @@ import {
   inferStructPropertyType,
   inferDatapointChannelType,
   inferEnumDeclType,
-  validateArrayIndex,
   inferCaseLiteralType,
   isTypeAssignable,
 } from "./utils/type-inference-utils.js";
@@ -402,7 +401,12 @@ export class BCSControlLangValidator {
 
     // Check array indices if this is an indexed access
     if (ref && expr.indices.length > 0) {
-      this.validateArrayIndices(ref, expr, accept);
+      ArrayValidationUtils.validateArrayIndices(
+        ref,
+        expr,
+        accept,
+        this.inferType.bind(this)
+      );
     }
 
     return type;
@@ -455,35 +459,6 @@ export class BCSControlLangValidator {
     }
 
     return type;
-  }
-
-  /**
-   * Validates the indices of an array reference expression
-   */
-  private validateArrayIndices(
-    ref: any,
-    expr: any,
-    accept: ValidationAcceptor
-  ): void {
-    const sizes = ref.typeRef?.sizes ?? [];
-
-    for (let i = 0; i < expr.indices.length && i < sizes.length; i++) {
-      const indexExpr = expr.indices[i];
-      const sizeExpr = sizes[i];
-
-      // Validate index type
-      const idxType = this.inferType(indexExpr, accept);
-      if (idxType !== "INT") {
-        accept(
-          "error",
-          `Array index must be of type INT, but got "${idxType}".`,
-          { node: indexExpr }
-        );
-      }
-
-      // Validate index bounds when possible
-      validateArrayIndex(expr, indexExpr, sizeExpr, accept);
-    }
   }
 
   checkEdgeSignalType(
