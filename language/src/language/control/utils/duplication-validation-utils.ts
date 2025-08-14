@@ -37,7 +37,7 @@ export class DuplicationValidator {
    * @param unit The control unit to check
    * @param accept The validation acceptor for reporting errors
    */
-  static checkTopLevelVarDuplicates(
+  static checkControlUnitVariableConflicts(
     unit: ControlUnit,
     accept: ValidationAcceptor
   ) {
@@ -46,39 +46,28 @@ export class DuplicationValidator {
       model.items.filter(isVarDecl).map((v) => v.name)
     );
 
-    const localVarNames = new Set<string>();
+    const localVars = unit.stmts.filter(isVarDecl);
 
-    // Check only top-level variable declarations in the unit
-    for (const stmt of unit.stmts) {
-      if (isVarDecl(stmt)) {
-        const name = stmt.name;
-
-        // Check for conflicts with global variables
-        if (globalVarNames.has(name)) {
-          accept(
-            "error",
-            `Variable '${name}' conflicts with global variable.`,
-            {
-              node: stmt,
-              property: "name",
-            }
-          );
-        }
-        // Check for duplicates within the same unit
-        else if (localVarNames.has(name)) {
-          accept(
-            "error",
-            `Duplicate variable '${name}' in unit '${unit.name}'.`,
-            {
-              node: stmt,
-              property: "name",
-            }
-          );
-        } else {
-          localVarNames.add(name);
-        }
+    // First check for conflicts with global variables
+    for (const varDecl of localVars) {
+      if (globalVarNames.has(varDecl.name)) {
+        accept(
+          "error",
+          `Variable '${varDecl.name}' conflicts with global variable.`,
+          {
+            node: varDecl,
+            property: "name",
+          }
+        );
       }
     }
+
+    // Then check for duplicates within the unit using existing utility
+    this.checkForDuplicateVarNames(
+      localVars,
+      (varName) => `Duplicate variable '${varName}' in unit '${unit.name}'.`,
+      accept
+    );
   }
 
   /**
@@ -247,26 +236,6 @@ export class DuplicationValidator {
       allVars,
       (varName) =>
         `Duplicate variable name '${varName}' in function block '${fb.name}'.`,
-      accept
-    );
-  }
-
-  /**
-   * Checks for duplicate variable names within a given control unit.
-   *
-   * @param unit - The control unit to validate.
-   * @param accept - Function to report validation issues.
-   */
-  static checkUniqueVarNamesInUnit(
-    unit: ControlUnit,
-    accept: ValidationAcceptor
-  ) {
-    const allVars = unit.stmts.filter(isVarDecl);
-
-    this.checkForDuplicateVarNames(
-      allVars,
-      (varName) =>
-        `Duplicate local var name '${varName}' in unit '${unit.name}'.`,
       accept
     );
   }

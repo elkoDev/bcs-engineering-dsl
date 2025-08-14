@@ -57,40 +57,7 @@ control InvalidDuplicateController {
         var duplicateUnitVar: BOOL;
     }
     unit DuplicateUnit {        
-    // Cannot declare a variable with the same name as in the global scope 
+        // Cannot declare a variable with the same name as in the global scope 
         var globalVar: INT;
-        var duplicateNestedUnitVar: BOOL;
-        while (true){
-        // Nested variable declarations are no longer allowed by grammar
-            // Variable access still works within nested blocks
-            duplicateNestedUnitVar = true;
-        }
-        on_rising(windowContact.value){
-        // Nested variable declarations are no longer allowed by grammar
-            // Variable access still works within nested blocks
-            duplicateNestedUnitVar = false;
-        }
-        on_rising(windowContact.value){
-        // Nested variable declarations are no longer allowed by grammar
-            // Variable access still works within nested blocks  
-            duplicateNestedUnitVar = true;
-        }
-        for (var i: INT = 0 to 10){
-        // Nested variable declarations are no longer allowed by grammar
-            // Variable access still works within nested blocks
-            duplicateNestedUnitVar = false;
-        }
-        switch (windowContact.value){
-            case true:{
-            // Nested variable declarations are no longer allowed by grammar
-                // Variable access still works within nested blocks
-                duplicateNestedUnitVar = true;
-            }
-            case false:{
-            // Nested variable declarations are no longer allowed by grammar
-                // Variable access still works within nested blocks
-                duplicateNestedUnitVar = false;
-            }
-        }
     }
 }

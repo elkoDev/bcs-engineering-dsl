@@ -60,10 +60,9 @@ export function registerBCSControlValidationChecks(
       validator.checkRequiredLibraryReferenceForExternFBs,
     ],
     ControlUnit: [
-      validator.checkUniqueVarNamesInUnit,
       validator.checkScanCycleUnits,
       validator.checkWhenConditionType,
-      validator.checkTopLevelVarDuplicates,
+      validator.checkControlUnitVariableConflicts,
     ],
     ControlModel: [validator.checkUniqueEnumsAndTypesAndUnits],
     AssignmentStmt: [
@@ -176,8 +175,8 @@ export class BCSControlLangValidator {
       }
     }
   }
-  checkTopLevelVarDuplicates(unit: ControlUnit, accept: ValidationAcceptor) {
-    DuplicationValidator.checkTopLevelVarDuplicates(unit, accept);
+  checkControlUnitVariableConflicts(unit: ControlUnit, accept: ValidationAcceptor) {
+    DuplicationValidator.checkControlUnitVariableConflicts(unit, accept);
   }
 
   checkUniqueVarNamesInFunctionBlock(
@@ -185,10 +184,6 @@ export class BCSControlLangValidator {
     accept: ValidationAcceptor
   ) {
     DuplicationValidator.checkUniqueVarNamesInFunctionBlock(fb, accept);
-  }
-
-  checkUniqueVarNamesInUnit(unit: ControlUnit, accept: ValidationAcceptor) {
-    DuplicationValidator.checkUniqueVarNamesInUnit(unit, accept);
   }
 
   checkUniqueEnumsAndTypesAndUnits(
