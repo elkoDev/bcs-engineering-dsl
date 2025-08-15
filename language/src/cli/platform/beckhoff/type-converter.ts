@@ -17,68 +17,62 @@ import {
   getLocals,
   getLogic,
 } from "../../../language/control/utils/function-block-utils.js";
-
-/**
- * Converts TypeRef to Structured Text type notation
- */
-export function convertTypeRefToST(typeRef: TypeRef): string {
-  if (typeRef.type) {
-    if (typeRef.sizes.length === 0) {
-      return typeRef.type;
-    } else {
-      return `ARRAY [${typeRef.sizes
-        .map((size) => {
-          if (isPrimary(size) && typeof size.val === "number") {
-            return `0..${size.val - 1}`;
-          }
-          return "0..?";
-        })
-        .join(", ")}] OF ${typeRef.type}`;
-    }
-  } else if (typeRef.ref) {
-    const typeDecl = typeRef.ref.ref;
-    const typeName = typeDecl && "name" in typeDecl ? typeDecl.name : "UNKNOWN";
-    if (typeRef.sizes.length === 0) {
-      return typeName as string;
-    } else {
-      return `ARRAY [${typeRef.sizes
-        .map((size) => {
-          if (isPrimary(size) && typeof size.val === "number") {
-            return `0..${size.val - 1}`;
-          }
-          return "0..?";
-        })
-        .join(", ")}] OF ${typeName}`;
-    }
-  }
-  return "UNKNOWN_TYPE";
-}
+import { ExpressionConverter } from "./expression-converter.js";
+import { StatementConverter } from "./statement-converter.js";
 
 /**
  * Handles generation of enums, structs, and function blocks
  */
 export class TypeConverter {
   private readonly destination: string;
-  private readonly convertExprToST: (expr: Expr) => string;
-  private readonly collectLoopVars: (
-    stmts: any[],
-    found: Map<string, { type: string; init?: Expr }>
-  ) => void;
-  private readonly convertStatementToST: (stmt: any, indent?: number) => string;
+  private readonly expressionConverter: ExpressionConverter;
+  private readonly statementConverter: StatementConverter;
 
   constructor(
     destination: string,
-    convertExprToST: (expr: Expr) => string,
-    collectLoopVars: (
-      stmts: any[],
-      found: Map<string, { type: string; init?: Expr }>
-    ) => void,
-    convertStatementToST: (stmt: any, indent?: number) => string
+    expressionConverter: ExpressionConverter,
+    statementConverter: StatementConverter
   ) {
     this.destination = destination;
-    this.convertExprToST = convertExprToST;
-    this.collectLoopVars = collectLoopVars;
-    this.convertStatementToST = convertStatementToST;
+    this.expressionConverter = expressionConverter;
+    this.statementConverter = statementConverter;
+  }
+
+  /**
+   * Converts TypeRef to Structured Text type notation
+   */
+  static convertTypeRefToST(typeRef: TypeRef): string {
+    if (typeRef.type) {
+      if (typeRef.sizes.length === 0) {
+        return typeRef.type;
+      } else {
+        return `ARRAY [${typeRef.sizes
+          .map((size) => {
+            if (isPrimary(size) && typeof size.val === "number") {
+              return `0..${size.val - 1}`;
+            }
+            return "0..?";
+          })
+          .join(", ")}] OF ${typeRef.type}`;
+      }
+    } else if (typeRef.ref) {
+      const typeDecl = typeRef.ref.ref;
+      const typeName =
+        typeDecl && "name" in typeDecl ? typeDecl.name : "UNKNOWN";
+      if (typeRef.sizes.length === 0) {
+        return typeName as string;
+      } else {
+        return `ARRAY [${typeRef.sizes
+          .map((size) => {
+            if (isPrimary(size) && typeof size.val === "number") {
+              return `0..${size.val - 1}`;
+            }
+            return "0..?";
+          })
+          .join(", ")}] OF ${typeName}`;
+      }
+    }
+    return "UNKNOWN_TYPE";
   }
 
   writeEnum(enumDecl: EnumDecl): string {
@@ -132,8 +126,14 @@ export class TypeConverter {
             ${joinToNode(
               structDecl.fields,
               (field) => expandToNode`
-                ${field.name} : ${convertTypeRefToST(field.typeRef)}${
-                field.init ? ` := ${this.convertExprToST(field.init)}` : ""
+                ${field.name} : ${TypeConverter.convertTypeRefToST(
+                field.typeRef
+              )}${
+                field.init
+                  ? ` := ${this.expressionConverter.convertExprToST(
+                      field.init
+                    )}`
+                  : ""
               };
               `,
               { appendNewLineIfNotEmpty: true }
@@ -291,9 +291,9 @@ export class TypeConverter {
     const locals = getLocals(fbDecl);
     const logic = getLogic(fbDecl);
 
-    // Collect all loop variables from the logic block    // Collect all loop variables from the logic block
+    // Collect all loop variables from the logic block
     const loopVars = new Map<string, { type: string; init?: Expr }>();
-    this.collectLoopVars(logic?.stmts ?? [], loopVars);
+    this.statementConverter.collectLoopVars(logic?.stmts ?? [], loopVars);
     // Filter out loop vars already declared as locals
     const localNames = new Set(locals.map((l) => l.name));
     const loopVarsToDeclare = Array.from(loopVars.entries()).filter(
@@ -351,8 +351,14 @@ export class TypeConverter {
             ${joinToNode(
               inputs,
               (input) => expandToNode`
-                ${input.name}: ${convertTypeRefToST(input.typeRef)}${
-                input.init ? ` := ${this.convertExprToST(input.init)}` : ""
+                ${input.name}: ${TypeConverter.convertTypeRefToST(
+                input.typeRef
+              )}${
+                input.init
+                  ? ` := ${this.expressionConverter.convertExprToST(
+                      input.init
+                    )}`
+                  : ""
               };
               `,
               { appendNewLineIfNotEmpty: true }
@@ -362,8 +368,14 @@ export class TypeConverter {
             ${joinToNode(
               outputs,
               (output) => expandToNode`
-                ${output.name}: ${convertTypeRefToST(output.typeRef)}${
-                output.init ? ` := ${this.convertExprToST(output.init)}` : ""
+                ${output.name}: ${TypeConverter.convertTypeRefToST(
+                output.typeRef
+              )}${
+                output.init
+                  ? ` := ${this.expressionConverter.convertExprToST(
+                      output.init
+                    )}`
+                  : ""
               };
               `,
               { appendNewLineIfNotEmpty: true }
@@ -373,17 +385,21 @@ export class TypeConverter {
             ${joinToNode(
               locals,
               (local) =>
-                expandToNode`${local.name}: ${convertTypeRefToST(
+                expandToNode`${local.name}: ${TypeConverter.convertTypeRefToST(
                   local.typeRef
                 )}${
-                  local.init ? ` := ${this.convertExprToST(local.init)}` : ""
+                  local.init
+                    ? ` := ${this.expressionConverter.convertExprToST(
+                        local.init
+                      )}`
+                    : ""
                 };`,
               { appendNewLineIfNotEmpty: true }
             )}${joinToNode(
         loopVarsToDeclare,
         ([name, { type, init }]) =>
           expandToNode`${name}: ${type}${
-            init ? ` := ${this.convertExprToST(init)}` : ""
+            init ? ` := ${this.expressionConverter.convertExprToST(init)}` : ""
           };`,
         { appendNewLineIfNotEmpty: true }
       )}${joinToNode(
@@ -413,7 +429,9 @@ export class TypeConverter {
         case "OnRisingEdgeStmt": {
           const rTrigInstance = fbInstanceMap.get(stmt);
           if (!rTrigInstance) return "";
-          const rTrigSignal = this.convertExprToST(stmt.signal);
+          const rTrigSignal = this.expressionConverter.convertExprToST(
+            stmt.signal
+          );
           const rTrigBody = (stmt.stmts ?? [])
             .map((s: any) => convertFBStatementToST(s, indent + 1))
             .join("\n");
@@ -423,7 +441,9 @@ export class TypeConverter {
         case "OnFallingEdgeStmt": {
           const fTrigInstance = fbInstanceMap.get(stmt);
           if (!fTrigInstance) return "";
-          const fTrigSignal = this.convertExprToST(stmt.signal);
+          const fTrigSignal = this.expressionConverter.convertExprToST(
+            stmt.signal
+          );
           const fTrigBody = (stmt.stmts ?? [])
             .map((s: any) => convertFBStatementToST(s, indent + 1))
             .join("\n");
@@ -433,7 +453,9 @@ export class TypeConverter {
         case "AfterStmt": {
           const tonInstance = fbAfterMap.get(stmt);
           if (!tonInstance) return "";
-          const condition = this.convertExprToST(stmt.condition);
+          const condition = this.expressionConverter.convertExprToST(
+            stmt.condition
+          );
           const afterBody = (stmt.stmts ?? [])
             .map((s: any) => convertFBStatementToST(s, indent + 1))
             .join("\n");
@@ -442,7 +464,7 @@ export class TypeConverter {
 
         default:
           // For all other statements, use the default converter
-          return this.convertStatementToST(stmt, indent);
+          return this.statementConverter.convertStatementToST(stmt, indent);
       }
     };
     const implContent = (logic?.stmts ?? [])

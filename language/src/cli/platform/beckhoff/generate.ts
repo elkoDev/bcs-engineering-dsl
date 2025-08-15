@@ -47,9 +47,8 @@ class BeckhoffGeneratorContext {
     );
     this.typeConverter = new TypeConverter(
       destination,
-      this.expressionConverter.convertExprToST.bind(this.expressionConverter),
-      this.statementConverter.collectLoopVars.bind(this.statementConverter),
-      this.statementConverter.convertStatementToST.bind(this.statementConverter)
+      this.expressionConverter,
+      this.statementConverter
     );
     this.hardwareProcessor = new HardwareProcessor(hardwareModel);
     this.mainProgramGenerator = new MainProgramGenerator(

@@ -15,7 +15,7 @@ import {
   HardwareDatapoint,
   AfterStmtInstanceInfo,
 } from "./types.js";
-import { convertTypeRefToST } from "./type-converter.js";
+import { TypeConverter } from "./type-converter.js";
 import {
   ConditionalControlUnit,
   extractControlUnits,
@@ -221,7 +221,9 @@ export class MainProgramGenerator {
             ${joinToNode(
               mainVars,
               (v) => expandToNode`
-                ${v.name}: ${convertTypeRefToST(v.varDecl.typeRef)}${
+                ${v.name}: ${TypeConverter.convertTypeRefToST(
+                v.varDecl.typeRef
+              )}${
                 v.varDecl.init
                   ? ` := ${this.expressionConverter.convertExprToST(
                       v.varDecl.init
