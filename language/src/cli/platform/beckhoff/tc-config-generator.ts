@@ -1,12 +1,69 @@
 import {
   ControlModel,
   HardwareModel,
+  Controller,
+  PortGroup,
+  Datapoint,
+  Channel,
 } from "../../../language/generated/ast.js";
 import {
   getPortGroups,
   getDatapoints,
 } from "../../../language/hardware/utils/component-utils.js";
 import { getControllers } from "../../../language/hardware/utils/hardware-definition-utils.js";
+
+// Type definitions for TwinCAT configuration
+interface TcLibrary {
+  name: string;
+  vendor: string;
+}
+
+interface TcModule {
+  product: string;
+  name: string;
+  slot: number;
+}
+
+interface TcBox {
+  product: string;
+  name: string;
+  modules: TcModule[];
+}
+
+interface TcBus {
+  type: string;
+  name: string;
+  masterDeviceName: string;
+  boxes: TcBox[];
+}
+
+interface TcModuleInfo {
+  bus: TcBus;
+  box: TcBox;
+  module: TcModule;
+}
+
+interface TcVariableMapping {
+  plcVar: string;
+  direction: "Input" | "Output";
+  bus?: string;
+  box?: string;
+  moduleProduct?: string;
+  moduleSlot?: number;
+  link: string;
+}
+
+interface TcNetworkSettings {
+  hostname?: string;
+  ipAddress?: string;
+}
+
+interface TcConfig {
+  libraries: TcLibrary[];
+  buses: TcBus[];
+  variableMappings: TcVariableMapping[];
+  network?: TcNetworkSettings;
+}
 
 export class TcConfigGenerator {
   controlModel: ControlModel;
@@ -23,14 +80,14 @@ export class TcConfigGenerator {
    * @returns The string without surrounding quotes
    */
   private removeQuotes(str: string): string {
-    return str.replace(/^"|"$/g, "");
+    return str.replace(/^["']/, "").replace(/["']$/, "");
   }
 
   /**
    * Generates a JSON object for TwinCAT configuration.
-   * @returns {object} The generated TwinCAT configuration object.
+   * @returns The generated TwinCAT configuration object.
    */
-  generateTcConfigJson() {
+  generateTcConfigJson(): TcConfig {
     const libraries = this.collectLibraries();
     const buses = this.parseBuses();
     const moduleLookup = this.buildModuleLookup(buses);
@@ -45,8 +102,8 @@ export class TcConfigGenerator {
     };
   }
 
-  private collectLibraries(): { name: string; vendor: string }[] {
-    const libraries: { name: string; vendor: string }[] = [];
+  private collectLibraries(): TcLibrary[] {
+    const libraries: TcLibrary[] = [];
     for (const decl of this.controlModel.importDecls ?? []) {
       if (decl.name)
         libraries.push({ name: decl.name, vendor: "Beckhoff Automation GmbH" });
@@ -54,21 +111,21 @@ export class TcConfigGenerator {
     return libraries;
   }
 
-  private parseBuses(): any[] {
-    const buses: any[] = [];
+  private parseBuses(): TcBus[] {
+    const buses: TcBus[] = [];
     for (const def of this.hardwareModel.hardwareDefinitions) {
       if (def.$type === "Bus") {
-        const bus: any = {
+        const bus: TcBus = {
           type: def.busType,
           name: def.name,
           masterDeviceName: this.removeQuotes(def.master),
-          boxes: [] as any[],
+          boxes: [],
         };
         for (const box of def.boxes) {
-          const boxObj: any = {
+          const boxObj: TcBox = {
             product: box.product,
             name: box.name,
-            modules: [] as any[],
+            modules: [],
           };
           for (const mod of box.modules) {
             boxObj.modules.push({
@@ -85,11 +142,8 @@ export class TcConfigGenerator {
     return buses;
   }
 
-  private buildModuleLookup(
-    buses: any[]
-  ): Record<string, { bus: any; box: any; module: any }> {
-    const moduleLookup: Record<string, { bus: any; box: any; module: any }> =
-      {};
+  private buildModuleLookup(buses: TcBus[]): Record<string, TcModuleInfo> {
+    const moduleLookup: Record<string, TcModuleInfo> = {};
     for (const bus of buses) {
       for (const box of bus.boxes) {
         for (const mod of box.modules) {
@@ -102,48 +156,108 @@ export class TcConfigGenerator {
   }
 
   private generateVariableMappings(
-    moduleLookup: Record<string, { bus: any; box: any; module: any }>
-  ): any[] {
-    const variableMappings: any[] = [];
+    moduleLookup: Record<string, TcModuleInfo>
+  ): TcVariableMapping[] {
+    const variableMappings: TcVariableMapping[] = [];
+
     for (const controller of getControllers(this.hardwareModel)) {
-      const portGroups = getPortGroups(controller);
-      const portGroupMap = new Map(portGroups.map((pg) => [pg.name, pg]));
-      for (const datapoint of getDatapoints(controller)) {
-        const portgroup =
-          datapoint.portgroup?.ref &&
-          portGroupMap.get(datapoint.portgroup.ref.name);
-        if (!portgroup) continue;
-        const moduleName = portgroup.module?.ref?.name;
-        const moduleInfo = moduleName ? moduleLookup[moduleName] : undefined;
-        for (const channel of datapoint.channels) {
-          const plcVar = `${datapoint.name}_${channel.name}`;
-          const direction = portgroup.ioType.includes("INPUT")
-            ? "Input"
-            : "Output";
-          variableMappings.push({
-            plcVar,
-            direction,
-            bus: moduleInfo?.bus.type,
-            box: moduleInfo?.box.product,
-            moduleProduct: moduleInfo?.module.product,
-            moduleSlot: moduleInfo?.module.slot,
-            link: this.removeQuotes(channel.link),
-          });
-        }
-      }
+      const portGroupMap = this.createPortGroupMap(controller);
+      this.processDatapoints(
+        controller,
+        portGroupMap,
+        moduleLookup,
+        variableMappings
+      );
     }
+
     return variableMappings;
+  }
+
+  private createPortGroupMap(controller: Controller): Map<string, PortGroup> {
+    const portGroups = getPortGroups(controller);
+    return new Map(portGroups.map((pg) => [pg.name, pg]));
+  }
+
+  private processDatapoints(
+    controller: Controller,
+    portGroupMap: Map<string, PortGroup>,
+    moduleLookup: Record<string, TcModuleInfo>,
+    variableMappings: TcVariableMapping[]
+  ): void {
+    for (const datapoint of getDatapoints(controller)) {
+      const portgroup = this.getPortGroup(datapoint, portGroupMap);
+      if (!portgroup) continue;
+
+      const moduleInfo = this.getModuleInfo(portgroup, moduleLookup);
+      this.processChannels(datapoint, portgroup, moduleInfo, variableMappings);
+    }
+  }
+
+  private getPortGroup(
+    datapoint: Datapoint,
+    portGroupMap: Map<string, PortGroup>
+  ): PortGroup | undefined {
+    return (
+      datapoint.portgroup?.ref && portGroupMap.get(datapoint.portgroup.ref.name)
+    );
+  }
+
+  private getModuleInfo(
+    portgroup: PortGroup,
+    moduleLookup: Record<string, TcModuleInfo>
+  ): TcModuleInfo | undefined {
+    const moduleName = portgroup.module?.ref?.name;
+    return moduleName ? moduleLookup[moduleName] : undefined;
+  }
+
+  private processChannels(
+    datapoint: Datapoint,
+    portgroup: PortGroup,
+    moduleInfo: TcModuleInfo | undefined,
+    variableMappings: TcVariableMapping[]
+  ): void {
+    for (const channel of datapoint.channels) {
+      const variableMapping = this.createVariableMapping(
+        datapoint,
+        channel,
+        portgroup,
+        moduleInfo
+      );
+      variableMappings.push(variableMapping);
+    }
+  }
+
+  private createVariableMapping(
+    datapoint: Datapoint,
+    channel: Channel,
+    portgroup: PortGroup,
+    moduleInfo: TcModuleInfo | undefined
+  ): TcVariableMapping {
+    const plcVar = `${datapoint.name}_${channel.name}`;
+    const direction = portgroup.ioType.includes("INPUT") ? "Input" : "Output";
+
+    return {
+      plcVar,
+      direction,
+      bus: moduleInfo?.bus.type,
+      box: moduleInfo?.box.product,
+      moduleProduct: moduleInfo?.module.product,
+      moduleSlot: moduleInfo?.module.slot,
+      link: this.removeQuotes(channel.link),
+    };
   }
 
   /**
    * Extracts the network settings from the hardware model, if present.
    */
-  private extractNetworkSettings(): any {
+  private extractNetworkSettings(): TcNetworkSettings | undefined {
     for (const def of this.hardwareModel.hardwareDefinitions) {
       if (def.$type === "NetworkSettings") {
         return {
           hostname: def.hostname ? this.removeQuotes(def.hostname) : undefined,
-          ipAddress: def.ipAddress ? this.removeQuotes(def.ipAddress) : undefined,
+          ipAddress: def.ipAddress
+            ? this.removeQuotes(def.ipAddress)
+            : undefined,
         };
       }
     }
