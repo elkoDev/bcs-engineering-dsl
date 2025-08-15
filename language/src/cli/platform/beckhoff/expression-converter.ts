@@ -16,58 +16,6 @@ import {
 } from "../../../language/generated/ast.js";
 import { Reference } from "langium";
 
-// Helper function to check if a node is a primitive value
-function isPrimitive(expr: Primary): boolean {
-  return (
-    typeof expr.val === "number" ||
-    typeof expr.val === "string" ||
-    typeof expr.val === "boolean"
-  );
-}
-
-/**
- * Helper function to extract the name from a reference with improved debugging
- * This function properly handles all types of references in our AST
- */
-function getReferenceName(ref: Reference<NamedElement>): string {
-  return (
-    ref?.$refText ??
-    (console.warn("Unresolved reference:", JSON.stringify(ref, null, 2)),
-    "UNRESOLVED_REF")
-  );
-}
-
-/**
- * Check if a referenced element belongs to a control unit
- * This helps us determine if we need to qualify the variable name
- */
-function isControlUnitVariable(
-  ref: Reference<NamedElement>
-): [boolean, string | null] {
-  const container = ref?.ref?.$container;
-  return container && isControlUnit(container)
-    ? [true, container.name]
-    : [false, null];
-}
-
-/**
- * Translate operators from DSL to ST format
- */
-function translateOperator(op: string): string {
-  switch (op) {
-    case "&&":
-      return "AND";
-    case "||":
-      return "OR";
-    case "==":
-      return "=";
-    case "!=":
-      return "<>";
-    default:
-      return op;
-  }
-}
-
 /**
  * Handles conversion of expressions to Structured Text
  */
@@ -83,11 +31,11 @@ export class ExpressionConverter {
   }
 
   getQualifiedReferenceName(ref: Reference<NamedElement>): string {
-    const [isInControlUnit, unitName] = isControlUnitVariable(ref);
+    const [isInControlUnit, unitName] = this.isControlUnitVariable(ref);
     if (isInControlUnit && unitName && isVarDecl(ref.ref)) {
-      return `${unitName}_${getReferenceName(ref)}`;
+      return `${unitName}_${this.getReferenceName(ref)}`;
     }
-    return getReferenceName(ref);
+    return this.getReferenceName(ref);
   }
 
   convertExprToST(expr: Expr): string {
@@ -106,8 +54,60 @@ export class ExpressionConverter {
     if (isNotExpr(expr)) return this.handleNotExpr(expr);
     if (isArrayLiteral(expr.val)) return this.handleArrayLiteral(expr);
     if (isStructLiteral(expr.val)) return this.handleStructLiteral(expr);
-    if (isPrimitive(expr)) return this.primitiveToST(expr.val);
+    if (this.isPrimitive(expr)) return this.primitiveToST(expr.val);
     return "UNKNOWN_PRIMARY_EXPR";
+  }
+
+  // Helper function to check if a node is a primitive value
+  private isPrimitive(expr: Primary): boolean {
+    return (
+      typeof expr.val === "number" ||
+      typeof expr.val === "string" ||
+      typeof expr.val === "boolean"
+    );
+  }
+
+  /**
+   * Helper function to extract the name from a reference with improved debugging
+   * This function properly handles all types of references in our AST
+   */
+  private getReferenceName(ref: Reference<NamedElement>): string {
+    return (
+      ref?.$refText ??
+      (console.warn("Unresolved reference:", JSON.stringify(ref, null, 2)),
+      "UNRESOLVED_REF")
+    );
+  }
+
+  /**
+   * Check if a referenced element belongs to a control unit
+   * This helps us determine if we need to qualify the variable name
+   */
+  private isControlUnitVariable(
+    ref: Reference<NamedElement>
+  ): [boolean, string | null] {
+    const container = ref?.ref?.$container;
+    return container && isControlUnit(container)
+      ? [true, container.name]
+      : [false, null];
+  }
+
+  /**
+   * Translate operators from DSL to ST format
+   */
+  private translateOperator(op: string): string {
+    switch (op) {
+      case "&&":
+        return "AND";
+      case "||":
+        return "OR";
+      case "==":
+        return "=";
+      case "!=":
+        return "<>";
+      default:
+        return op;
+    }
   }
 
   private handleParenExpr(expr: any): string {
@@ -142,7 +142,7 @@ export class ExpressionConverter {
   }
 
   private handleBinExpr(expr: any): string {
-    const op = translateOperator(expr.op);
+    const op = this.translateOperator(expr.op);
     return `${this.convertExprToST(expr.e1)} ${op} ${this.convertExprToST(
       expr.e2
     )}`;
@@ -150,7 +150,7 @@ export class ExpressionConverter {
 
   handleRefExpr(expr: Ref): string {
     if (expr.ref && expr.properties?.length === 1) {
-      const flat = `${getReferenceName(expr.ref)}_${getReferenceName(
+      const flat = `${this.getReferenceName(expr.ref)}_${this.getReferenceName(
         expr.properties[0]
       )}`;
       if (this.hardwareChannelFlatNames.has(flat)) return flat;
@@ -162,7 +162,7 @@ export class ExpressionConverter {
           .map((idx) => this.convertExprToST(idx))
           .join(", ")}]`;
       if (expr.properties?.length)
-        result += `.${expr.properties.map(getReferenceName).join(".")}`;
+        result += `.${expr.properties.map(this.getReferenceName).join(".")}`;
       return result;
     }
     return "UNKNOWN_REF";
