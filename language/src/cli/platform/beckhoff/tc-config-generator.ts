@@ -11,59 +11,15 @@ import {
   getDatapoints,
 } from "../../../language/hardware/utils/component-utils.js";
 import { getControllers } from "../../../language/hardware/utils/hardware-definition-utils.js";
-
-// Type definitions for TwinCAT configuration
-interface TcLibrary {
-  name: string;
-  vendor: string;
-}
-
-interface TcModule {
-  product: string;
-  name: string;
-  slot: number;
-}
-
-interface TcBox {
-  product: string;
-  name: string;
-  modules: TcModule[];
-}
-
-interface TcBus {
-  type: string;
-  name: string;
-  masterDeviceName: string;
-  boxes: TcBox[];
-}
-
-interface TcModuleInfo {
-  bus: TcBus;
-  box: TcBox;
-  module: TcModule;
-}
-
-interface TcVariableMapping {
-  plcVar: string;
-  direction: "Input" | "Output";
-  bus?: string;
-  box?: string;
-  moduleProduct?: string;
-  moduleSlot?: number;
-  link: string;
-}
-
-interface TcNetworkSettings {
-  hostname?: string;
-  ipAddress?: string;
-}
-
-interface TcConfig {
-  libraries: TcLibrary[];
-  buses: TcBus[];
-  variableMappings: TcVariableMapping[];
-  network?: TcNetworkSettings;
-}
+import {
+  TcBox,
+  TcBus,
+  TcConfig,
+  TcLibrary,
+  TcModuleInfo,
+  TcNetworkSettings,
+  TcVariableMapping,
+} from "./models/tc-config.js";
 
 export class TcConfigGenerator {
   controlModel: ControlModel;
