@@ -7,7 +7,7 @@ import {
 } from "../../../language/generated/ast.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { TcConfigGenerator } from "./config-generator.js";
+import { TcConfigGenerator } from "./tc-config-generator.js";
 import { TypeConverter } from "./type-converter.js";
 import { ExpressionConverter } from "./expression-converter.js";
 import { StatementConverter } from "./statement-converter.js";

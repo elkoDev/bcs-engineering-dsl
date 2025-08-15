@@ -16,19 +16,14 @@ export class TcConfigGenerator {
     this.controlModel = controlModel;
     this.hardwareModel = hardwareModel;
   }
+
   /**
-   * Extracts the network settings from the hardware model, if present.
+   * Removes surrounding quotes from a string.
+   * @param str - The string to remove quotes from
+   * @returns The string without surrounding quotes
    */
-  private extractNetworkSettings(): any {
-    for (const def of this.hardwareModel.hardwareDefinitions) {
-      if (def.$type === "NetworkSettings") {
-        return {
-          hostname: def.hostname?.replace(/^"|"$/g, ""),
-          ipAddress: def.ipAddress?.replace(/^"|"$/g, ""),
-        };
-      }
-    }
-    return undefined;
+  private removeQuotes(str: string): string {
+    return str.replace(/^"|"$/g, "");
   }
 
   /**
@@ -66,7 +61,7 @@ export class TcConfigGenerator {
         const bus: any = {
           type: def.busType,
           name: def.name,
-          masterDeviceName: def.master.replace(/^"|"$/g, ""), // Remove quotes
+          masterDeviceName: this.removeQuotes(def.master),
           boxes: [] as any[],
         };
         for (const box of def.boxes) {
@@ -132,11 +127,26 @@ export class TcConfigGenerator {
             box: moduleInfo?.box.product,
             moduleProduct: moduleInfo?.module.product,
             moduleSlot: moduleInfo?.module.slot,
-            link: channel.link.replace(/^"|"$/g, ""), // Remove quotes
+            link: this.removeQuotes(channel.link),
           });
         }
       }
     }
     return variableMappings;
+  }
+
+  /**
+   * Extracts the network settings from the hardware model, if present.
+   */
+  private extractNetworkSettings(): any {
+    for (const def of this.hardwareModel.hardwareDefinitions) {
+      if (def.$type === "NetworkSettings") {
+        return {
+          hostname: def.hostname ? this.removeQuotes(def.hostname) : undefined,
+          ipAddress: def.ipAddress ? this.removeQuotes(def.ipAddress) : undefined,
+        };
+      }
+    }
+    return undefined;
   }
 }
