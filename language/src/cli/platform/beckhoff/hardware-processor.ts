@@ -84,26 +84,4 @@ export class HardwareProcessor {
       }
     }
   }
-
-  getDefaultIOType(plcType: string): string {
-    switch (plcType) {
-      case "BOOL":
-        return "X"; // Single bit
-      case "BYTE":
-        return "B"; // 8 bits
-      case "WORD":
-      case "INT":
-        return "W"; // 16 bits
-      case "DWORD":
-      case "DINT":
-      case "REAL":
-        return "D"; // 32 bits
-      case "LWORD":
-      case "LINT":
-      case "LREAL":
-        return "L"; // 64 bits
-      default:
-        return "B"; // Default to byte
-    }
-  }
 }

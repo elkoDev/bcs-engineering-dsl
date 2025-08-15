@@ -76,6 +76,7 @@ export class BCSControlLangValidator {
       );
     }
   }
+
   checkToExprType(stmt: ForStmt, accept: ValidationAcceptor) {
     const toExpr = stmt.toExpr;
     if (!toExpr) return;
