@@ -450,7 +450,7 @@ export class TypeConverter {
 
         default:
           // For all other statements, use the default converter
-          return this.statementConverter.convertStatementToST(stmt, indent);
+          return this.statementConverter.emit(stmt, indent);
       }
     };
     const implContent = (logic?.stmts ?? [])

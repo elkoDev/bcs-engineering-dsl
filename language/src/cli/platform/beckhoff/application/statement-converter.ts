@@ -27,7 +27,7 @@ import { InstanceManager } from "./instance-manager.js";
 import { getQualifiedReferenceName } from "./qualified_reference_name.js";
 
 /**
- * Handles conversion of statements to Structured Text
+ * Converts DSL statements to IEC 61131-3 Structured Text and analyzes statement structures.
  */
 export class StatementConverter {
   private readonly expressionConverter: ExpressionConverter;
@@ -41,7 +41,8 @@ export class StatementConverter {
     this.instanceManager = instanceManager;
   }
 
-  convertStatementToST(stmt: Statement, indent: number = 0): string {
+  /** Public entrypoint: convert any Statement to ST. */
+  public emit(stmt: Statement, indent: number = 0): string {
     const pad = (level: number) => "    ".repeat(level);
     if (isAssignmentStmt(stmt))
       return (
@@ -67,29 +68,46 @@ export class StatementConverter {
     );
   }
 
+  /**
+   * Public entrypoint: recursively collect all loop variables (from ForStmt) in a list of statements.
+   */
+  public collectLoopVars(
+    stmts: Statement[],
+    found: Map<string, { type: string; init?: Expr }>
+  ) {
+    for (const stmt of stmts) {
+      if (isForStmt(stmt)) {
+        this.handleForLoopVar(stmt, found);
+      } else if (isIfStmt(stmt)) {
+        this.handleIfLoopVar(stmt, found);
+      } else if (isWhileStmt(stmt)) {
+        this.collectLoopVars(stmt.stmts, found);
+      } else if (isSwitchStmt(stmt)) {
+        this.handleSwitchLoopVar(stmt, found);
+      }
+    }
+  }
+
   private stIf(stmt: IfStmt, indent: number): string {
     const pad = (level: number) => "    ".repeat(level);
     let result =
       pad(indent) +
       `IF ${this.expressionConverter.emit(stmt.condition)} THEN\n`;
     result +=
-      stmt.stmts
-        .map((s: any) => this.convertStatementToST(s, indent + 1))
-        .join("\n") + "\n";
+      stmt.stmts.map((s: any) => this.emit(s, indent + 1)).join("\n") + "\n";
     for (const elseIfStmt of stmt.elseIfStmts) {
       result +=
         pad(indent) +
         `ELSIF ${this.expressionConverter.emit(elseIfStmt.condition)} THEN\n`;
       result +=
-        elseIfStmt.stmts
-          .map((s: any) => this.convertStatementToST(s, indent + 1))
-          .join("\n") + "\n";
+        elseIfStmt.stmts.map((s: any) => this.emit(s, indent + 1)).join("\n") +
+        "\n";
     }
     if (stmt.elseStmt) {
       result += pad(indent) + `ELSE\n`;
       result +=
         (stmt.elseStmt.stmts || [])
-          .map((s: any) => this.convertStatementToST(s, indent + 1))
+          .map((s: any) => this.emit(s, indent + 1))
           .join("\n") + "\n";
     }
     result += pad(indent) + `END_IF;`;
@@ -103,7 +121,7 @@ export class StatementConverter {
     )} DO\n`;
     result +=
       stmt.stmts
-        .map((subStmt: any) => this.convertStatementToST(subStmt, indent + 1))
+        .map((subStmt: any) => this.emit(subStmt, indent + 1))
         .join("\n") + "\n";
     result += `${pad(indent)}END_WHILE;`;
     return result;
@@ -117,9 +135,7 @@ export class StatementConverter {
       stmt.step ? ` BY ${this.expressionConverter.emit(stmt.step)}` : ""
     } DO\n`;
     result +=
-      stmt.stmts
-        .map((s: any) => this.convertStatementToST(s, indent + 1))
-        .join("\n") + "\n";
+      stmt.stmts.map((s: any) => this.emit(s, indent + 1)).join("\n") + "\n";
     result += `${pad(indent)}END_FOR;`;
     return result;
   }
@@ -140,14 +156,14 @@ export class StatementConverter {
       result += `${pad(indent + 1)}${literals}:\n`;
       result +=
         caseOption.stmts
-          .map((subStmt: any) => this.convertStatementToST(subStmt, indent + 2))
+          .map((subStmt: any) => this.emit(subStmt, indent + 2))
           .join("\n") + "\n";
     }
     if (stmt.default) {
       result += `${pad(indent + 1)}ELSE\n`;
       result +=
         stmt.default.stmts
-          .map((subStmt: any) => this.convertStatementToST(subStmt, indent + 2))
+          .map((subStmt: any) => this.emit(subStmt, indent + 2))
           .join("\n") + "\n";
     }
     result += `${pad(indent)}END_CASE;`;
@@ -217,7 +233,7 @@ export class StatementConverter {
       risingContent += `${pad(indent)}${instanceName}(CLK := ${signalExpr});\n`;
       risingContent += `${pad(indent)}IF ${instanceName}.Q THEN\n`;
       for (const subStmt of stmt.stmts) {
-        risingContent += this.convertStatementToST(subStmt, indent + 1) + "\n";
+        risingContent += this.emit(subStmt, indent + 1) + "\n";
       }
       risingContent += `${pad(indent)}END_IF;`;
       return risingContent;
@@ -234,7 +250,7 @@ export class StatementConverter {
       )}${instanceName}(CLK := ${signalExpr});\n`;
       fallingContent += `${pad(indent)}IF ${instanceName}.Q THEN\n`;
       for (const subStmt of stmt.stmts) {
-        fallingContent += this.convertStatementToST(subStmt, indent + 1) + "\n";
+        fallingContent += this.emit(subStmt, indent + 1) + "\n";
       }
       fallingContent += `${pad(indent)}END_IF;`;
       return fallingContent;
@@ -251,32 +267,10 @@ export class StatementConverter {
     return (
       `${pad(indent)}${tonName}(IN := ${condition});\n` +
       `${pad(indent)}IF ${tonName}.Q THEN\n` +
-      blockStmts
-        .map((s: any) => this.convertStatementToST(s, indent + 1))
-        .join("\n") +
+      blockStmts.map((s: any) => this.emit(s, indent + 1)).join("\n") +
       `\n${pad(indent + 1)}${tonName}(IN := FALSE);\n` +
       `${pad(indent)}END_IF;\n`
     );
-  }
-
-  /**
-   * Recursively collect all loop variables (from ForStmt) in a list of statements
-   */
-  collectLoopVars(
-    stmts: Statement[],
-    found: Map<string, { type: string; init?: Expr }>
-  ) {
-    for (const stmt of stmts) {
-      if (isForStmt(stmt)) {
-        this.handleForLoopVar(stmt, found);
-      } else if (isIfStmt(stmt)) {
-        this.handleIfLoopVar(stmt, found);
-      } else if (isWhileStmt(stmt)) {
-        this.collectLoopVars(stmt.stmts, found);
-      } else if (isSwitchStmt(stmt)) {
-        this.handleSwitchLoopVar(stmt, found);
-      }
-    }
   }
 
   private handleForLoopVar(

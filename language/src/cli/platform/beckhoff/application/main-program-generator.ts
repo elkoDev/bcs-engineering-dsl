@@ -325,7 +325,7 @@ export class MainProgramGenerator {
           ${joinToNode(
             sch.stmts.filter((s) => !isVarDecl(s)),
             (stmt) => expandToNode`
-              ${this.statementConverter.convertStatementToST(stmt, 1)}
+              ${this.statementConverter.emit(stmt, 1)}
           `,
             { appendNewLineIfNotEmpty: true }
           )}
@@ -349,7 +349,7 @@ export class MainProgramGenerator {
             ${joinToNode(
               cond.stmts.filter((s) => !isVarDecl(s)),
               (stmt) => expandToNode`
-                ${this.statementConverter.convertStatementToST(stmt, 1)}
+                ${this.statementConverter.emit(stmt, 1)}
             `,
               { appendNewLineIfNotEmpty: true }
             )}
@@ -363,7 +363,7 @@ export class MainProgramGenerator {
             ${joinToNode(
               cond.stmts.filter((s) => !isVarDecl(s)),
               (stmt) => expandToNode`
-                ${this.statementConverter.convertStatementToST(stmt, 1)}
+                ${this.statementConverter.emit(stmt, 1)}
             `,
               { appendNewLineIfNotEmpty: true }
             )}
@@ -378,7 +378,7 @@ export class MainProgramGenerator {
         ${joinToNode(
           reg.stmts.filter((s) => !isVarDecl(s)),
           (stmt) => expandToNode`
-            ${this.statementConverter.convertStatementToST(stmt, 0)}
+            ${this.statementConverter.emit(stmt, 0)}
         `,
           { appendNewLineIfNotEmpty: true }
         )}
