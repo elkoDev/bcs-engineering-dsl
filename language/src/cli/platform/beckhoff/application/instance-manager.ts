@@ -7,13 +7,6 @@ import {
   isFunctionBlockDecl,
   ControlUnit,
   isUseStmt,
-  isOnRisingEdgeStmt,
-  isOnFallingEdgeStmt,
-  isIfStmt,
-  isWhileStmt,
-  isForStmt,
-  isSwitchStmt,
-  isAfterStmt,
 } from "../../../../language/generated/ast.js";
 import {
   InstanceInfo,
@@ -21,6 +14,7 @@ import {
   AfterStmtInstanceInfo,
 } from "../models/types.js";
 import { detectDaliComType } from "../utils.js";
+import { StatementTraverser } from "./statement-traverser.js";
 
 /**
  * Handles FB instance creation and management
@@ -142,54 +136,22 @@ export class InstanceManager {
   }
 
   public assignEdgeDetectionInstances(mainStatements: Statement[]) {
-    const walk = (stmts: Statement[]) => {
-      for (const stmt of stmts) {
-        if (isOnRisingEdgeStmt(stmt)) {
-          this.getOrAssignEdgeFBInstance(stmt, "rising", "R_TRIG");
-          walk(stmt.stmts);
-        } else if (isOnFallingEdgeStmt(stmt)) {
-          this.getOrAssignEdgeFBInstance(stmt, "falling", "F_TRIG");
-          walk(stmt.stmts);
-        } else if (isIfStmt(stmt)) {
-          walk(stmt.stmts);
-          for (const elseIf of stmt.elseIfStmts) walk(elseIf.stmts);
-          if (stmt.elseStmt) walk(stmt.elseStmt.stmts);
-        } else if (isWhileStmt(stmt)) {
-          walk(stmt.stmts);
-        } else if (isForStmt(stmt)) {
-          walk(stmt.stmts);
-        } else if (isSwitchStmt(stmt)) {
-          for (const c of stmt.cases) walk(c.stmts);
-          if (stmt.default) walk(stmt.default.stmts);
-        }
-      }
-    };
-    walk(mainStatements);
+    StatementTraverser.traverse(mainStatements, {
+      visitOnRisingEdge: (stmt) => {
+        this.getOrAssignEdgeFBInstance(stmt, "rising", "R_TRIG");
+      },
+      visitOnFallingEdge: (stmt) => {
+        this.getOrAssignEdgeFBInstance(stmt, "falling", "F_TRIG");
+      },
+    });
   }
 
   public assignAfterStmtInstances(mainStatements: Statement[]) {
-    const walk = (stmts: Statement[]) => {
-      for (const stmt of stmts) {
-        if (isAfterStmt(stmt)) {
-          this.getOrAssignAfterStmtInstance(stmt);
-          walk((stmt as any).stmts ?? []);
-        } else if (isIfStmt(stmt)) {
-          walk(stmt.stmts);
-          for (const elseIf of stmt.elseIfStmts) walk(elseIf.stmts);
-          if (stmt.elseStmt) walk(stmt.elseStmt.stmts);
-        } else if (isWhileStmt(stmt)) {
-          walk(stmt.stmts);
-        } else if (isForStmt(stmt)) {
-          walk(stmt.stmts);
-        } else if (isSwitchStmt(stmt)) {
-          for (const c of stmt.cases) walk(c.stmts);
-          if (stmt.default) walk(stmt.default.stmts);
-        } else if (isOnRisingEdgeStmt(stmt) || isOnFallingEdgeStmt(stmt)) {
-          walk(stmt.stmts);
-        }
-      }
-    };
-    walk(mainStatements);
+    StatementTraverser.traverse(mainStatements, {
+      visitAfterStmt: (stmt) => {
+        this.getOrAssignAfterStmtInstance(stmt);
+      },
+    });
   }
 
   private createUniqueFBInstanceName(fbType: string): string {
