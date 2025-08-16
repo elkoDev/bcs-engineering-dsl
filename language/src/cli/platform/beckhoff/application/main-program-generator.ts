@@ -5,10 +5,12 @@ import { InstanceManager } from "./instance-manager.js";
 import { StatementConverter } from "./statement-converter.js";
 import { ExpressionConverter } from "./expression-converter.js";
 import { HardwareProcessor } from "./hardware-processor.js";
+import { LoopVariableAnalyzer } from "./loop-variable-analyzer.js";
 import {
   EmittedVarDecl,
   HardwareDatapoint,
   AfterStmtInstanceInfo,
+  LoopVariableInfo,
 } from "../models/types.js";
 import {
   detectDaliComType,
@@ -22,7 +24,6 @@ import {
   HardwareModel,
   ControlModel,
   Statement,
-  Expr,
   isControlUnit,
   isVarDecl,
   ControlUnit,
@@ -100,11 +101,10 @@ export class MainProgramGenerator {
     this.collectGlobalVarDecls(mainVars);
     this.processControlUnits(mainVars, mainStatements);
 
-    const loopVars = new Map<string, { type: string; init?: Expr }>();
-    this.statementConverter.collectLoopVars(mainStatements, loopVars);
+    const allLoopVars = LoopVariableAnalyzer.collectLoopVars(mainStatements);
     const declaredVarNames = new Set(mainVars.map((v) => v.varDecl.name));
-    const loopVarsToDeclare = Array.from(loopVars.entries()).filter(
-      ([name]) => !declaredVarNames.has(name)
+    const loopVarsToDeclare = allLoopVars.filter(
+      (loopVar) => !declaredVarNames.has(loopVar.name)
     );
 
     const { inputs, outputs } =
@@ -189,7 +189,7 @@ export class MainProgramGenerator {
   generateMainDeclContent(
     hardware: { inputs: HardwareDatapoint[]; outputs: HardwareDatapoint[] },
     mainVars: EmittedVarDecl[],
-    loopVarsToDeclare: [string, { type: string; init?: Expr }][],
+    loopVarsToDeclare: LoopVariableInfo[],
     fbInstanceDecls: Array<{ instanceName: string; fbType: string }>,
     afterStmtDecls: AfterStmtInstanceInfo[],
     controlUnits: {
@@ -233,9 +233,11 @@ export class MainProgramGenerator {
             )}
             ${joinToNode(
               loopVarsToDeclare,
-              ([name, { type, init }]) => expandToNode`
-                ${name}: ${type}${
-                init ? ` := ${this.expressionConverter.emit(init)}` : ""
+              (loopVar) => expandToNode`
+                ${loopVar.name}: ${loopVar.type}${
+                loopVar.init
+                  ? ` := ${this.expressionConverter.emit(loopVar.init)}`
+                  : ""
               };
               `,
               { appendNewLineIfNotEmpty: true }

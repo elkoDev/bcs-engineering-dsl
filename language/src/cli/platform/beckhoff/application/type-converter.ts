@@ -3,9 +3,9 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { ExpressionConverter } from "./expression-converter.js";
 import { StatementConverter } from "./statement-converter.js";
+import { LoopVariableAnalyzer } from "./loop-variable-analyzer.js";
 import {
   EnumDecl,
-  Expr,
   FunctionBlockDecl,
   isOnFallingEdgeStmt,
   isOnRisingEdgeStmt,
@@ -290,12 +290,13 @@ export class TypeConverter {
     const logic = getLogic(fbDecl);
 
     // Collect all loop variables from the logic block
-    const loopVars = new Map<string, { type: string; init?: Expr }>();
-    this.statementConverter.collectLoopVars(logic?.stmts ?? [], loopVars);
+    const allLoopVars = LoopVariableAnalyzer.collectLoopVars(
+      logic?.stmts ?? []
+    );
     // Filter out loop vars already declared as locals
     const localNames = new Set(locals.map((l) => l.name));
-    const loopVarsToDeclare = Array.from(loopVars.entries()).filter(
-      ([name]) => !localNames.has(name)
+    const loopVarsToDeclare = allLoopVars.filter(
+      (loopVar) => !localNames.has(loopVar.name)
     );
     const fbStatements = logic?.stmts ?? [];
 
@@ -389,9 +390,11 @@ export class TypeConverter {
               { appendNewLineIfNotEmpty: true }
             )}${joinToNode(
         loopVarsToDeclare,
-        ([name, { type, init }]) =>
-          expandToNode`${name}: ${type}${
-            init ? ` := ${this.expressionConverter.emit(init)}` : ""
+        (loopVar) =>
+          expandToNode`${loopVar.name}: ${loopVar.type}${
+            loopVar.init
+              ? ` := ${this.expressionConverter.emit(loopVar.init)}`
+              : ""
           };`,
         { appendNewLineIfNotEmpty: true }
       )}${joinToNode(

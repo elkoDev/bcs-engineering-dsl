@@ -53,28 +53,6 @@ export class StatementConverter {
     return this.emitUnsupported(stmt, indent);
   }
 
-  /** Public: collect loop variables from a list of statements. */
-  public collectLoopVars(
-    stmts: Statement[],
-    found: Map<string, { type: string; init?: Expr }>
-  ): void {
-    for (const s of stmts) {
-      if (isForStmt(s)) {
-        this.handleForLoopVar(s, found);
-        this.collectLoopVars(s.stmts, found);
-      } else if (isIfStmt(s)) {
-        this.collectLoopVars(s.stmts, found);
-        for (const e of s.elseIfStmts) this.collectLoopVars(e.stmts, found);
-        if (s.elseStmt) this.collectLoopVars(s.elseStmt.stmts, found);
-      } else if (isWhileStmt(s)) {
-        this.collectLoopVars(s.stmts, found);
-      } else if (isSwitchStmt(s)) {
-        for (const c of s.cases) this.collectLoopVars(c.stmts, found);
-        if (s.default) this.collectLoopVars(s.default.stmts, found);
-      }
-    }
-  }
-
   // ── Emitters ────────────────────────────────────────────────────────────────
 
   private emitAssign(
@@ -206,20 +184,6 @@ export class StatementConverter {
     return (
       this.pad(indent) + `// Unsupported statement type: ${(stmt as any).$type}`
     );
-  }
-
-  // ── Loop var collection helpers ─────────────────────────────────────────────
-
-  private handleForLoopVar(
-    stmt: ForStmt,
-    found: Map<string, { type: string; init?: Expr }>
-  ): void {
-    if (!found.has(stmt.loopVar.name)) {
-      found.set(stmt.loopVar.name, {
-        type: stmt.loopVar.typeRef.type ?? "INT",
-        init: stmt.loopVar.init,
-      });
-    }
   }
 
   // ── Small utilities ─────────────────────────────────────────────────────────
