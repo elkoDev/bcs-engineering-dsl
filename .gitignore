@@ -6,3 +6,4 @@
 /.vs
 /language/example/generated
 /language/example/kBus/generated
+/language/example/etherCAT/generated

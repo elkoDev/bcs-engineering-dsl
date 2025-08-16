@@ -76,7 +76,7 @@ export class TypeConverter {
     return "UNKNOWN_TYPE";
   }
 
-  writeEnum(enumDecl: EnumDecl): string {
+  public writeEnum(enumDecl: EnumDecl): string {
     const filePath = path.join(
       this.destination,
       "Enums",
@@ -110,7 +110,7 @@ export class TypeConverter {
     return filePath;
   }
 
-  writeStruct(structDecl: StructDecl): string {
+  public writeStruct(structDecl: StructDecl): string {
     const filePath = path.join(
       this.destination,
       "Structs",
@@ -145,20 +145,8 @@ export class TypeConverter {
     fs.writeFileSync(filePath, structContent);
     return filePath;
   }
-  // Helper method to collect function block instances recursively
-  private collectFBInstances(stmts: any[]): {
-    fbInstanceMap: Map<any, string>;
-    fbAfterMap: Map<any, string>;
-  } {
-    const collector = new LocalInstanceRegistry();
-    collector.collectFromStatements(stmts);
-    return {
-      fbInstanceMap: collector.getFBInstanceMap(),
-      fbAfterMap: collector.getFBAfterMap(),
-    };
-  }
 
-  writeFunctionBlock(fbDecl: FunctionBlockDecl): string[] {
+  public writeFunctionBlock(fbDecl: FunctionBlockDecl): string[] {
     const files: string[] = [];
 
     // Get the different parts of the function block
@@ -327,5 +315,18 @@ export class TypeConverter {
     files.push(implFilePath);
 
     return files;
+  }
+
+  // Helper method to collect function block instances recursively
+  private collectFBInstances(stmts: any[]): {
+    fbInstanceMap: Map<any, string>;
+    fbAfterMap: Map<any, string>;
+  } {
+    const collector = new LocalInstanceRegistry();
+    collector.collectFromStatements(stmts);
+    return {
+      fbInstanceMap: collector.getFBInstanceMap(),
+      fbAfterMap: collector.getFBAfterMap(),
+    };
   }
 }
