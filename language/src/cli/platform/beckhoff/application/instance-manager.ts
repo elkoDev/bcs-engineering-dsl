@@ -36,22 +36,12 @@ export class InstanceManager {
     this.hardwareModel = hardwareModel;
   }
 
-  reset() {
+  public reset() {
     this.fbInstanceMap.clear();
     this.fbInstanceCounter = 1;
   }
 
-  // Generate a globally unique FB instance name
-  createUniqueFBInstanceName(fbType: string): string {
-    const name = `${fbType.charAt(0).toLowerCase()}${fbType.slice(1)}Instance${
-      this.fbInstanceCounter
-    }`;
-    this.fbInstanceCounter++;
-    return name;
-  }
-
-  // Assign or get a unique FB instance for a UseStmt
-  getOrAssignFBInstance(useStmt: UseStmt): FBInstanceInfo {
+  public getOrAssignFBInstance(useStmt: UseStmt): FBInstanceInfo {
     if (this.fbInstanceMap.has(useStmt)) {
       return this.fbInstanceMap.get(useStmt)! as FBInstanceInfo;
     }
@@ -62,8 +52,7 @@ export class InstanceManager {
     return info;
   }
 
-  // Assign or get a unique FB instance for edge detection
-  getOrAssignEdgeFBInstance(
+  public getOrAssignEdgeFBInstance(
     stmt: Statement,
     type: "rising" | "falling",
     fbType: string
@@ -77,8 +66,7 @@ export class InstanceManager {
     return info;
   }
 
-  // Assign or get a unique AfterStmt instance (TON timer)
-  getOrAssignAfterStmtInstance(stmt: AfterStmt): AfterStmtInstanceInfo {
+  public getOrAssignAfterStmtInstance(stmt: AfterStmt): AfterStmtInstanceInfo {
     if (this.fbInstanceMap.has(stmt)) {
       return this.fbInstanceMap.get(stmt)! as AfterStmtInstanceInfo;
     }
@@ -94,12 +82,16 @@ export class InstanceManager {
     return info;
   }
 
-  // Get all instance declarations for main program
-  getAllFBInstanceDeclarations(): Array<{
+  public getDaliComInstance(daliComType: string): FBInstanceInfo | undefined {
+    const key = `daliCom_${daliComType}`;
+    const instance = this.fbInstanceMap.get(key);
+    return instance?.kind === "fb" ? instance : undefined;
+  }
+
+  public getAllFBInstanceDeclarations(): Array<{
     instanceName: string;
     fbType: string;
   }> {
-    // Use a Set to avoid duplicates if the same instance is referenced by multiple keys
     const seen = new Set<string>();
     const result: Array<{ instanceName: string; fbType: string }> = [];
     for (const info of this.fbInstanceMap.values()) {
@@ -111,14 +103,13 @@ export class InstanceManager {
     return result;
   }
 
-  // Get all AfterStmt instance declarations for main program
-  getAllAfterStmtDeclarations(): AfterStmtInstanceInfo[] {
+  public getAllAfterStmtDeclarations(): AfterStmtInstanceInfo[] {
     return Array.from(this.fbInstanceMap.values()).filter(
       (info): info is AfterStmtInstanceInfo => info.kind === "after"
     );
   }
 
-  addRequiredAdditionalFBInstances() {
+  public addRequiredAdditionalFBInstances() {
     // Check if any extern function block from Tc3_DALI is used
     const hasExternDaliFB = this.controlModel.externTypeDecls.some(
       (item) =>
@@ -143,14 +134,14 @@ export class InstanceManager {
     }
   }
 
-  assignFBInstancesFromControlUnit(controlUnit: ControlUnit) {
+  public assignFBInstancesFromControlUnit(controlUnit: ControlUnit) {
     const useStmts = controlUnit.stmts.filter(isUseStmt);
     for (const useStmt of useStmts) {
       this.getOrAssignFBInstance(useStmt);
     }
   }
 
-  assignEdgeDetectionInstances(mainStatements: Statement[]) {
+  public assignEdgeDetectionInstances(mainStatements: Statement[]) {
     const walk = (stmts: Statement[]) => {
       for (const stmt of stmts) {
         if (isOnRisingEdgeStmt(stmt)) {
@@ -176,8 +167,7 @@ export class InstanceManager {
     walk(mainStatements);
   }
 
-  // Walk statements to collect AfterStmt instances for unique TON/vars
-  assignAfterStmtInstances(mainStatements: Statement[]) {
+  public assignAfterStmtInstances(mainStatements: Statement[]) {
     const walk = (stmts: Statement[]) => {
       for (const stmt of stmts) {
         if (isAfterStmt(stmt)) {
@@ -202,10 +192,11 @@ export class InstanceManager {
     walk(mainStatements);
   }
 
-  // Get the DALI com instance for library specials
-  getDaliComInstance(daliComType: string): FBInstanceInfo | undefined {
-    const key = `daliCom_${daliComType}`;
-    const instance = this.fbInstanceMap.get(key);
-    return instance?.kind === "fb" ? instance : undefined;
+  private createUniqueFBInstanceName(fbType: string): string {
+    const name = `${fbType.charAt(0).toLowerCase()}${fbType.slice(1)}Instance${
+      this.fbInstanceCounter
+    }`;
+    this.fbInstanceCounter++;
+    return name;
   }
 }
