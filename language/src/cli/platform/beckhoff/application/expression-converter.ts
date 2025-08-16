@@ -1,8 +1,12 @@
 import {
+  getQualifiedReferenceName,
+  getReferenceName,
+} from "./qualified_reference_name.js";
+import {
   Expr,
-  Primary,
   isPrimary,
   isBinExpr,
+  Primary,
   isRef,
   isParenExpr,
   isNegExpr,
@@ -10,11 +14,7 @@ import {
   isArrayLiteral,
   isStructLiteral,
   Ref,
-  NamedElement,
-  isVarDecl,
-  isControlUnit,
-} from "../../../language/generated/ast.js";
-import { Reference } from "langium";
+} from "../../../../language/generated/ast.js";
 
 /**
  * Handles conversion of expressions to Structured Text
@@ -28,14 +28,6 @@ export class ExpressionConverter {
 
   updateHardwareChannelFlatNames(names: Set<string>) {
     this.hardwareChannelFlatNames = names;
-  }
-
-  getQualifiedReferenceName(ref: Reference<NamedElement>): string {
-    const [isInControlUnit, unitName] = this.isControlUnitVariable(ref);
-    if (isInControlUnit && unitName && isVarDecl(ref.ref)) {
-      return `${unitName}_${this.getReferenceName(ref)}`;
-    }
-    return this.getReferenceName(ref);
   }
 
   convertExprToST(expr: Expr): string {
@@ -65,31 +57,6 @@ export class ExpressionConverter {
       typeof expr.val === "string" ||
       typeof expr.val === "boolean"
     );
-  }
-
-  /**
-   * Helper function to extract the name from a reference with improved debugging
-   * This function properly handles all types of references in our AST
-   */
-  private getReferenceName(ref: Reference<NamedElement>): string {
-    return (
-      ref?.$refText ??
-      (console.warn("Unresolved reference:", JSON.stringify(ref, null, 2)),
-      "UNRESOLVED_REF")
-    );
-  }
-
-  /**
-   * Check if a referenced element belongs to a control unit
-   * This helps us determine if we need to qualify the variable name
-   */
-  private isControlUnitVariable(
-    ref: Reference<NamedElement>
-  ): [boolean, string | null] {
-    const container = ref?.ref?.$container;
-    return container && isControlUnit(container)
-      ? [true, container.name]
-      : [false, null];
   }
 
   /**
@@ -150,25 +117,25 @@ export class ExpressionConverter {
 
   handleRefExpr(expr: Ref): string {
     if (expr.ref && expr.properties?.length === 1) {
-      const flat = `${this.getReferenceName(expr.ref)}_${this.getReferenceName(
+      const flat = `${getReferenceName(expr.ref)}_${getReferenceName(
         expr.properties[0]
       )}`;
       if (this.hardwareChannelFlatNames.has(flat)) return flat;
     }
     if (expr.ref) {
-      let result = this.getQualifiedReferenceName(expr.ref);
+      let result = getQualifiedReferenceName(expr.ref);
       if (expr.indices?.length)
         result += `[${expr.indices
           .map((idx) => this.convertExprToST(idx))
           .join(", ")}]`;
       if (expr.properties?.length)
-        result += `.${expr.properties.map(this.getReferenceName).join(".")}`;
+        result += `.${expr.properties.map(getReferenceName).join(".")}`;
       return result;
     }
     return "UNKNOWN_REF";
   }
 
-  primitiveToST(val: any): string {
+  private primitiveToST(val: any): string {
     if (typeof val === "string") {
       const isTodString = RegExp(/TOD#[0-9:]+/).exec(val);
       if (isTodString) {

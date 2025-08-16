@@ -1,14 +1,17 @@
 import {
   HardwareModel,
-  PortGroup,
   Datapoint,
-} from "../../../language/generated/ast.js";
-import { HardwareDatapoint, HardwareDatapointsResult } from "./types.js";
+  PortGroup,
+} from "../../../../language/generated/ast.js";
 import {
-  getPortGroups,
   getDatapoints,
-} from "../../../language/hardware/utils/component-utils.js";
-import { getControllers } from "../../../language/hardware/utils/hardware-definition-utils.js";
+  getPortGroups,
+} from "../../../../language/hardware/utils/component-utils.js";
+import { getControllers } from "../../../../language/hardware/utils/hardware-definition-utils.js";
+import {
+  HardwareDatapointsResult,
+  HardwareDatapoint,
+} from "../models/types.js";
 
 /**
  * Handles hardware datapoint extraction and processing

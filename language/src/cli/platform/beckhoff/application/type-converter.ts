@@ -1,24 +1,19 @@
-import {
-  TypeRef,
-  isPrimary,
-  EnumDecl,
-  StructDecl,
-  FunctionBlockDecl,
-  Expr,
-  isOnRisingEdgeStmt,
-  isOnFallingEdgeStmt,
-} from "../../../language/generated/ast.js";
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import {
-  getInputs,
-  getOutputs,
-  getLocals,
-  getLogic,
-} from "../../../language/control/utils/function-block-utils.js";
 import { ExpressionConverter } from "./expression-converter.js";
 import { StatementConverter } from "./statement-converter.js";
+import {
+  EnumDecl,
+  Expr,
+  FunctionBlockDecl,
+  isOnFallingEdgeStmt,
+  isOnRisingEdgeStmt,
+  isPrimary,
+  StructDecl,
+  TypeRef,
+} from "../../../../language/generated/ast.js";
+import { getInputs, getLocals, getLogic, getOutputs } from "../../../../language/control/utils/function-block-utils.js";
 
 /**
  * Handles generation of enums, structs, and function blocks

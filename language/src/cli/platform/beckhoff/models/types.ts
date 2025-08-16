@@ -1,4 +1,4 @@
-import { VarDecl, ControlUnit } from "../../../language/generated/ast.js";
+import { VarDecl, ControlUnit } from "../../../../language/generated/ast.js";
 
 export interface FBInstanceInfo {
   kind: "fb";

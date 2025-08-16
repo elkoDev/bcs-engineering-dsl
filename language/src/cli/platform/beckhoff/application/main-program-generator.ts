@@ -1,32 +1,32 @@
-import {
-  ControlModel,
-  HardwareModel,
-  Statement,
-  isControlUnit,
-  isVarDecl,
-  ControlUnit,
-  Expr,
-} from "../../../language/generated/ast.js";
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import {
-  EmittedVarDecl,
-  HardwareDatapoint,
-  AfterStmtInstanceInfo,
-} from "./types.js";
-import { TypeConverter } from "./type-converter.js";
-import {
-  ConditionalControlUnit,
-  extractControlUnits,
-  RegularControlUnit,
-  ScheduledControlUnit,
-  detectDaliComType,
-} from "./utils.js";
 import { InstanceManager } from "./instance-manager.js";
 import { StatementConverter } from "./statement-converter.js";
 import { ExpressionConverter } from "./expression-converter.js";
 import { HardwareProcessor } from "./hardware-processor.js";
+import {
+  EmittedVarDecl,
+  HardwareDatapoint,
+  AfterStmtInstanceInfo,
+} from "../models/types.js";
+import {
+  detectDaliComType,
+  extractControlUnits,
+  ScheduledControlUnit,
+  ConditionalControlUnit,
+  RegularControlUnit,
+} from "../utils.js";
+import { TypeConverter } from "./type-converter.js";
+import {
+  HardwareModel,
+  ControlModel,
+  Statement,
+  Expr,
+  isControlUnit,
+  isVarDecl,
+  ControlUnit,
+} from "../../../../language/generated/ast.js";
 
 /**
  * Handles special input mapping and constructor logic libraries (e.g., DALI, others in future).

@@ -1,3 +1,4 @@
+import { getOutputs } from "../../../../language/control/utils/function-block-utils.js";
 import {
   Statement,
   isAssignmentStmt,
@@ -5,25 +6,25 @@ import {
   isWhileStmt,
   isForStmt,
   isSwitchStmt,
-  isUseStmt,
-  isExpressionStmt,
-  isOnRisingEdgeStmt,
-  isOnFallingEdgeStmt,
+  isAfterStmt,
   isBreakStmt,
   isContinueStmt,
-  isAfterStmt,
+  isExpressionStmt,
+  isUseStmt,
+  isOnRisingEdgeStmt,
+  isOnFallingEdgeStmt,
   IfStmt,
   WhileStmt,
   ForStmt,
   SwitchStmt,
+  isEnumMemberLiteral,
   UseStmt,
   AfterStmt,
-  isEnumMemberLiteral,
   Expr,
-} from "../../../language/generated/ast.js";
-import { getOutputs } from "../../../language/control/utils/function-block-utils.js";
-import { InstanceManager } from "./instance-manager.js";
+} from "../../../../language/generated/ast.js";
 import { ExpressionConverter } from "./expression-converter.js";
+import { InstanceManager } from "./instance-manager.js";
+import { getQualifiedReferenceName } from "./qualified_reference_name.js";
 
 /**
  * Handles conversion of statements to Structured Text
@@ -180,8 +181,7 @@ export class StatementConverter {
       const outputs = fb ? getOutputs(fb) : [];
       const fbOutputVarName = outputs.length === 1 ? outputs[0].name : "output";
       const targetOutputVarRef = stmt.useOutput.singleOutput.targetOutputVar;
-      const targetOutputVarName =
-        this.expressionConverter.getQualifiedReferenceName(targetOutputVarRef);
+      const targetOutputVarName = getQualifiedReferenceName(targetOutputVarRef);
       useContent += `${pad(indent)}${instanceName}(${inputMappings});\n`;
       useContent += `${pad(
         indent
@@ -191,9 +191,7 @@ export class StatementConverter {
       for (const outMapping of stmt.useOutput.mappingOutputs) {
         const targetOutputVarRef = outMapping.targetOutputVar;
         const targetOutputVarName =
-          this.expressionConverter.getQualifiedReferenceName(
-            targetOutputVarRef
-          );
+          getQualifiedReferenceName(targetOutputVarRef);
         const fbOutputVarName = outMapping.fbOutputVar.ref?.name ?? "output";
         useContent += `${pad(
           indent

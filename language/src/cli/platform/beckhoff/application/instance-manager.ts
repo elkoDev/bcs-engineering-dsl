@@ -1,26 +1,26 @@
 import {
-  Statement,
+  ControlModel,
+  HardwareModel,
   UseStmt,
+  Statement,
   AfterStmt,
-  isAfterStmt,
+  isFunctionBlockDecl,
+  ControlUnit,
+  isUseStmt,
+  isOnRisingEdgeStmt,
+  isOnFallingEdgeStmt,
   isIfStmt,
   isWhileStmt,
   isForStmt,
   isSwitchStmt,
-  isOnRisingEdgeStmt,
-  isOnFallingEdgeStmt,
-  isUseStmt,
-  ControlUnit,
-  ControlModel,
-  HardwareModel,
-  isFunctionBlockDecl,
-} from "../../../language/generated/ast.js";
+  isAfterStmt,
+} from "../../../../language/generated/ast.js";
 import {
+  InstanceInfo,
   FBInstanceInfo,
   AfterStmtInstanceInfo,
-  InstanceInfo,
-} from "./types.js";
-import { detectDaliComType } from "./utils.js";
+} from "../models/types.js";
+import { detectDaliComType } from "../utils.js";
 
 /**
  * Handles FB instance creation and management

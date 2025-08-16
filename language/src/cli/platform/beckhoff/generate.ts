@@ -1,20 +1,20 @@
-import {
-  ControlModel,
-  isEnumDecl,
-  isFunctionBlockDecl,
-  isStructDecl,
-  HardwareModel,
-} from "../../../language/generated/ast.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { TcConfigGenerator } from "./tc-config-generator.js";
-import { TypeConverter } from "./type-converter.js";
-import { ExpressionConverter } from "./expression-converter.js";
-import { StatementConverter } from "./statement-converter.js";
-import { InstanceManager } from "./instance-manager.js";
-import { HardwareProcessor } from "./hardware-processor.js";
-import { MainProgramGenerator } from "./main-program-generator.js";
+import {
+  ControlModel,
+  HardwareModel,
+  isEnumDecl,
+  isStructDecl,
+  isFunctionBlockDecl,
+} from "../../../language/generated/ast.js";
 import { GenerateResult } from "../index.js";
+import { ExpressionConverter } from "./application/expression-converter.js";
+import { HardwareProcessor } from "./application/hardware-processor.js";
+import { InstanceManager } from "./application/instance-manager.js";
+import { MainProgramGenerator } from "./application/main-program-generator.js";
+import { StatementConverter } from "./application/statement-converter.js";
+import { TcConfigGenerator } from "./application/tc-config-generator.js";
+import { TypeConverter } from "./application/type-converter.js";
 
 /**
  * Main generator context that orchestrates all the sub-generators

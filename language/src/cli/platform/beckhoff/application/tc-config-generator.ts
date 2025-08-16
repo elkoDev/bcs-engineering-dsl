@@ -5,21 +5,21 @@ import {
   PortGroup,
   Datapoint,
   Channel,
-} from "../../../language/generated/ast.js";
+} from "../../../../language/generated/ast.js";
 import {
   getPortGroups,
   getDatapoints,
-} from "../../../language/hardware/utils/component-utils.js";
-import { getControllers } from "../../../language/hardware/utils/hardware-definition-utils.js";
+} from "../../../../language/hardware/utils/component-utils.js";
+import { getControllers } from "../../../../language/hardware/utils/hardware-definition-utils.js";
 import {
-  TcBox,
-  TcBus,
   TcConfig,
   TcLibrary,
+  TcBus,
+  TcBox,
   TcModuleInfo,
-  TcNetworkSettings,
   TcVariableMapping,
-} from "./models/tc-config.js";
+  TcNetworkSettings,
+} from "../models/tc-config.js";
 
 export class TcConfigGenerator {
   controlModel: ControlModel;
