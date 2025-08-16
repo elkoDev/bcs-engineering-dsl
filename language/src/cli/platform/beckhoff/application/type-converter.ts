@@ -4,6 +4,7 @@ import * as path from "node:path";
 import { ExpressionConverter } from "./expression-converter.js";
 import { StatementConverter } from "./statement-converter.js";
 import { LoopVariableAnalyzer } from "./loop-variable-analyzer.js";
+import { FBInstanceCollector } from "./fb-instance-collector.js";
 import {
   EnumDecl,
   FunctionBlockDecl,
@@ -145,139 +146,16 @@ export class TypeConverter {
     return filePath;
   }
   // Helper method to collect function block instances recursively
-  private collectFBInstances(
-    stmts: any[],
-    fbInstanceMap: Map<any, string>,
-    fbAfterMap: Map<any, string>,
-    rTrigCounter: { value: number },
-    fTrigCounter: { value: number },
-    tonCounter: { value: number }
-  ): void {
-    for (const stmt of stmts) {
-      switch (stmt.$type) {
-        case "OnRisingEdgeStmt": {
-          if (!fbInstanceMap.has(stmt)) {
-            fbInstanceMap.set(stmt, `r_TRIGInstance${rTrigCounter.value++}`);
-          }
-          this.collectFBInstances(
-            stmt.stmts ?? [],
-            fbInstanceMap,
-            fbAfterMap,
-            rTrigCounter,
-            fTrigCounter,
-            tonCounter
-          );
-          break;
-        }
-        case "OnFallingEdgeStmt": {
-          if (!fbInstanceMap.has(stmt)) {
-            fbInstanceMap.set(stmt, `f_TRIGInstance${fTrigCounter.value++}`);
-          }
-          this.collectFBInstances(
-            stmt.stmts ?? [],
-            fbInstanceMap,
-            fbAfterMap,
-            rTrigCounter,
-            fTrigCounter,
-            tonCounter
-          );
-          break;
-        }
-        case "AfterStmt": {
-          if (!fbAfterMap.has(stmt)) {
-            fbAfterMap.set(stmt, `tonAfter${tonCounter.value++}`);
-          }
-          this.collectFBInstances(
-            stmt.stmts ?? [],
-            fbInstanceMap,
-            fbAfterMap,
-            rTrigCounter,
-            fTrigCounter,
-            tonCounter
-          );
-          break;
-        }
-        case "IfStmt": {
-          this.collectFBInstances(
-            stmt.stmts ?? [],
-            fbInstanceMap,
-            fbAfterMap,
-            rTrigCounter,
-            fTrigCounter,
-            tonCounter
-          );
-          for (const elseIf of stmt.elseIfStmts ?? []) {
-            this.collectFBInstances(
-              elseIf.stmts ?? [],
-              fbInstanceMap,
-              fbAfterMap,
-              rTrigCounter,
-              fTrigCounter,
-              tonCounter
-            );
-          }
-          if (stmt.elseStmt) {
-            this.collectFBInstances(
-              stmt.elseStmt.stmts ?? [],
-              fbInstanceMap,
-              fbAfterMap,
-              rTrigCounter,
-              fTrigCounter,
-              tonCounter
-            );
-          }
-          break;
-        }
-        case "WhileStmt":
-        case "ForStmt": {
-          this.collectFBInstances(
-            stmt.stmts ?? [],
-            fbInstanceMap,
-            fbAfterMap,
-            rTrigCounter,
-            fTrigCounter,
-            tonCounter
-          );
-          break;
-        }
-        case "SwitchStmt": {
-          for (const c of stmt.cases ?? []) {
-            this.collectFBInstances(
-              c.stmts ?? [],
-              fbInstanceMap,
-              fbAfterMap,
-              rTrigCounter,
-              fTrigCounter,
-              tonCounter
-            );
-          }
-          if (stmt.default) {
-            this.collectFBInstances(
-              stmt.default.stmts ?? [],
-              fbInstanceMap,
-              fbAfterMap,
-              rTrigCounter,
-              fTrigCounter,
-              tonCounter
-            );
-          }
-          break;
-        }
-        default: {
-          if (stmt.stmts) {
-            this.collectFBInstances(
-              stmt.stmts,
-              fbInstanceMap,
-              fbAfterMap,
-              rTrigCounter,
-              fTrigCounter,
-              tonCounter
-            );
-          }
-          break;
-        }
-      }
-    }
+  private collectFBInstances(stmts: any[]): {
+    fbInstanceMap: Map<any, string>;
+    fbAfterMap: Map<any, string>;
+  } {
+    const collector = new FBInstanceCollector();
+    collector.collectFromStatements(stmts);
+    return {
+      fbInstanceMap: collector.getFBInstanceMap(),
+      fbAfterMap: collector.getFBAfterMap(),
+    };
   }
 
   writeFunctionBlock(fbDecl: FunctionBlockDecl): string[] {
@@ -301,21 +179,7 @@ export class TypeConverter {
     const fbStatements = logic?.stmts ?? [];
 
     // Create instance mapping for this function block (isolated from global scope)
-    const fbInstanceMap = new Map<any, string>();
-    const fbAfterMap = new Map<any, string>();
-    // Collect edge detection instances (R_TRIG, F_TRIG) and after instances (TON)
-    const rTrigCounter = { value: 1 };
-    const fTrigCounter = { value: 1 };
-    const tonCounter = { value: 1 };
-
-    this.collectFBInstances(
-      fbStatements,
-      fbInstanceMap,
-      fbAfterMap,
-      rTrigCounter,
-      fTrigCounter,
-      tonCounter
-    );
+    const { fbInstanceMap, fbAfterMap } = this.collectFBInstances(fbStatements);
 
     // Create arrays for declarations
     const fbInstanceDecls: Array<{ instanceName: string; fbType: string }> = [];
