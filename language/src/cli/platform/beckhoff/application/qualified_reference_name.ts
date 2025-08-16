@@ -15,10 +15,6 @@ export function getQualifiedReferenceName(
   return getReferenceName(ref);
 }
 
-/**
- * Helper function to extract the name from a reference with improved debugging
- * This function properly handles all types of references in our AST
- */
 export function getReferenceName(ref: Reference<NamedElement>): string {
   return (
     ref?.$refText ??

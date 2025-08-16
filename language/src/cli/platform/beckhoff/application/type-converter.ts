@@ -13,7 +13,12 @@ import {
   StructDecl,
   TypeRef,
 } from "../../../../language/generated/ast.js";
-import { getInputs, getLocals, getLogic, getOutputs } from "../../../../language/control/utils/function-block-utils.js";
+import {
+  getInputs,
+  getLocals,
+  getLogic,
+  getOutputs,
+} from "../../../../language/control/utils/function-block-utils.js";
 
 /**
  * Handles generation of enums, structs, and function blocks
@@ -125,9 +130,7 @@ export class TypeConverter {
                 field.typeRef
               )}${
                 field.init
-                  ? ` := ${this.expressionConverter.convertExprToST(
-                      field.init
-                    )}`
+                  ? ` := ${this.expressionConverter.emit(field.init)}`
                   : ""
               };
               `,
@@ -350,9 +353,7 @@ export class TypeConverter {
                 input.typeRef
               )}${
                 input.init
-                  ? ` := ${this.expressionConverter.convertExprToST(
-                      input.init
-                    )}`
+                  ? ` := ${this.expressionConverter.emit(input.init)}`
                   : ""
               };
               `,
@@ -367,9 +368,7 @@ export class TypeConverter {
                 output.typeRef
               )}${
                 output.init
-                  ? ` := ${this.expressionConverter.convertExprToST(
-                      output.init
-                    )}`
+                  ? ` := ${this.expressionConverter.emit(output.init)}`
                   : ""
               };
               `,
@@ -384,9 +383,7 @@ export class TypeConverter {
                   local.typeRef
                 )}${
                   local.init
-                    ? ` := ${this.expressionConverter.convertExprToST(
-                        local.init
-                      )}`
+                    ? ` := ${this.expressionConverter.emit(local.init)}`
                     : ""
                 };`,
               { appendNewLineIfNotEmpty: true }
@@ -394,7 +391,7 @@ export class TypeConverter {
         loopVarsToDeclare,
         ([name, { type, init }]) =>
           expandToNode`${name}: ${type}${
-            init ? ` := ${this.expressionConverter.convertExprToST(init)}` : ""
+            init ? ` := ${this.expressionConverter.emit(init)}` : ""
           };`,
         { appendNewLineIfNotEmpty: true }
       )}${joinToNode(
@@ -424,9 +421,7 @@ export class TypeConverter {
         case "OnRisingEdgeStmt": {
           const rTrigInstance = fbInstanceMap.get(stmt);
           if (!rTrigInstance) return "";
-          const rTrigSignal = this.expressionConverter.convertExprToST(
-            stmt.signal
-          );
+          const rTrigSignal = this.expressionConverter.emit(stmt.signal);
           const rTrigBody = (stmt.stmts ?? [])
             .map((s: any) => convertFBStatementToST(s, indent + 1))
             .join("\n");
@@ -436,9 +431,7 @@ export class TypeConverter {
         case "OnFallingEdgeStmt": {
           const fTrigInstance = fbInstanceMap.get(stmt);
           if (!fTrigInstance) return "";
-          const fTrigSignal = this.expressionConverter.convertExprToST(
-            stmt.signal
-          );
+          const fTrigSignal = this.expressionConverter.emit(stmt.signal);
           const fTrigBody = (stmt.stmts ?? [])
             .map((s: any) => convertFBStatementToST(s, indent + 1))
             .join("\n");
@@ -448,9 +441,7 @@ export class TypeConverter {
         case "AfterStmt": {
           const tonInstance = fbAfterMap.get(stmt);
           if (!tonInstance) return "";
-          const condition = this.expressionConverter.convertExprToST(
-            stmt.condition
-          );
+          const condition = this.expressionConverter.emit(stmt.condition);
           const afterBody = (stmt.stmts ?? [])
             .map((s: any) => convertFBStatementToST(s, indent + 1))
             .join("\n");

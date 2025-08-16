@@ -109,7 +109,7 @@ export class MainProgramGenerator {
 
     const { inputs, outputs } =
       this.hardwareProcessor.extractHardwareDatapoints();
-    this.expressionConverter.updateHardwareChannelFlatNames(
+    this.expressionConverter.setHardwareChannelSymbols(
       new Set([...inputs.map((i) => i.name), ...outputs.map((o) => o.name)])
     );
 
@@ -225,9 +225,7 @@ export class MainProgramGenerator {
                 v.varDecl.typeRef
               )}${
                 v.varDecl.init
-                  ? ` := ${this.expressionConverter.convertExprToST(
-                      v.varDecl.init
-                    )}`
+                  ? ` := ${this.expressionConverter.emit(v.varDecl.init)}`
                   : ""
               };
               `,
@@ -237,9 +235,7 @@ export class MainProgramGenerator {
               loopVarsToDeclare,
               ([name, { type, init }]) => expandToNode`
                 ${name}: ${type}${
-                init
-                  ? ` := ${this.expressionConverter.convertExprToST(init)}`
-                  : ""
+                init ? ` := ${this.expressionConverter.emit(init)}` : ""
               };
               `,
               { appendNewLineIfNotEmpty: true }
@@ -344,14 +340,10 @@ export class MainProgramGenerator {
           if (cond.runOnce) {
             return expandToNode`
             // Conditional Control Unit '${cond.name}' (runOnce)
-            IF NOT (${this.expressionConverter.convertExprToST(
-              cond.condition
-            )}) THEN
+            IF NOT (${this.expressionConverter.emit(cond.condition)}) THEN
                 ${cond.name}_hasRun := FALSE;
             END_IF;
-            IF (NOT ${
-              cond.name
-            }_hasRun) AND (${this.expressionConverter.convertExprToST(
+            IF (NOT ${cond.name}_hasRun) AND (${this.expressionConverter.emit(
               cond.condition
             )}) THEN
             ${joinToNode(
@@ -367,7 +359,7 @@ export class MainProgramGenerator {
           } else {
             return expandToNode`
             // Conditional Control Unit '${cond.name}'
-            IF ${this.expressionConverter.convertExprToST(cond.condition)} THEN
+            IF ${this.expressionConverter.emit(cond.condition)} THEN
             ${joinToNode(
               cond.stmts.filter((s) => !isVarDecl(s)),
               (stmt) => expandToNode`

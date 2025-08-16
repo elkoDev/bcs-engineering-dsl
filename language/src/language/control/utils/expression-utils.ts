@@ -3,9 +3,6 @@
  * Contains methods for stringifying expressions and manipulating expression data.
  */
 export class ExpressionUtils {
-  /**
-   * Converts an expression to a string representation for debugging and error messages
-   */
   static stringifyExpression(expr: any): string {
     if (!expr) return "undefined";
 

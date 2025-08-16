@@ -46,9 +46,9 @@ export class StatementConverter {
     if (isAssignmentStmt(stmt))
       return (
         pad(indent) +
-        `${this.expressionConverter.convertExprToST(
+        `${this.expressionConverter.emit(
           stmt.target
-        )} := ${this.expressionConverter.convertExprToST(stmt.value)};`
+        )} := ${this.expressionConverter.emit(stmt.value)};`
       );
     if (isIfStmt(stmt)) return this.stIf(stmt, indent);
     if (isWhileStmt(stmt)) return this.stWhile(stmt, indent);
@@ -58,9 +58,7 @@ export class StatementConverter {
     if (isBreakStmt(stmt)) return pad(indent) + `EXIT;`;
     if (isContinueStmt(stmt)) return pad(indent) + `CONTINUE;`;
     if (isExpressionStmt(stmt))
-      return (
-        pad(indent) + `${this.expressionConverter.convertExprToST(stmt.expr)};`
-      );
+      return pad(indent) + `${this.expressionConverter.emit(stmt.expr)};`;
     if (isUseStmt(stmt)) return this.stUse(stmt, indent);
     if (isOnRisingEdgeStmt(stmt)) return this.stEdge(stmt, indent, true);
     if (isOnFallingEdgeStmt(stmt)) return this.stEdge(stmt, indent, false);
@@ -73,7 +71,7 @@ export class StatementConverter {
     const pad = (level: number) => "    ".repeat(level);
     let result =
       pad(indent) +
-      `IF ${this.expressionConverter.convertExprToST(stmt.condition)} THEN\n`;
+      `IF ${this.expressionConverter.emit(stmt.condition)} THEN\n`;
     result +=
       stmt.stmts
         .map((s: any) => this.convertStatementToST(s, indent + 1))
@@ -81,9 +79,7 @@ export class StatementConverter {
     for (const elseIfStmt of stmt.elseIfStmts) {
       result +=
         pad(indent) +
-        `ELSIF ${this.expressionConverter.convertExprToST(
-          elseIfStmt.condition
-        )} THEN\n`;
+        `ELSIF ${this.expressionConverter.emit(elseIfStmt.condition)} THEN\n`;
       result +=
         elseIfStmt.stmts
           .map((s: any) => this.convertStatementToST(s, indent + 1))
@@ -102,9 +98,9 @@ export class StatementConverter {
 
   private stWhile(stmt: WhileStmt, indent: number): string {
     const pad = (level: number) => "    ".repeat(level);
-    let result = `${pad(
-      indent
-    )}WHILE ${this.expressionConverter.convertExprToST(stmt.condition)} DO\n`;
+    let result = `${pad(indent)}WHILE ${this.expressionConverter.emit(
+      stmt.condition
+    )} DO\n`;
     result +=
       stmt.stmts
         .map((subStmt: any) => this.convertStatementToST(subStmt, indent + 1))
@@ -116,13 +112,9 @@ export class StatementConverter {
   private stFor(stmt: ForStmt, indent: number): string {
     const pad = (level: number) => "    ".repeat(level);
     let result = `${pad(indent)}FOR ${stmt.loopVar.name} := ${
-      stmt.loopVar.init
-        ? this.expressionConverter.convertExprToST(stmt.loopVar.init)
-        : "0"
-    } TO ${this.expressionConverter.convertExprToST(stmt.toExpr)}${
-      stmt.step
-        ? ` BY ${this.expressionConverter.convertExprToST(stmt.step)}`
-        : ""
+      stmt.loopVar.init ? this.expressionConverter.emit(stmt.loopVar.init) : "0"
+    } TO ${this.expressionConverter.emit(stmt.toExpr)}${
+      stmt.step ? ` BY ${this.expressionConverter.emit(stmt.step)}` : ""
     } DO\n`;
     result +=
       stmt.stmts
@@ -134,7 +126,7 @@ export class StatementConverter {
 
   private stSwitch(stmt: SwitchStmt, indent: number): string {
     const pad = (level: number) => "    ".repeat(level);
-    let result = `${pad(indent)}CASE ${this.expressionConverter.convertExprToST(
+    let result = `${pad(indent)}CASE ${this.expressionConverter.emit(
       stmt.expr
     )} OF\n`;
     for (const caseOption of stmt.cases) {
@@ -169,9 +161,9 @@ export class StatementConverter {
     const inputMappings = stmt.inputArgs
       .map(
         (arg) =>
-          `${
-            arg.inputVar.ref?.name
-          }:=${this.expressionConverter.convertExprToST(arg.value)}`
+          `${arg.inputVar.ref?.name}:=${this.expressionConverter.emit(
+            arg.value
+          )}`
       )
       .join(", ");
     // Handle output mapping
@@ -215,7 +207,7 @@ export class StatementConverter {
   ): string {
     const pad = (level: number) => "    ".repeat(level);
     if (type === "rising" && isOnRisingEdgeStmt(stmt)) {
-      const signalExpr = this.expressionConverter.convertExprToST(stmt.signal);
+      const signalExpr = this.expressionConverter.emit(stmt.signal);
       const { instanceName } = this.instanceManager.getOrAssignEdgeFBInstance(
         stmt,
         "rising",
@@ -230,7 +222,7 @@ export class StatementConverter {
       risingContent += `${pad(indent)}END_IF;`;
       return risingContent;
     } else if (type === "falling" && isOnFallingEdgeStmt(stmt)) {
-      const signalExpr = this.expressionConverter.convertExprToST(stmt.signal);
+      const signalExpr = this.expressionConverter.emit(stmt.signal);
       const { instanceName } = this.instanceManager.getOrAssignEdgeFBInstance(
         stmt,
         "falling",
@@ -253,9 +245,7 @@ export class StatementConverter {
   private stAfter(stmt: AfterStmt, indent: number): string {
     const pad = (level: number) => "    ".repeat(level);
     const { tonName } = this.instanceManager.getOrAssignAfterStmtInstance(stmt);
-    const condition = this.expressionConverter.convertExprToST(
-      (stmt as any).condition
-    );
+    const condition = this.expressionConverter.emit((stmt as any).condition);
     const blockStmts = (stmt as any).stmts ?? [];
     // Generate more concise logic: TON is enabled by condition, actions run when Q and condition, TON reset after
     return (
