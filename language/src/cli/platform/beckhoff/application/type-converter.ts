@@ -147,174 +147,239 @@ export class TypeConverter {
   }
 
   public writeFunctionBlock(fbDecl: FunctionBlockDecl): string[] {
-    const files: string[] = [];
+    const fbComponents = this.extractFunctionBlockComponents(fbDecl);
+    const instanceData = this.collectInstanceDeclarations(fbComponents.logic);
 
-    // Get the different parts of the function block
+    const declFilePath = this.writeFunctionBlockDeclaration(
+      fbDecl,
+      fbComponents,
+      instanceData
+    );
+    const implFilePath = this.writeFunctionBlockImplementation(
+      fbDecl,
+      fbComponents.logic,
+      instanceData
+    );
+
+    return [declFilePath, implFilePath];
+  }
+
+  private extractFunctionBlockComponents(fbDecl: FunctionBlockDecl) {
     const inputs = getInputs(fbDecl);
     const outputs = getOutputs(fbDecl);
     const locals = getLocals(fbDecl);
     const logic = getLogic(fbDecl);
-
-    // Collect all loop variables from the logic block
-    const allLoopVars = LoopVariableAnalyzer.collectLoopVars(
+    const loopVarsToDeclare = this.determineRequiredLoopVariables(
+      locals,
       logic?.stmts ?? []
     );
-    // Filter out loop vars already declared as locals
+
+    return { inputs, outputs, locals, logic, loopVarsToDeclare };
+  }
+
+  private determineRequiredLoopVariables(locals: any[], statements: any[]) {
+    const allLoopVars = LoopVariableAnalyzer.collectLoopVars(statements);
     const localNames = new Set(locals.map((l) => l.name));
-    const loopVarsToDeclare = allLoopVars.filter(
-      (loopVar) => !localNames.has(loopVar.name)
-    );
-    const fbStatements = logic?.stmts ?? [];
+    return allLoopVars.filter((loopVar) => !localNames.has(loopVar.name));
+  }
 
-    // Create instance mapping for this function block (isolated from global scope)
-    const { fbInstanceMap, fbAfterMap } = this.collectFBInstances(fbStatements);
+  private collectInstanceDeclarations(logic: any) {
+    const statements = logic?.stmts ?? [];
+    const { fbInstanceMap, fbAfterMap } = this.collectFBInstances(statements);
 
-    // Create arrays for declarations
-    const fbInstanceDecls: Array<{ instanceName: string; fbType: string }> = [];
-    const afterStmtDecls: Array<{ tonName: string; ptValue: any }> = [];
+    return {
+      fbInstanceMap,
+      fbAfterMap,
+      edgeDetectionDecls: this.extractEdgeDetectionDeclarations(fbInstanceMap),
+      timerDecls: this.extractTimerDeclarations(fbAfterMap),
+    };
+  }
 
-    // Process edge detection instances
+  private extractEdgeDetectionDeclarations(fbInstanceMap: Map<any, string>) {
+    const declarations: Array<{ instanceName: string; fbType: string }> = [];
+
     for (const [stmt, instanceName] of fbInstanceMap) {
       if (isOnRisingEdgeStmt(stmt)) {
-        fbInstanceDecls.push({ instanceName, fbType: "R_TRIG" });
+        declarations.push({ instanceName, fbType: "R_TRIG" });
       } else if (isOnFallingEdgeStmt(stmt)) {
-        fbInstanceDecls.push({ instanceName, fbType: "F_TRIG" });
+        declarations.push({ instanceName, fbType: "F_TRIG" });
       }
     }
 
-    // Process after statements
+    return declarations;
+  }
+
+  private extractTimerDeclarations(fbAfterMap: Map<any, string>) {
+    const declarations: Array<{ tonName: string; ptValue: any }> = [];
+
     for (const [stmt, tonName] of fbAfterMap) {
-      afterStmtDecls.push({ tonName, ptValue: stmt.time });
+      declarations.push({ tonName, ptValue: stmt.time });
     }
 
-    // Write declaration file
-    const declFilePath = path.join(
+    return declarations;
+  }
+
+  private writeFunctionBlockDeclaration(
+    fbDecl: FunctionBlockDecl,
+    components: any,
+    instanceData: any
+  ): string {
+    const filePath = path.join(
       this.destination,
       "FunctionBlocks",
       `${fbDecl.name}_decl.st`
     );
-    // Ensure the FunctionBlocks directory exists
-    fs.mkdirSync(path.dirname(declFilePath), { recursive: true });
-    const declContent = toString(
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+
+    const content = toString(
       expandToNode`
         FUNCTION_BLOCK ${fbDecl.name}
         VAR_INPUT
-            ${joinToNode(
-              inputs,
-              (input) => expandToNode`
-                ${input.name}: ${TypeConverter.convertTypeRefToST(
-                input.typeRef
-              )}${
-                input.init
-                  ? ` := ${this.expressionConverter.emit(input.init)}`
-                  : ""
-              };
-              `,
-              { appendNewLineIfNotEmpty: true }
-            )}
+            ${this.generateVariableDeclarations(components.inputs)}
         END_VAR
         VAR_OUTPUT
-            ${joinToNode(
-              outputs,
-              (output) => expandToNode`
-                ${output.name}: ${TypeConverter.convertTypeRefToST(
-                output.typeRef
-              )}${
-                output.init
-                  ? ` := ${this.expressionConverter.emit(output.init)}`
-                  : ""
-              };
-              `,
-              { appendNewLineIfNotEmpty: true }
-            )}
+            ${this.generateVariableDeclarations(components.outputs)}
         END_VAR
         VAR
-            ${joinToNode(
-              locals,
-              (local) =>
-                expandToNode`${local.name}: ${TypeConverter.convertTypeRefToST(
-                  local.typeRef
-                )}${
-                  local.init
-                    ? ` := ${this.expressionConverter.emit(local.init)}`
-                    : ""
-                };`,
-              { appendNewLineIfNotEmpty: true }
-            )}${joinToNode(
-        loopVarsToDeclare,
-        (loopVar) =>
-          expandToNode`${loopVar.name}: ${loopVar.type}${
-            loopVar.init
-              ? ` := ${this.expressionConverter.emit(loopVar.init)}`
-              : ""
-          };`,
-        { appendNewLineIfNotEmpty: true }
-      )}${joinToNode(
-        fbInstanceDecls,
-        (decl: { instanceName: string; fbType: string }) =>
-          expandToNode`${decl.instanceName}: ${decl.fbType}; (* Function block instance *)`,
-        { appendNewLineIfNotEmpty: true }
-      )}${joinToNode(
-        afterStmtDecls,
-        (decl: { tonName: string; ptValue: any }) =>
-          expandToNode`${decl.tonName}: TON := (PT := ${decl.ptValue}); (* Function block instance *)`,
-        { appendNewLineIfNotEmpty: true }
+            ${this.generateVariableDeclarations(
+              components.locals
+            )}${this.generateLoopVariableDeclarations(
+        components.loopVarsToDeclare
+      )}${this.generateInstanceDeclarations(
+        instanceData.edgeDetectionDecls,
+        instanceData.timerDecls
       )}
         END_VAR
       `
     );
-    fs.writeFileSync(declFilePath, declContent);
-    files.push(declFilePath); // Write implementation file
-    const implFilePath = path.join(
+
+    fs.writeFileSync(filePath, content);
+    return filePath;
+  }
+
+  private generateVariableDeclarations(variables: any[]) {
+    return joinToNode(
+      variables,
+      (variable) => expandToNode`
+        ${variable.name}: ${TypeConverter.convertTypeRefToST(
+        variable.typeRef
+      )}${
+        variable.init
+          ? ` := ${this.expressionConverter.emit(variable.init)}`
+          : ""
+      };
+      `,
+      { appendNewLineIfNotEmpty: true }
+    );
+  }
+
+  private generateLoopVariableDeclarations(loopVars: any[]) {
+    return joinToNode(
+      loopVars,
+      (loopVar) => expandToNode`
+        ${loopVar.name}: ${loopVar.type}${
+        loopVar.init ? ` := ${this.expressionConverter.emit(loopVar.init)}` : ""
+      };
+      `,
+      { appendNewLineIfNotEmpty: true }
+    );
+  }
+
+  private generateInstanceDeclarations(edgeDecls: any[], timerDecls: any[]) {
+    const edgeDeclarations = joinToNode(
+      edgeDecls,
+      (decl) =>
+        expandToNode`${decl.instanceName}: ${decl.fbType}; (* Function block instance *)`,
+      { appendNewLineIfNotEmpty: true }
+    );
+
+    const timerDeclarations = joinToNode(
+      timerDecls,
+      (decl) =>
+        expandToNode`${decl.tonName}: TON := (PT := ${decl.ptValue}); (* Function block instance *)`,
+      { appendNewLineIfNotEmpty: true }
+    );
+
+    return expandToNode`${edgeDeclarations}${timerDeclarations}`;
+  }
+
+  private writeFunctionBlockImplementation(
+    fbDecl: FunctionBlockDecl,
+    logic: any,
+    instanceData: any
+  ): string {
+    const filePath = path.join(
       this.destination,
       "FunctionBlocks",
       `${fbDecl.name}_impl.st`
     );
-    // Create a custom converter function that uses the function block's instance mapping
-    const convertFBStatementToST = (stmt: any, indent: number): string => {
+    const converter = this.createLocalStatementConverter(instanceData);
+    const content = (logic?.stmts ?? [])
+      .map((stmt: any) => converter(stmt, 0).trimEnd())
+      .join("\n");
+
+    fs.writeFileSync(filePath, content);
+    return filePath;
+  }
+
+  private createLocalStatementConverter(instanceData: any) {
+    const { fbInstanceMap, fbAfterMap } = instanceData;
+
+    return (stmt: any, indent: number): string => {
       switch (stmt.$type) {
-        case "OnRisingEdgeStmt": {
-          const rTrigInstance = fbInstanceMap.get(stmt);
-          if (!rTrigInstance) return "";
-          const rTrigSignal = this.expressionConverter.emit(stmt.signal);
-          const rTrigBody = (stmt.stmts ?? [])
-            .map((s: any) => convertFBStatementToST(s, indent + 1))
-            .join("\n");
-          return `${rTrigInstance}(CLK := ${rTrigSignal});\nIF ${rTrigInstance}.Q THEN\n${rTrigBody}\nEND_IF;`;
-        }
-
-        case "OnFallingEdgeStmt": {
-          const fTrigInstance = fbInstanceMap.get(stmt);
-          if (!fTrigInstance) return "";
-          const fTrigSignal = this.expressionConverter.emit(stmt.signal);
-          const fTrigBody = (stmt.stmts ?? [])
-            .map((s: any) => convertFBStatementToST(s, indent + 1))
-            .join("\n");
-          return `${fTrigInstance}(CLK := ${fTrigSignal});\nIF ${fTrigInstance}.Q THEN\n${fTrigBody}\nEND_IF;`;
-        }
-
-        case "AfterStmt": {
-          const tonInstance = fbAfterMap.get(stmt);
-          if (!tonInstance) return "";
-          const condition = this.expressionConverter.emit(stmt.condition);
-          const afterBody = (stmt.stmts ?? [])
-            .map((s: any) => convertFBStatementToST(s, indent + 1))
-            .join("\n");
-          return `${tonInstance}(IN := ${condition});\nIF ${tonInstance}.Q THEN\n${afterBody}\n    ${tonInstance}(IN := FALSE);\nEND_IF`;
-        }
-
+        case "OnRisingEdgeStmt":
+        case "OnFallingEdgeStmt":
+          return this.convertEdgeStatement(stmt, fbInstanceMap, indent);
+        case "AfterStmt":
+          return this.convertAfterStatement(stmt, fbAfterMap, indent);
         default:
-          // For all other statements, use the default converter
           return this.statementConverter.emit(stmt, indent);
       }
     };
-    const implContent = (logic?.stmts ?? [])
-      .map((stmt) => convertFBStatementToST(stmt, 0).trimEnd())
-      .join("\n");
-    fs.writeFileSync(implFilePath, implContent);
-    files.push(implFilePath);
+  }
 
-    return files;
+  private convertEdgeStatement(
+    stmt: any,
+    fbInstanceMap: Map<any, string>,
+    indent: number
+  ): string {
+    const triggerInstance = fbInstanceMap.get(stmt);
+    if (!triggerInstance) return "";
+
+    const signal = this.expressionConverter.emit(stmt.signal);
+    const body = this.convertStatementBody(
+      stmt.stmts,
+      fbInstanceMap,
+      indent + 1
+    );
+
+    return `${triggerInstance}(CLK := ${signal});\nIF ${triggerInstance}.Q THEN\n${body}\nEND_IF;`;
+  }
+
+  private convertAfterStatement(
+    stmt: any,
+    fbAfterMap: Map<any, string>,
+    indent: number
+  ): string {
+    const timerInstance = fbAfterMap.get(stmt);
+    if (!timerInstance) return "";
+
+    const condition = this.expressionConverter.emit(stmt.condition);
+    const body = this.convertStatementBody(stmt.stmts, fbAfterMap, indent + 1);
+
+    return `${timerInstance}(IN := ${condition});\nIF ${timerInstance}.Q THEN\n${body}\n    ${timerInstance}(IN := FALSE);\nEND_IF`;
+  }
+
+  private convertStatementBody(
+    statements: any[],
+    instanceMap: Map<any, string>,
+    indent: number
+  ): string {
+    const converter = this.createLocalStatementConverter({
+      fbInstanceMap: instanceMap,
+      fbAfterMap: instanceMap,
+    });
+    return (statements ?? []).map((s: any) => converter(s, indent)).join("\n");
   }
 
   // Helper method to collect function block instances recursively
