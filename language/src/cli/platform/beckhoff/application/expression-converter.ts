@@ -31,7 +31,7 @@ export class ExpressionConverter {
     this.hardwareChannelSymbols = new Set(names);
   }
 
-  /** Public entrypoint: render any Expr to ST. */
+  /** Renders any Expr to ST. */
   public emit(expr: Expr): string {
     if (isPrimary(expr)) return this.emitPrimary(expr);
     if (isBinExpr(expr)) return this.emitBinary(expr);

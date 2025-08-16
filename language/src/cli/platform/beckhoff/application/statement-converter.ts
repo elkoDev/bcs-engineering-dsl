@@ -35,7 +35,7 @@ export class StatementConverter {
     private readonly instances: InstanceManager
   ) {}
 
-  /** Public entrypoint: render a Statement to ST. */
+  /** Renders a Statement to ST. */
   public emit(stmt: Statement, indent = 0): string {
     if (isAssignmentStmt(stmt)) return this.emitAssign(stmt, indent);
     if (isIfStmt(stmt)) return this.emitIf(stmt, indent);
@@ -186,12 +186,6 @@ export class StatementConverter {
     );
   }
 
-  // ── Small utilities ─────────────────────────────────────────────────────────
-
-  private pad(level: number): string {
-    return "    ".repeat(level);
-  }
-
   private emitBlock(stmts: Statement[], indent: number): string {
     return stmts.map((s) => this.emit(s, indent)).join("\n");
   }
@@ -206,5 +200,11 @@ export class StatementConverter {
           : String((lit as any).val)
       )
       .join(", ");
+  }
+
+  // ── Small utilities ─────────────────────────────────────────────────────────
+
+  private pad(level: number): string {
+    return "    ".repeat(level);
   }
 }
