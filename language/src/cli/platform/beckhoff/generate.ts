@@ -14,7 +14,7 @@ import { GlobalInstanceManager } from "./application/global-instance-manager.js"
 import { MainProgramGenerator } from "./application/main-program-generator.js";
 import { StatementConverter } from "./application/statement-converter.js";
 import { TcConfigGenerator } from "./application/tc-config-generator.js";
-import { TypeConverter } from "./application/type-converter.js";
+import { TypeWriter } from "./application/type-writer.js";
 
 /**
  * Main generator context that orchestrates all the sub-generators
@@ -26,7 +26,7 @@ class BeckhoffGeneratorContext {
   private readonly instanceManager: GlobalInstanceManager;
   private readonly expressionConverter: ExpressionConverter;
   private readonly statementConverter: StatementConverter;
-  private readonly typeConverter: TypeConverter;
+  private readonly typeWriter: TypeWriter;
   private readonly hardwareProcessor: HardwareProcessor;
   private readonly mainProgramGenerator: MainProgramGenerator;
   constructor(
@@ -48,7 +48,7 @@ class BeckhoffGeneratorContext {
       this.expressionConverter,
       this.instanceManager
     );
-    this.typeConverter = new TypeConverter(
+    this.typeWriter = new TypeWriter(
       destination,
       this.expressionConverter,
       this.statementConverter
@@ -75,11 +75,11 @@ class BeckhoffGeneratorContext {
     for (const item of this.controlModel.controlBlock.items) {
       if ("isExtern" in item && item.isExtern) continue;
       if (isEnumDecl(item)) {
-        files.push(this.typeConverter.writeEnum(item));
+        files.push(this.typeWriter.writeEnum(item));
       } else if (isStructDecl(item)) {
-        files.push(this.typeConverter.writeStruct(item));
+        files.push(this.typeWriter.writeStruct(item));
       } else if (isFunctionBlockDecl(item)) {
-        files.push(...this.typeConverter.writeFunctionBlock(item));
+        files.push(...this.typeWriter.writeFunctionBlock(item));
       }
     }
 

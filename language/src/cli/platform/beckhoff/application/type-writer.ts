@@ -5,14 +5,13 @@ import { ExpressionConverter } from "./expression-converter.js";
 import { StatementConverter } from "./statement-converter.js";
 import { LoopVariableAnalyzer } from "./loop-variable-analyzer.js";
 import { LocalInstanceRegistry } from "./local-instance-registry.js";
+import { TypeConverter } from "./type-conversion-utils.js";
 import {
   EnumDecl,
   FunctionBlockDecl,
   isOnFallingEdgeStmt,
   isOnRisingEdgeStmt,
-  isPrimary,
   StructDecl,
-  TypeRef,
 } from "../../../../language/generated/ast.js";
 import {
   getInputs,
@@ -22,9 +21,9 @@ import {
 } from "../../../../language/control/utils/function-block-utils.js";
 
 /**
- * Handles generation of enums, structs, and function blocks
+ * Handles writing/generation of type-related files (enums, structs, function blocks)
  */
-export class TypeConverter {
+export class TypeWriter {
   private readonly destination: string;
   private readonly expressionConverter: ExpressionConverter;
   private readonly statementConverter: StatementConverter;
@@ -37,43 +36,6 @@ export class TypeConverter {
     this.destination = destination;
     this.expressionConverter = expressionConverter;
     this.statementConverter = statementConverter;
-  }
-
-  /**
-   * Converts TypeRef to Structured Text type notation
-   */
-  static convertTypeRefToST(typeRef: TypeRef): string {
-    if (typeRef.type) {
-      if (typeRef.sizes.length === 0) {
-        return typeRef.type;
-      } else {
-        return `ARRAY [${typeRef.sizes
-          .map((size) => {
-            if (isPrimary(size) && typeof size.val === "number") {
-              return `0..${size.val - 1}`;
-            }
-            return "0..?";
-          })
-          .join(", ")}] OF ${typeRef.type}`;
-      }
-    } else if (typeRef.ref) {
-      const typeDecl = typeRef.ref.ref;
-      const typeName =
-        typeDecl && "name" in typeDecl ? typeDecl.name : "UNKNOWN";
-      if (typeRef.sizes.length === 0) {
-        return typeName as string;
-      } else {
-        return `ARRAY [${typeRef.sizes
-          .map((size) => {
-            if (isPrimary(size) && typeof size.val === "number") {
-              return `0..${size.val - 1}`;
-            }
-            return "0..?";
-          })
-          .join(", ")}] OF ${typeName}`;
-      }
-    }
-    return "UNKNOWN_TYPE";
   }
 
   public writeEnum(enumDecl: EnumDecl): string {

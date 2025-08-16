@@ -19,7 +19,7 @@ import {
   ConditionalControlUnit,
   RegularControlUnit,
 } from "../utils.js";
-import { TypeConverter } from "./type-converter.js";
+import { TypeConverter } from "./type-conversion-utils.js";
 import {
   HardwareModel,
   ControlModel,
