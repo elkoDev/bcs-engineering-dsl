@@ -16,10 +16,28 @@ import {
 import { detectDaliComType } from "../utils.js";
 import { StatementTraverser } from "./statement-traverser.js";
 
+
 /**
- * Global instance manager for cross-project instance coordination.
- * Handles complex instance management with business logic, unique naming,
- * and coordination between control units, hardware integration, and external systems.
+ * Manages the assignment and tracking of global function block (FB) and timer instances
+ * within the Beckhoff application platform. This class ensures unique instance names for
+ * function blocks, handles edge detection and timer (AFTER) statements, and manages
+ * additional required FB instances based on hardware and control model analysis.
+ *
+ * Responsibilities include:
+ * - Assigning and retrieving unique FB instance information for `UseStmt` and edge detection statements.
+ * - Managing timer-on (TON) instances for AFTER statements.
+ * - Tracking and providing all declared FB and AFTER statement instances.
+ * - Detecting and assigning required communication FBs (e.g., DALI) based on hardware configuration.
+ * - Resetting instance state for reuse.
+ *
+ * @example
+ * ```typescript
+ * const manager = new GlobalInstanceManager(controlModel, hardwareModel);
+ * manager.assignFBInstancesFromControlUnit(controlUnit);
+ * manager.assignEdgeDetectionInstances(mainStatements);
+ * manager.assignAfterStmtInstances(mainStatements);
+ * const fbInstances = manager.getAllFBInstanceDeclarations();
+ * ```
  */
 export class GlobalInstanceManager {
   private readonly fbInstanceMap = new Map<any, InstanceInfo>();

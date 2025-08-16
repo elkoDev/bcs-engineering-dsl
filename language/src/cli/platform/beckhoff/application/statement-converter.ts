@@ -23,7 +23,7 @@ import {
   Expr,
 } from "../../../../language/generated/ast.js";
 import { ExpressionConverter } from "./expression-converter.js";
-import { InstanceManager } from "./instance-manager.js";
+import { GlobalInstanceManager } from "./global-instance-manager.js";
 import { getQualifiedReferenceName } from "./qualified_reference_name.js";
 
 /**
@@ -32,7 +32,7 @@ import { getQualifiedReferenceName } from "./qualified_reference_name.js";
 export class StatementConverter {
   constructor(
     private readonly expr: ExpressionConverter,
-    private readonly instances: InstanceManager
+    private readonly instances: GlobalInstanceManager
   ) {}
 
   /** Renders a Statement to ST. */

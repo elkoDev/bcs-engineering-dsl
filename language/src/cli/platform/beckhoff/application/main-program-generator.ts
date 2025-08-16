@@ -1,7 +1,7 @@
 import { expandToNode, joinToNode, toString } from "langium/generate";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { InstanceManager } from "./instance-manager.js";
+import { GlobalInstanceManager } from "./global-instance-manager.js";
 import { StatementConverter } from "./statement-converter.js";
 import { ExpressionConverter } from "./expression-converter.js";
 import { HardwareProcessor } from "./hardware-processor.js";
@@ -36,7 +36,7 @@ import {
 function handleLibrarySpecials(
   fbType: string,
   inputMappings: string,
-  instanceManager: InstanceManager,
+  instanceManager: GlobalInstanceManager,
   hardwareModel: HardwareModel
 ): { inputMappings: string; constructorArgs?: string } {
   // DALI special handling
@@ -68,7 +68,7 @@ export class MainProgramGenerator {
   private readonly controlModel: ControlModel;
   private readonly hardwareModel: HardwareModel;
   private readonly destination: string;
-  private readonly instanceManager: InstanceManager;
+  private readonly instanceManager: GlobalInstanceManager;
   private readonly statementConverter: StatementConverter;
   private readonly expressionConverter: ExpressionConverter;
   private readonly hardwareProcessor: HardwareProcessor;
@@ -77,7 +77,7 @@ export class MainProgramGenerator {
     controlModel: ControlModel,
     hardwareModel: HardwareModel,
     destination: string,
-    instanceManager: InstanceManager,
+    instanceManager: GlobalInstanceManager,
     statementConverter: StatementConverter,
     expressionConverter: ExpressionConverter,
     hardwareProcessor: HardwareProcessor

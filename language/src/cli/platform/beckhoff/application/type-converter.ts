@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { ExpressionConverter } from "./expression-converter.js";
 import { StatementConverter } from "./statement-converter.js";
 import { LoopVariableAnalyzer } from "./loop-variable-analyzer.js";
-import { FBInstanceCollector } from "./fb-instance-collector.js";
+import { LocalInstanceRegistry } from "./local-instance-registry.js";
 import {
   EnumDecl,
   FunctionBlockDecl,
@@ -150,7 +150,7 @@ export class TypeConverter {
     fbInstanceMap: Map<any, string>;
     fbAfterMap: Map<any, string>;
   } {
-    const collector = new FBInstanceCollector();
+    const collector = new LocalInstanceRegistry();
     collector.collectFromStatements(stmts);
     return {
       fbInstanceMap: collector.getFBInstanceMap(),

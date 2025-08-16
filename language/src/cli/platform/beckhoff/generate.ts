@@ -10,7 +10,7 @@ import {
 import { GenerateResult } from "../index.js";
 import { ExpressionConverter } from "./application/expression-converter.js";
 import { HardwareProcessor } from "./application/hardware-processor.js";
-import { InstanceManager } from "./application/instance-manager.js";
+import { GlobalInstanceManager } from "./application/global-instance-manager.js";
 import { MainProgramGenerator } from "./application/main-program-generator.js";
 import { StatementConverter } from "./application/statement-converter.js";
 import { TcConfigGenerator } from "./application/tc-config-generator.js";
@@ -23,7 +23,7 @@ class BeckhoffGeneratorContext {
   private readonly controlModel: ControlModel;
   private readonly destination: string;
   private readonly tcConfigGenerator: TcConfigGenerator;
-  private readonly instanceManager: InstanceManager;
+  private readonly instanceManager: GlobalInstanceManager;
   private readonly expressionConverter: ExpressionConverter;
   private readonly statementConverter: StatementConverter;
   private readonly typeConverter: TypeConverter;
@@ -39,7 +39,10 @@ class BeckhoffGeneratorContext {
 
     // Initialize all components
     this.tcConfigGenerator = new TcConfigGenerator(controlModel, hardwareModel);
-    this.instanceManager = new InstanceManager(controlModel, hardwareModel);
+    this.instanceManager = new GlobalInstanceManager(
+      controlModel,
+      hardwareModel
+    );
     this.expressionConverter = new ExpressionConverter(new Set());
     this.statementConverter = new StatementConverter(
       this.expressionConverter,
