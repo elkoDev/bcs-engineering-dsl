@@ -15,7 +15,7 @@ import {
   ConditionalControlUnit,
   RegularControlUnit,
 } from "../utils.js";
-import { TypeConverter } from "./type-conversion-utils.js";
+import { TypeRefConverter } from "./type-ref-converter.js";
 import {
   HardwareModel,
   ControlModel,
@@ -176,9 +176,7 @@ export class MainProgramGenerator {
             ${joinToNode(
               mainVars,
               (v) => expandToNode`
-                ${v.name}: ${TypeConverter.convertTypeRefToST(
-                v.varDecl.typeRef
-              )}${
+                ${v.name}: ${TypeRefConverter.emit(v.varDecl.typeRef)}${
                 v.varDecl.init
                   ? ` := ${this.expressionConverter.emit(v.varDecl.init)}`
                   : ""

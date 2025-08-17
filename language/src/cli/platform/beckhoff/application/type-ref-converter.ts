@@ -3,11 +3,11 @@ import { isPrimary, TypeRef } from "../../../../language/generated/ast.js";
 /**
  * Utility for converting DSL type references to IEC 61131-3 Structured Text type notation
  */
-export class TypeConverter {
+export class TypeRefConverter {
   /**
    * Converts TypeRef to Structured Text type notation
    */
-  static convertTypeRefToST(typeRef: TypeRef): string {
+  static emit(typeRef: TypeRef): string {
     if (typeRef.type) {
       if (typeRef.sizes.length === 0) {
         return typeRef.type;

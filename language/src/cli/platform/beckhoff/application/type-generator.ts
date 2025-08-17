@@ -5,7 +5,7 @@ import { ExpressionConverter } from "./expression-converter.js";
 import { StatementConverter } from "./statement-converter.js";
 import { LoopVariableAnalyzer } from "./loop-variable-analyzer.js";
 import { LocalInstanceRegistry } from "./local-instance-registry.js";
-import { TypeConverter } from "./type-conversion-utils.js";
+import { TypeRefConverter } from "./type-ref-converter.js";
 import {
   EnumDecl,
   FunctionBlockDecl,
@@ -89,9 +89,7 @@ export class TypeGenerator {
             ${joinToNode(
               structDecl.fields,
               (field) => expandToNode`
-                ${field.name} : ${TypeConverter.convertTypeRefToST(
-                field.typeRef
-              )}${
+                ${field.name} : ${TypeRefConverter.emit(field.typeRef)}${
                 field.init
                   ? ` := ${this.expressionConverter.emit(field.init)}`
                   : ""
@@ -223,9 +221,7 @@ export class TypeGenerator {
     return joinToNode(
       variables,
       (variable) => expandToNode`
-        ${variable.name}: ${TypeConverter.convertTypeRefToST(
-        variable.typeRef
-      )}${
+        ${variable.name}: ${TypeRefConverter.emit(variable.typeRef)}${
         variable.init
           ? ` := ${this.expressionConverter.emit(variable.init)}`
           : ""
