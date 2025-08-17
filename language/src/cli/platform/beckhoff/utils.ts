@@ -2,12 +2,9 @@ import {
   ControlModel,
   ControlUnit,
   Expr,
-  HardwareModel,
   isControlUnit,
   Statement,
 } from "../../../language/generated/ast.js";
-import { getControllers } from "../../../language/hardware/utils/hardware-definition-utils.js";
-import { getPortGroups } from "../../../language/hardware/utils/component-utils.js";
 
 export interface RegularControlUnit {
   name: string;
@@ -25,28 +22,6 @@ export interface ConditionalControlUnit {
   runOnce: boolean;
   condition: Expr;
   stmts: Statement[];
-}
-
-export function detectDaliComType(
-  hardwareModel: HardwareModel
-): string | undefined {
-  const mapping: Record<string, string> = {
-    KL6811: "FB_KL6811Communication",
-    KL6821: "FB_KL6821Communication",
-    EL6821: "FB_EL6821Communication",
-  };
-
-  for (const ctrl of getControllers(hardwareModel)) {
-    for (const portGroup of getPortGroups(ctrl)) {
-      if (portGroup.module?.ref) {
-        const module = portGroup.module.ref;
-        if (module && mapping[module.product]) {
-          return mapping[module.product];
-        }
-      }
-    }
-  }
-  return undefined;
 }
 
 export function isScheduledControlUnit(

@@ -4,7 +4,6 @@ import {
   UseStmt,
   Statement,
   AfterStmt,
-  isFunctionBlockDecl,
   ControlUnit,
   isUseStmt,
 } from "../../../../language/generated/ast.js";
@@ -13,9 +12,8 @@ import {
   FBInstanceInfo,
   AfterStmtInstanceInfo,
 } from "../models/types.js";
-import { detectDaliComType } from "../utils.js";
 import { StatementTraverser } from "./statement-traverser.js";
-
+import { LibraryHandlerManager } from "./library-handlers/library-handler-manager.js";
 
 /**
  * Manages the assignment and tracking of global function block (FB) and timer instances
@@ -102,6 +100,15 @@ export class GlobalInstanceManager {
     return instance?.kind === "fb" ? instance : undefined;
   }
 
+  public addDaliComInstance(daliComType: string): void {
+    const fbType = daliComType;
+    const key = `daliCom_${fbType}`;
+    if (!this.fbInstanceMap.has(key)) {
+      const instanceName = this.createUniqueFBInstanceName(fbType);
+      this.fbInstanceMap.set(key, { kind: "fb", instanceName, fbType });
+    }
+  }
+
   public getAllFBInstanceDeclarations(): Array<{
     instanceName: string;
     fbType: string;
@@ -124,28 +131,11 @@ export class GlobalInstanceManager {
   }
 
   public addRequiredAdditionalFBInstances() {
-    // Check if any extern function block from Tc3_DALI is used
-    const hasExternDaliFB = this.controlModel.externTypeDecls.some(
-      (item) =>
-        isFunctionBlockDecl(item) &&
-        item.isExtern &&
-        item.name.startsWith("FB_DALI")
+    LibraryHandlerManager.addRequiredLibraryInstances(
+      this.controlModel,
+      this.hardwareModel,
+      this
     );
-    if (!hasExternDaliFB) return;
-
-    // Try to detect the DALI communication FB type from hardware
-    const daliComType = detectDaliComType(this.hardwareModel);
-    if (!daliComType) {
-      throw new Error(
-        "DALI communication moduleType not found in hardware. Please declare a portgroup with a supported DALI moduleType (e.g., KL6811, KL6821, EL6821) to use FB_DALI function blocks."
-      );
-    }
-    const fbType = daliComType;
-    const key = `daliCom_${fbType}`;
-    if (!this.fbInstanceMap.has(key)) {
-      const instanceName = this.createUniqueFBInstanceName(fbType);
-      this.fbInstanceMap.set(key, { kind: "fb", instanceName, fbType });
-    }
   }
 
   public assignFBInstancesFromControlUnit(controlUnit: ControlUnit) {

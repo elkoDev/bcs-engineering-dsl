@@ -1,5 +1,8 @@
 import { GlobalInstanceManager } from "../global-instance-manager.js";
-import { HardwareModel } from "../../../../../language/generated/ast.js";
+import {
+  HardwareModel,
+  ControlModel,
+} from "../../../../../language/generated/ast.js";
 import { DaliLibraryHandler } from "./dali-library-handler.js";
 
 export interface LibraryHandlerResult {
@@ -32,5 +35,24 @@ export class LibraryHandlerManager {
     }
 
     return { inputMappings };
+  }
+
+  /**
+   * Adds all required library-specific instances to the instance manager
+   */
+  public static addRequiredLibraryInstances(
+    controlModel: ControlModel,
+    hardwareModel: HardwareModel,
+    instanceManager: GlobalInstanceManager
+  ): void {
+    for (const Handler of this.handlers) {
+      if ("addRequiredInstances" in Handler) {
+        Handler.addRequiredInstances(
+          controlModel,
+          hardwareModel,
+          instanceManager
+        );
+      }
+    }
   }
 }
