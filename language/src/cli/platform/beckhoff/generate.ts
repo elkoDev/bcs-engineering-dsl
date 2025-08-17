@@ -26,7 +26,7 @@ class BeckhoffGeneratorContext {
   private readonly instanceManager: GlobalInstanceManager;
   private readonly expressionConverter: ExpressionConverter;
   private readonly statementConverter: StatementConverter;
-  private readonly typeWriter: TypeGenerator;
+  private readonly typeGenerator: TypeGenerator;
   private readonly hardwareProcessor: HardwareProcessor;
   private readonly mainProgramGenerator: MainProgramGenerator;
   constructor(
@@ -48,7 +48,7 @@ class BeckhoffGeneratorContext {
       this.expressionConverter,
       this.instanceManager
     );
-    this.typeWriter = new TypeGenerator(
+    this.typeGenerator = new TypeGenerator(
       destination,
       this.expressionConverter,
       this.statementConverter
@@ -75,11 +75,11 @@ class BeckhoffGeneratorContext {
     for (const item of this.controlModel.controlBlock.items) {
       if ("isExtern" in item && item.isExtern) continue;
       if (isEnumDecl(item)) {
-        files.push(this.typeWriter.writeEnum(item));
+        files.push(this.typeGenerator.writeEnum(item));
       } else if (isStructDecl(item)) {
-        files.push(this.typeWriter.writeStruct(item));
+        files.push(this.typeGenerator.writeStruct(item));
       } else if (isFunctionBlockDecl(item)) {
-        files.push(...this.typeWriter.writeFunctionBlock(item));
+        files.push(...this.typeGenerator.writeFunctionBlock(item));
       }
     }
 

@@ -8,12 +8,7 @@ import { HardwareProcessor } from "./hardware-processor.js";
 import { LoopVariableAnalyzer } from "./loop-variable-analyzer.js";
 import { BoilerplateAnalyzer } from "./boilerplate-analyzer.js";
 import { LibraryHandlerManager } from "./library-handlers/library-handler-manager.js";
-import {
-  EmittedVarDecl,
-  HardwareDatapoint,
-  AfterStmtInstanceInfo,
-  LoopVariableInfo,
-} from "../models/types.js";
+import { EmittedVarDecl, HardwareDatapoint } from "../models/types.js";
 import {
   extractControlUnits,
   ScheduledControlUnit,
@@ -64,17 +59,9 @@ export class MainProgramGenerator {
     this.instanceManager.reset();
     this.instanceManager.addRequiredAdditionalFBInstances();
 
-    const mainVars: EmittedVarDecl[] = [];
-    const mainStatements: Statement[] = [];
-
-    this.collectGlobalVarDecls(mainVars);
-    this.processControlUnits(mainVars, mainStatements);
-
-    const allLoopVars = LoopVariableAnalyzer.collectLoopVars(mainStatements);
-    const declaredVarNames = new Set(mainVars.map((v) => v.varDecl.name));
-    const loopVarsToDeclare = allLoopVars.filter(
-      (loopVar) => !declaredVarNames.has(loopVar.name)
-    );
+    const globalVars = this.collectGlobalVarDecls();
+    const { controlUnitVars, mainStatements } = this.processControlUnits();
+    const mainVars = [...globalVars, ...controlUnitVars];
 
     const { inputs, outputs } =
       this.hardwareProcessor.extractHardwareDatapoints();
@@ -84,8 +71,7 @@ export class MainProgramGenerator {
 
     this.instanceManager.assignEdgeDetectionInstances(mainStatements);
     this.instanceManager.assignAfterStmtInstances(mainStatements);
-    const fbInstanceDecls = this.instanceManager.getAllFBInstanceDeclarations();
-    const afterStmtDecls = this.instanceManager.getAllAfterStmtDeclarations();
+
     const { scheduled, conditional, regular } = extractControlUnits(
       this.controlModel
     );
@@ -95,17 +81,13 @@ export class MainProgramGenerator {
       conditional,
       regular
     );
-    const needsTimeBoilerplate =
-      BoilerplateAnalyzer.isTimeBoilerplateNeeded(implContent);
 
     const declContent = this.generateMainDeclContent(
       { inputs, outputs },
+      mainStatements,
       mainVars,
-      loopVarsToDeclare,
-      fbInstanceDecls,
-      afterStmtDecls,
       { scheduled, conditional },
-      needsTimeBoilerplate
+      BoilerplateAnalyzer.isTimeBoilerplateNeeded(implContent)
     );
 
     const declFilePath = path.join(this.destination, `MAIN_decl.st`);
@@ -117,10 +99,13 @@ export class MainProgramGenerator {
     return [declFilePath, implFilePath];
   }
 
-  private processControlUnits(
-    mainVars: EmittedVarDecl[],
-    mainStatements: Statement[]
-  ) {
+  private processControlUnits(): {
+    controlUnitVars: EmittedVarDecl[];
+    mainStatements: Statement[];
+  } {
+    const controlUnitVars: EmittedVarDecl[] = [];
+    const mainStatements: Statement[] = [];
+
     for (const item of this.controlModel.controlBlock.items) {
       if (!isControlUnit(item)) continue;
       const controlUnit = item;
@@ -129,35 +114,31 @@ export class MainProgramGenerator {
         (stmt) => !isVarDecl(stmt)
       ) as Statement[];
       mainStatements.push(...executableStmts);
-      this.addVarDeclsFromControlUnit(controlUnit, mainVars);
+      const unitVars = this.getVarDeclsFromControlUnit(controlUnit);
+      controlUnitVars.push(...unitVars);
       this.instanceManager.assignFBInstancesFromControlUnit(controlUnit);
     }
+
+    return { controlUnitVars, mainStatements };
   }
 
-  private collectGlobalVarDecls(mainVars: EmittedVarDecl[]) {
+  private collectGlobalVarDecls(): EmittedVarDecl[] {
     const globalVarDecls =
       this.controlModel.controlBlock.items.filter(isVarDecl);
-    globalVarDecls.forEach((varDecl) =>
-      mainVars.push(new EmittedVarDecl(varDecl))
-    );
+    return globalVarDecls.map((varDecl) => new EmittedVarDecl(varDecl));
   }
 
-  private addVarDeclsFromControlUnit(
-    controlUnit: ControlUnit,
-    mainVars: EmittedVarDecl[]
-  ) {
+  private getVarDeclsFromControlUnit(
+    controlUnit: ControlUnit
+  ): EmittedVarDecl[] {
     const varDecls = controlUnit.stmts.filter(isVarDecl);
-    mainVars.push(
-      ...varDecls.map((varDecl) => new EmittedVarDecl(varDecl, controlUnit))
-    );
+    return varDecls.map((varDecl) => new EmittedVarDecl(varDecl, controlUnit));
   }
 
   private generateMainDeclContent(
     hardware: { inputs: HardwareDatapoint[]; outputs: HardwareDatapoint[] },
+    mainStatements: Statement[],
     mainVars: EmittedVarDecl[],
-    loopVarsToDeclare: LoopVariableInfo[],
-    fbInstanceDecls: Array<{ instanceName: string; fbType: string }>,
-    afterStmtDecls: AfterStmtInstanceInfo[],
     controlUnits: {
       scheduled: ScheduledControlUnit[];
       conditional: ConditionalControlUnit[];
@@ -166,6 +147,14 @@ export class MainProgramGenerator {
   ): string {
     const { inputs, outputs } = hardware;
     const { scheduled, conditional } = controlUnits;
+    const fbInstanceDecls = this.instanceManager.getAllFBInstanceDeclarations();
+    const afterStmtDecls = this.instanceManager.getAllAfterStmtDeclarations();
+    const allLoopVars = LoopVariableAnalyzer.collectLoopVars(mainStatements);
+    const declaredVarNames = new Set(mainVars.map((v) => v.varDecl.name));
+    const loopVarsToDeclare = allLoopVars.filter(
+      (loopVar) => !declaredVarNames.has(loopVar.name)
+    );
+
     return toString(
       expandToNode`
         PROGRAM MAIN
