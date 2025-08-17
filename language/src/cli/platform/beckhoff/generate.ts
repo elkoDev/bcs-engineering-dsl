@@ -14,7 +14,7 @@ import { GlobalInstanceManager } from "./application/global-instance-manager.js"
 import { MainProgramGenerator } from "./application/main-program-generator.js";
 import { StatementConverter } from "./application/statement-converter.js";
 import { TcConfigGenerator } from "./application/tc-config-generator.js";
-import { TypeWriter } from "./application/type-writer.js";
+import { TypeGenerator } from "./application/type-generator.js";
 
 /**
  * Main generator context that orchestrates all the sub-generators
@@ -26,7 +26,7 @@ class BeckhoffGeneratorContext {
   private readonly instanceManager: GlobalInstanceManager;
   private readonly expressionConverter: ExpressionConverter;
   private readonly statementConverter: StatementConverter;
-  private readonly typeWriter: TypeWriter;
+  private readonly typeWriter: TypeGenerator;
   private readonly hardwareProcessor: HardwareProcessor;
   private readonly mainProgramGenerator: MainProgramGenerator;
   constructor(
@@ -48,7 +48,7 @@ class BeckhoffGeneratorContext {
       this.expressionConverter,
       this.instanceManager
     );
-    this.typeWriter = new TypeWriter(
+    this.typeWriter = new TypeGenerator(
       destination,
       this.expressionConverter,
       this.statementConverter

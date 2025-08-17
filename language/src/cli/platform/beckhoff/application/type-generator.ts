@@ -23,7 +23,7 @@ import {
 /**
  * Handles writing/generation of type-related files (enums, structs, function blocks)
  */
-export class TypeWriter {
+export class TypeGenerator {
   private readonly destination: string;
   private readonly expressionConverter: ExpressionConverter;
   private readonly statementConverter: StatementConverter;

@@ -6,6 +6,8 @@ import { StatementConverter } from "./statement-converter.js";
 import { ExpressionConverter } from "./expression-converter.js";
 import { HardwareProcessor } from "./hardware-processor.js";
 import { LoopVariableAnalyzer } from "./loop-variable-analyzer.js";
+import { BoilerplateAnalyzer } from "./boilerplate-analyzer.js";
+import { LibraryHandlerManager } from "./library-handlers/library-handler-manager.js";
 import {
   EmittedVarDecl,
   HardwareDatapoint,
@@ -13,7 +15,6 @@ import {
   LoopVariableInfo,
 } from "../models/types.js";
 import {
-  detectDaliComType,
   extractControlUnits,
   ScheduledControlUnit,
   ConditionalControlUnit,
@@ -28,38 +29,6 @@ import {
   isVarDecl,
   ControlUnit,
 } from "../../../../language/generated/ast.js";
-
-/**
- * Handles special input mapping and constructor logic libraries (e.g., DALI, others in future).
- * Returns an object with possibly modified inputMappings and constructorArgs for declaration.
- */
-function handleLibrarySpecials(
-  fbType: string,
-  inputMappings: string,
-  instanceManager: GlobalInstanceManager,
-  hardwareModel: HardwareModel
-): { inputMappings: string; constructorArgs?: string } {
-  // DALI special handling
-  if (fbType.startsWith("FB_DALI")) {
-    const daliComType = detectDaliComType(hardwareModel);
-    if (!daliComType) {
-      throw new Error(
-        "DALI communication moduleType not found in hardware. Please declare a portgroup with a supported DALI moduleType (e.g., KL6811, KL6821, EL6821) to use FB_DALI function blocks."
-      );
-    }
-    const daliComInstance = instanceManager.getDaliComInstance(daliComType);
-    if (!daliComInstance) {
-      throw new Error("DALI communication FB instance was not generated.");
-    }
-    // Only set constructorArgs, do NOT prepend to inputMappings
-    return {
-      inputMappings,
-      constructorArgs: daliComInstance.instanceName,
-    };
-  }
-  // Add more library-specific handling here as needed
-  return { inputMappings };
-}
 
 /**
  * Handles generation of the main program (MAIN)
@@ -91,7 +60,7 @@ export class MainProgramGenerator {
     this.hardwareProcessor = hardwareProcessor;
   }
 
-  writeProgramMain(): string[] {
+  public writeProgramMain(): string[] {
     this.instanceManager.reset();
     this.instanceManager.addRequiredAdditionalFBInstances();
 
@@ -126,11 +95,8 @@ export class MainProgramGenerator {
       conditional,
       regular
     );
-    // Check if any of the boilerplate variables are used
-    const boilerplateVars = ["fbLocalTime", "timeNow", "todNow", "dNow"];
-    const usesBoilerplate = boilerplateVars.some((v) =>
-      implContent.includes(v)
-    );
+    const needsTimeBoilerplate =
+      BoilerplateAnalyzer.isTimeBoilerplateNeeded(implContent);
 
     const declContent = this.generateMainDeclContent(
       { inputs, outputs },
@@ -139,7 +105,7 @@ export class MainProgramGenerator {
       fbInstanceDecls,
       afterStmtDecls,
       { scheduled, conditional },
-      usesBoilerplate
+      needsTimeBoilerplate
     );
 
     const declFilePath = path.join(this.destination, `MAIN_decl.st`);
@@ -186,7 +152,7 @@ export class MainProgramGenerator {
     );
   }
 
-  generateMainDeclContent(
+  private generateMainDeclContent(
     hardware: { inputs: HardwareDatapoint[]; outputs: HardwareDatapoint[] },
     mainVars: EmittedVarDecl[],
     loopVarsToDeclare: LoopVariableInfo[],
@@ -246,7 +212,7 @@ export class MainProgramGenerator {
               fbInstanceDecls,
               ({ instanceName, fbType }) => {
                 // Library special handling for constructor
-                const special = handleLibrarySpecials(
+                const special = LibraryHandlerManager.handleLibrarySpecials(
                   fbType,
                   "",
                   this.instanceManager,
@@ -287,16 +253,7 @@ export class MainProgramGenerator {
             )}
             bRunOnlyOnce: BOOL := FALSE;${
               usesBoilerplate
-                ? expandToNode`\n
-            fbLocalTime: FB_LocalSystemTime := (
-              sNetID := '',
-              bEnable := TRUE,
-              dwCycle := 5
-            );
-            timeNow: TIMESTRUCT;
-            todNow: TIME_OF_DAY;
-            dNow: DATE;
-            `
+                ? BoilerplateAnalyzer.getTimeBoilerplateDeclarations()
                 : ""
             }
         END_VAR
@@ -304,14 +261,13 @@ export class MainProgramGenerator {
     );
   }
 
-  generateMainImplContent(
+  private generateMainImplContent(
     scheduled: ScheduledControlUnit[],
     conditional: ConditionalControlUnit[],
     regular: RegularControlUnit[]
   ): string {
     const units = this.controlModel.controlBlock.items.filter(isControlUnit);
 
-    // Patch: Only emit boilerplate if used in any statement
     let mainBody = toString(expandToNode`
     ${joinToNode(
       units,
@@ -390,13 +346,10 @@ export class MainProgramGenerator {
     )}
     `);
 
-    // Check if boilerplate is needed
-    const boilerplateVars = ["fbLocalTime", "timeNow", "todNow", "dNow"];
-    const usesBoilerplate = boilerplateVars.some((v) => mainBody.includes(v));
-
-    // Emit init code only if needed
-    let boilerplateInit = usesBoilerplate
-      ? `fbLocalTime();\ntimeNow := fbLocalTime.systemTime;\ntodNow := SYSTEMTIME_TO_TOD(timeNow);\ndNow := DT_TO_DATE(SYSTEMTIME_TO_DT(timeNow));`
+    const boilerplateInit = BoilerplateAnalyzer.isTimeBoilerplateNeeded(
+      mainBody
+    )
+      ? BoilerplateAnalyzer.getTimeInitializationCode()
       : "";
     return `IF NOT bRunOnlyOnce THEN\n    ADSLOGSTR(\n      msgCtrlMask := ADSLOG_MSGTYPE_LOG,\n      msgFmtStr   := 'Program started %s',\n      strArg      := 'successfully!'\n    );\n    bRunOnlyOnce := TRUE;\nEND_IF;${
       boilerplateInit.length == 0 ? "" : "\n"
