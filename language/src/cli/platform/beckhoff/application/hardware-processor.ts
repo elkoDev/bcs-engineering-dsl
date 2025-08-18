@@ -23,7 +23,7 @@ export class HardwareProcessor {
     this.hardwareModel = hardwareModel;
   }
 
-  extractHardwareDatapoints(): HardwareDatapointsResult {
+  public extractHardwareDatapoints(): HardwareDatapointsResult {
     const inputs: HardwareDatapoint[] = [];
     const outputs: HardwareDatapoint[] = [];
     for (const controller of getControllers(this.hardwareModel)) {
