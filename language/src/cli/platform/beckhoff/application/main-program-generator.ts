@@ -59,15 +59,15 @@ export class MainProgramGenerator {
     this.instanceManager.reset();
     this.instanceManager.addRequiredAdditionalFBInstances();
 
-    const globalVars = this.collectGlobalVarDecls();
-    const { controlUnitVars, mainStatements } = this.processControlUnits();
-    const mainVars = [...globalVars, ...controlUnitVars];
-
     const { inputs, outputs } =
       this.hardwareProcessor.extractHardwareDatapoints();
     this.expressionConverter.setHardwareChannelSymbols(
       new Set([...inputs.map((i) => i.name), ...outputs.map((o) => o.name)])
     );
+
+    const globalVars = this.collectGlobalVarDecls();
+    const { controlUnitVars, mainStatements } = this.processControlUnits();
+    const mainVars = [...globalVars, ...controlUnitVars];
 
     this.instanceManager.assignEdgeDetectionInstances(mainStatements);
     this.instanceManager.assignAfterStmtInstances(mainStatements);
