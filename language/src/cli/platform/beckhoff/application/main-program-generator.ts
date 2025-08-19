@@ -1,64 +1,29 @@
+import { expandToNode, joinToNode, toString } from "langium/generate";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { GlobalInstanceManager } from "./global-instance-manager.js";
+import { StatementConverter } from "./statement-converter.js";
+import { ExpressionConverter } from "./expression-converter.js";
+import { HardwareProcessor } from "./hardware-processor.js";
+import { LoopVariableAnalyzer } from "./loop-variable-analyzer.js";
+import { BoilerplateAnalyzer } from "./boilerplate-analyzer.js";
+import { LibraryHandlerManager } from "./library-handlers/library-handler-manager.js";
+import { EmittedVarDecl, HardwareDatapoint } from "../models/types.js";
 import {
-  ControlModel,
+  extractControlUnits,
+  ScheduledControlUnit,
+  ConditionalControlUnit,
+  RegularControlUnit,
+} from "../utils.js";
+import { TypeRefConverter } from "./type-ref-converter.js";
+import {
   HardwareModel,
+  ControlModel,
   Statement,
   isControlUnit,
   isVarDecl,
   ControlUnit,
-  Expr,
-} from "../../../language/generated/ast.js";
-import { expandToNode, joinToNode, toString } from "langium/generate";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import {
-  EmittedVarDecl,
-  HardwareDatapoint,
-  AfterStmtInstanceInfo,
-} from "./types.js";
-import { convertTypeRefToST } from "./type-converter.js";
-import {
-  ConditionalControlUnit,
-  extractControlUnits,
-  RegularControlUnit,
-  ScheduledControlUnit,
-  detectDaliComType,
-} from "./utils.js";
-import { InstanceManager } from "./instance-manager.js";
-import { StatementConverter } from "./statement-converter.js";
-import { ExpressionConverter } from "./expression-converter.js";
-import { HardwareProcessor } from "./hardware-processor.js";
-
-/**
- * Handles special input mapping and constructor logic libraries (e.g., DALI, others in future).
- * Returns an object with possibly modified inputMappings and constructorArgs for declaration.
- */
-function handleLibrarySpecials(
-  fbType: string,
-  inputMappings: string,
-  instanceManager: InstanceManager,
-  hardwareModel: HardwareModel
-): { inputMappings: string; constructorArgs?: string } {
-  // DALI special handling
-  if (fbType.startsWith("FB_DALI")) {
-    const daliComType = detectDaliComType(hardwareModel);
-    if (!daliComType) {
-      throw new Error(
-        "DALI communication moduleType not found in hardware. Please declare a portgroup with a supported DALI moduleType (e.g., KL6811, KL6821, EL6821) to use FB_DALI function blocks."
-      );
-    }
-    const daliComInstance = instanceManager.getDaliComInstance(daliComType);
-    if (!daliComInstance) {
-      throw new Error("DALI communication FB instance was not generated.");
-    }
-    // Only set constructorArgs, do NOT prepend to inputMappings
-    return {
-      inputMappings,
-      constructorArgs: daliComInstance.instanceName,
-    };
-  }
-  // Add more library-specific handling here as needed
-  return { inputMappings };
-}
+} from "../../../../language/generated/ast.js";
 
 /**
  * Handles generation of the main program (MAIN)
@@ -67,7 +32,7 @@ export class MainProgramGenerator {
   private readonly controlModel: ControlModel;
   private readonly hardwareModel: HardwareModel;
   private readonly destination: string;
-  private readonly instanceManager: InstanceManager;
+  private readonly instanceManager: GlobalInstanceManager;
   private readonly statementConverter: StatementConverter;
   private readonly expressionConverter: ExpressionConverter;
   private readonly hardwareProcessor: HardwareProcessor;
@@ -76,7 +41,7 @@ export class MainProgramGenerator {
     controlModel: ControlModel,
     hardwareModel: HardwareModel,
     destination: string,
-    instanceManager: InstanceManager,
+    instanceManager: GlobalInstanceManager,
     statementConverter: StatementConverter,
     expressionConverter: ExpressionConverter,
     hardwareProcessor: HardwareProcessor
@@ -90,33 +55,23 @@ export class MainProgramGenerator {
     this.hardwareProcessor = hardwareProcessor;
   }
 
-  writeProgramMain(): string[] {
+  public writeProgramMain(): string[] {
     this.instanceManager.reset();
     this.instanceManager.addRequiredAdditionalFBInstances();
 
-    const mainVars: EmittedVarDecl[] = [];
-    const mainStatements: Statement[] = [];
-
-    this.collectGlobalVarDecls(mainVars);
-    this.processControlUnits(mainVars, mainStatements);
-
-    const loopVars = new Map<string, { type: string; init?: Expr }>();
-    this.statementConverter.collectLoopVars(mainStatements, loopVars);
-    const declaredVarNames = new Set(mainVars.map((v) => v.varDecl.name));
-    const loopVarsToDeclare = Array.from(loopVars.entries()).filter(
-      ([name]) => !declaredVarNames.has(name)
-    );
-
     const { inputs, outputs } =
       this.hardwareProcessor.extractHardwareDatapoints();
-    this.expressionConverter.updateHardwareChannelFlatNames(
+    this.expressionConverter.setHardwareChannelSymbols(
       new Set([...inputs.map((i) => i.name), ...outputs.map((o) => o.name)])
     );
 
+    const globalVars = this.collectGlobalVarDecls();
+    const { controlUnitVars, mainStatements } = this.processControlUnits();
+    const mainVars = [...globalVars, ...controlUnitVars];
+
     this.instanceManager.assignEdgeDetectionInstances(mainStatements);
     this.instanceManager.assignAfterStmtInstances(mainStatements);
-    const fbInstanceDecls = this.instanceManager.getAllFBInstanceDeclarations();
-    const afterStmtDecls = this.instanceManager.getAllAfterStmtDeclarations();
+
     const { scheduled, conditional, regular } = extractControlUnits(
       this.controlModel
     );
@@ -126,20 +81,13 @@ export class MainProgramGenerator {
       conditional,
       regular
     );
-    // Check if any of the boilerplate variables are used
-    const boilerplateVars = ["fbLocalTime", "timeNow", "todNow", "dNow"];
-    const usesBoilerplate = boilerplateVars.some((v) =>
-      implContent.includes(v)
-    );
 
     const declContent = this.generateMainDeclContent(
       { inputs, outputs },
+      mainStatements,
       mainVars,
-      loopVarsToDeclare,
-      fbInstanceDecls,
-      afterStmtDecls,
       { scheduled, conditional },
-      usesBoilerplate
+      BoilerplateAnalyzer.isTimeBoilerplateNeeded(implContent)
     );
 
     const declFilePath = path.join(this.destination, `MAIN_decl.st`);
@@ -151,10 +99,13 @@ export class MainProgramGenerator {
     return [declFilePath, implFilePath];
   }
 
-  private processControlUnits(
-    mainVars: EmittedVarDecl[],
-    mainStatements: Statement[]
-  ) {
+  private processControlUnits(): {
+    controlUnitVars: EmittedVarDecl[];
+    mainStatements: Statement[];
+  } {
+    const controlUnitVars: EmittedVarDecl[] = [];
+    const mainStatements: Statement[] = [];
+
     for (const item of this.controlModel.controlBlock.items) {
       if (!isControlUnit(item)) continue;
       const controlUnit = item;
@@ -163,35 +114,31 @@ export class MainProgramGenerator {
         (stmt) => !isVarDecl(stmt)
       ) as Statement[];
       mainStatements.push(...executableStmts);
-      this.addVarDeclsFromControlUnit(controlUnit, mainVars);
+      const unitVars = this.getVarDeclsFromControlUnit(controlUnit);
+      controlUnitVars.push(...unitVars);
       this.instanceManager.assignFBInstancesFromControlUnit(controlUnit);
     }
+
+    return { controlUnitVars, mainStatements };
   }
 
-  private collectGlobalVarDecls(mainVars: EmittedVarDecl[]) {
+  private collectGlobalVarDecls(): EmittedVarDecl[] {
     const globalVarDecls =
       this.controlModel.controlBlock.items.filter(isVarDecl);
-    globalVarDecls.forEach((varDecl) =>
-      mainVars.push(new EmittedVarDecl(varDecl))
-    );
+    return globalVarDecls.map((varDecl) => new EmittedVarDecl(varDecl));
   }
 
-  private addVarDeclsFromControlUnit(
-    controlUnit: ControlUnit,
-    mainVars: EmittedVarDecl[]
-  ) {
+  private getVarDeclsFromControlUnit(
+    controlUnit: ControlUnit
+  ): EmittedVarDecl[] {
     const varDecls = controlUnit.stmts.filter(isVarDecl);
-    mainVars.push(
-      ...varDecls.map((varDecl) => new EmittedVarDecl(varDecl, controlUnit))
-    );
+    return varDecls.map((varDecl) => new EmittedVarDecl(varDecl, controlUnit));
   }
 
-  generateMainDeclContent(
+  private generateMainDeclContent(
     hardware: { inputs: HardwareDatapoint[]; outputs: HardwareDatapoint[] },
+    mainStatements: Statement[],
     mainVars: EmittedVarDecl[],
-    loopVarsToDeclare: [string, { type: string; init?: Expr }][],
-    fbInstanceDecls: Array<{ instanceName: string; fbType: string }>,
-    afterStmtDecls: AfterStmtInstanceInfo[],
     controlUnits: {
       scheduled: ScheduledControlUnit[];
       conditional: ConditionalControlUnit[];
@@ -200,6 +147,14 @@ export class MainProgramGenerator {
   ): string {
     const { inputs, outputs } = hardware;
     const { scheduled, conditional } = controlUnits;
+    const fbInstanceDecls = this.instanceManager.getAllFBInstanceDeclarations();
+    const afterStmtDecls = this.instanceManager.getAllAfterStmtDeclarations();
+    const allLoopVars = LoopVariableAnalyzer.collectLoopVars(mainStatements);
+    const declaredVarNames = new Set(mainVars.map((v) => v.varDecl.name));
+    const loopVarsToDeclare = allLoopVars.filter(
+      (loopVar) => !declaredVarNames.has(loopVar.name)
+    );
+
     return toString(
       expandToNode`
         PROGRAM MAIN
@@ -221,11 +176,9 @@ export class MainProgramGenerator {
             ${joinToNode(
               mainVars,
               (v) => expandToNode`
-                ${v.name}: ${convertTypeRefToST(v.varDecl.typeRef)}${
+                ${v.name}: ${TypeRefConverter.emit(v.varDecl.typeRef)}${
                 v.varDecl.init
-                  ? ` := ${this.expressionConverter.convertExprToST(
-                      v.varDecl.init
-                    )}`
+                  ? ` := ${this.expressionConverter.emit(v.varDecl.init)}`
                   : ""
               };
               `,
@@ -233,10 +186,10 @@ export class MainProgramGenerator {
             )}
             ${joinToNode(
               loopVarsToDeclare,
-              ([name, { type, init }]) => expandToNode`
-                ${name}: ${type}${
-                init
-                  ? ` := ${this.expressionConverter.convertExprToST(init)}`
+              (loopVar) => expandToNode`
+                ${loopVar.name}: ${loopVar.type}${
+                loopVar.init
+                  ? ` := ${this.expressionConverter.emit(loopVar.init)}`
                   : ""
               };
               `,
@@ -246,7 +199,7 @@ export class MainProgramGenerator {
               fbInstanceDecls,
               ({ instanceName, fbType }) => {
                 // Library special handling for constructor
-                const special = handleLibrarySpecials(
+                const special = LibraryHandlerManager.handleLibrarySpecials(
                   fbType,
                   "",
                   this.instanceManager,
@@ -287,16 +240,7 @@ export class MainProgramGenerator {
             )}
             bRunOnlyOnce: BOOL := FALSE;${
               usesBoilerplate
-                ? expandToNode`\n
-            fbLocalTime: FB_LocalSystemTime := (
-              sNetID := '',
-              bEnable := TRUE,
-              dwCycle := 5
-            );
-            timeNow: TIMESTRUCT;
-            todNow: TIME_OF_DAY;
-            dNow: DATE;
-            `
+                ? BoilerplateAnalyzer.getTimeBoilerplateDeclarations()
                 : ""
             }
         END_VAR
@@ -304,14 +248,13 @@ export class MainProgramGenerator {
     );
   }
 
-  generateMainImplContent(
+  private generateMainImplContent(
     scheduled: ScheduledControlUnit[],
     conditional: ConditionalControlUnit[],
     regular: RegularControlUnit[]
   ): string {
     const units = this.controlModel.controlBlock.items.filter(isControlUnit);
 
-    // Patch: Only emit boilerplate if used in any statement
     let mainBody = toString(expandToNode`
     ${joinToNode(
       units,
@@ -327,7 +270,7 @@ export class MainProgramGenerator {
           ${joinToNode(
             sch.stmts.filter((s) => !isVarDecl(s)),
             (stmt) => expandToNode`
-              ${this.statementConverter.convertStatementToST(stmt, 1)}
+              ${this.statementConverter.emit(stmt, 1)}
           `,
             { appendNewLineIfNotEmpty: true }
           )}
@@ -342,20 +285,16 @@ export class MainProgramGenerator {
           if (cond.runOnce) {
             return expandToNode`
             // Conditional Control Unit '${cond.name}' (runOnce)
-            IF NOT (${this.expressionConverter.convertExprToST(
-              cond.condition
-            )}) THEN
+            IF NOT (${this.expressionConverter.emit(cond.condition)}) THEN
                 ${cond.name}_hasRun := FALSE;
             END_IF;
-            IF (NOT ${
-              cond.name
-            }_hasRun) AND (${this.expressionConverter.convertExprToST(
+            IF (NOT ${cond.name}_hasRun) AND (${this.expressionConverter.emit(
               cond.condition
             )}) THEN
             ${joinToNode(
               cond.stmts.filter((s) => !isVarDecl(s)),
               (stmt) => expandToNode`
-                ${this.statementConverter.convertStatementToST(stmt, 1)}
+                ${this.statementConverter.emit(stmt, 1)}
             `,
               { appendNewLineIfNotEmpty: true }
             )}
@@ -365,11 +304,11 @@ export class MainProgramGenerator {
           } else {
             return expandToNode`
             // Conditional Control Unit '${cond.name}'
-            IF ${this.expressionConverter.convertExprToST(cond.condition)} THEN
+            IF ${this.expressionConverter.emit(cond.condition)} THEN
             ${joinToNode(
               cond.stmts.filter((s) => !isVarDecl(s)),
               (stmt) => expandToNode`
-                ${this.statementConverter.convertStatementToST(stmt, 1)}
+                ${this.statementConverter.emit(stmt, 1)}
             `,
               { appendNewLineIfNotEmpty: true }
             )}
@@ -384,7 +323,7 @@ export class MainProgramGenerator {
         ${joinToNode(
           reg.stmts.filter((s) => !isVarDecl(s)),
           (stmt) => expandToNode`
-            ${this.statementConverter.convertStatementToST(stmt, 0)}
+            ${this.statementConverter.emit(stmt, 0)}
         `,
           { appendNewLineIfNotEmpty: true }
         )}
@@ -394,13 +333,10 @@ export class MainProgramGenerator {
     )}
     `);
 
-    // Check if boilerplate is needed
-    const boilerplateVars = ["fbLocalTime", "timeNow", "todNow", "dNow"];
-    const usesBoilerplate = boilerplateVars.some((v) => mainBody.includes(v));
-
-    // Emit init code only if needed
-    let boilerplateInit = usesBoilerplate
-      ? `fbLocalTime();\ntimeNow := fbLocalTime.systemTime;\ntodNow := SYSTEMTIME_TO_TOD(timeNow);\ndNow := DT_TO_DATE(SYSTEMTIME_TO_DT(timeNow));`
+    const boilerplateInit = BoilerplateAnalyzer.isTimeBoilerplateNeeded(
+      mainBody
+    )
+      ? BoilerplateAnalyzer.getTimeInitializationCode()
       : "";
     return `IF NOT bRunOnlyOnce THEN\n    ADSLOGSTR(\n      msgCtrlMask := ADSLOG_MSGTYPE_LOG,\n      msgFmtStr   := 'Program started %s',\n      strArg      := 'successfully!'\n    );\n    bRunOnlyOnce := TRUE;\nEND_IF;${
       boilerplateInit.length == 0 ? "" : "\n"

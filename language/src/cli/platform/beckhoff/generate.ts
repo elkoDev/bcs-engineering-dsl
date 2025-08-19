@@ -1,20 +1,20 @@
-import {
-  ControlModel,
-  isEnumDecl,
-  isFunctionBlockDecl,
-  isStructDecl,
-  HardwareModel,
-} from "../../../language/generated/ast.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { TcConfigGenerator } from "./config-generator.js";
-import { TypeConverter } from "./type-converter.js";
-import { ExpressionConverter } from "./expression-converter.js";
-import { StatementConverter } from "./statement-converter.js";
-import { InstanceManager } from "./instance-manager.js";
-import { HardwareProcessor } from "./hardware-processor.js";
-import { MainProgramGenerator } from "./main-program-generator.js";
+import {
+  ControlModel,
+  HardwareModel,
+  isEnumDecl,
+  isStructDecl,
+  isFunctionBlockDecl,
+} from "../../../language/generated/ast.js";
 import { GenerateResult } from "../index.js";
+import { ExpressionConverter } from "./application/expression-converter.js";
+import { HardwareProcessor } from "./application/hardware-processor.js";
+import { GlobalInstanceManager } from "./application/global-instance-manager.js";
+import { MainProgramGenerator } from "./application/main-program-generator.js";
+import { StatementConverter } from "./application/statement-converter.js";
+import { TcConfigGenerator } from "./application/tc-config-generator.js";
+import { TypeGenerator } from "./application/type-generator.js";
 
 /**
  * Main generator context that orchestrates all the sub-generators
@@ -23,10 +23,10 @@ class BeckhoffGeneratorContext {
   private readonly controlModel: ControlModel;
   private readonly destination: string;
   private readonly tcConfigGenerator: TcConfigGenerator;
-  private readonly instanceManager: InstanceManager;
+  private readonly instanceManager: GlobalInstanceManager;
   private readonly expressionConverter: ExpressionConverter;
   private readonly statementConverter: StatementConverter;
-  private readonly typeConverter: TypeConverter;
+  private readonly typeGenerator: TypeGenerator;
   private readonly hardwareProcessor: HardwareProcessor;
   private readonly mainProgramGenerator: MainProgramGenerator;
   constructor(
@@ -39,17 +39,19 @@ class BeckhoffGeneratorContext {
 
     // Initialize all components
     this.tcConfigGenerator = new TcConfigGenerator(controlModel, hardwareModel);
-    this.instanceManager = new InstanceManager(controlModel, hardwareModel);
+    this.instanceManager = new GlobalInstanceManager(
+      controlModel,
+      hardwareModel
+    );
     this.expressionConverter = new ExpressionConverter(new Set());
     this.statementConverter = new StatementConverter(
       this.expressionConverter,
       this.instanceManager
     );
-    this.typeConverter = new TypeConverter(
+    this.typeGenerator = new TypeGenerator(
       destination,
-      this.expressionConverter.convertExprToST.bind(this.expressionConverter),
-      this.statementConverter.collectLoopVars.bind(this.statementConverter),
-      this.statementConverter.convertStatementToST.bind(this.statementConverter)
+      this.expressionConverter,
+      this.statementConverter
     );
     this.hardwareProcessor = new HardwareProcessor(hardwareModel);
     this.mainProgramGenerator = new MainProgramGenerator(
@@ -73,11 +75,11 @@ class BeckhoffGeneratorContext {
     for (const item of this.controlModel.controlBlock.items) {
       if ("isExtern" in item && item.isExtern) continue;
       if (isEnumDecl(item)) {
-        files.push(this.typeConverter.writeEnum(item));
+        files.push(this.typeGenerator.writeEnum(item));
       } else if (isStructDecl(item)) {
-        files.push(this.typeConverter.writeStruct(item));
+        files.push(this.typeGenerator.writeStruct(item));
       } else if (isFunctionBlockDecl(item)) {
-        files.push(...this.typeConverter.writeFunctionBlock(item));
+        files.push(...this.typeGenerator.writeFunctionBlock(item));
       }
     }
 

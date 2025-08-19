@@ -1,4 +1,8 @@
-import { VarDecl, ControlUnit } from "../../../language/generated/ast.js";
+import {
+  VarDecl,
+  ControlUnit,
+  Expr,
+} from "../../../../language/generated/ast.js";
 
 export interface FBInstanceInfo {
   kind: "fb";
@@ -22,6 +26,12 @@ export interface HardwareDatapoint {
 export interface HardwareDatapointsResult {
   inputs: HardwareDatapoint[];
   outputs: HardwareDatapoint[];
+}
+
+export interface LoopVariableInfo {
+  name: string;
+  type: string;
+  init?: Expr;
 }
 
 export class EmittedVarDecl {
