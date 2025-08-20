@@ -416,9 +416,7 @@ ${decl.triggerName}: R_TRIG;`,
     useStmtInstanceMap: Map<any, UseStmtInstanceInfo>,
     indent: number
   ): string {
-    // For UseStmt within function blocks, delegate to the StatementConverter
-    // which will handle it through the LocalInstanceRegistry
-    return this.statementConverter.emit(stmt, indent);
+    throw Error("Use statements are not yet implemented in TypeGenerator");
   }
 
   private convertStatementBody(

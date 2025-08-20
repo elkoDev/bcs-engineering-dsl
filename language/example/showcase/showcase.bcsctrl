@@ -1,17 +1,32 @@
 control ShowcaseController {
     var alarm: BOOL = false;
     var doorIsOpen: BOOL = false;
+    functionblock NestedLogic {
+        inputs {
+            var iValue: INT;
+        }
+        outputs {
+            var oResult: BOOL;
+        }
+        logic {
+            if (iValue > 10) {
+                oResult = true;
+            } else {
+                oResult = false;
+            }
+        }
+    }
     functionblock HeatingLogic {
         inputs {
-            var iTemp: REAL;
+            var iTemp: INT;
             var iMode: BOOL;
         }
         outputs {
             var oHeating: BOOL;
         }
         logic {
-            if (iMode == true && iTemp < 21.0){
-                oHeating = true;
+            if (iMode == true && iTemp < 21){
+            // use NestedLogic(iValue: iTemp) -> oHeating; // not allowed in this version
             } else {
                 oHeating = false;
             }
@@ -22,6 +37,6 @@ control ShowcaseController {
             alarm = true;
         }
         var heat: BOOL = true;
-        use HeatingLogic(iMode: true, iTemp: 26.0) -> heat;
+        use HeatingLogic(iMode: true, iTemp: 26) -> heat;
     }
 }
