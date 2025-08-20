@@ -1,0 +1,58 @@
+bus FieldBus type KBus {
+    masterDevice: "CX8190"
+    box TerminalBlock {
+        product: KBusTerminals
+        module Zwei_Kanal_Digital_Eingang_Modul {
+            product: KL1002
+            slot: 1
+        } 
+        module Zwei_Kanal_Relais_Ausgang_Modul {
+            product: KL2622
+            slot: 2
+        }
+        module Vier_Kanal_Analog_Eingang_Modul {
+            product: KL3044
+            slot: 3
+        }
+        module Vier_Kanal_Analog_Ausgang_Modul {
+            product: KL4004
+            slot: 4
+        }
+        module Endklemme {
+            product: KL9010
+            slot: 5
+        }
+    }
+}
+
+controller ShowcaseController {
+
+    portgroup FourAnalogInputs {
+        module: Vier_Kanal_Analog_Eingang_Modul
+        ioType: ANALOG_INPUT
+        channels: 4
+    }
+
+    portgroup TwoDigitalInputs {
+        module: Zwei_Kanal_Digital_Eingang_Modul
+        ioType: DIGITAL_INPUT
+        channels: 2
+    }
+
+    portgroup TwoDigitalOutputs {
+        module: Zwei_Kanal_Relais_Ausgang_Modul
+        ioType: DIGITAL_OUTPUT
+        channels: 2
+    }
+
+    portgroup FourAnalogOutputs {
+        module: Vier_Kanal_Analog_Ausgang_Modul
+        ioType: ANALOG_OUTPUT
+        channels: 4
+    }
+}    
+
+network {
+    hostname: "CX-301714"
+    ipAddress: "169.254.225.85"
+}

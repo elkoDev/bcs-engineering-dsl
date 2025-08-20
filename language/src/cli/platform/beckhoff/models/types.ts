@@ -14,6 +14,7 @@ export interface AfterStmtInstanceInfo {
   kind: "after";
   tonName: string;
   ptValue: string;
+  firedFlagName: string;
 }
 
 export type InstanceInfo = FBInstanceInfo | AfterStmtInstanceInfo;

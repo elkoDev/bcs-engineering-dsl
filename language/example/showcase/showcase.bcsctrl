@@ -1,0 +1,9 @@
+control ShowcaseController {
+    var alarm: BOOL = false;
+    var doorIsOpen: BOOL = false;
+    unit MyUnit {
+        after T#5s if (doorIsOpen) {
+            alarm = !alarm;
+        }
+    }
+}

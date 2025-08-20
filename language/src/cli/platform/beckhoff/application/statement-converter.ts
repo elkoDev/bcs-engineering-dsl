@@ -159,12 +159,21 @@ export class StatementConverter {
   }
 
   private emitAfter(stmt: AfterStmt, indent: number): string {
-    const { tonName } = this.instances.getOrAssignAfterStmtInstance(stmt);
-    const cond = this.expr.emit((stmt as any).condition);
-    let out = `${this.pad(indent)}${tonName}(IN := ${cond});\n`;
+    const { tonName, firedFlagName } =
+      this.instances.getOrAssignAfterStmtInstance(stmt);
+    const cond = this.expr.emit(stmt.condition);
+
+    let out = `${this.pad(indent)}IF NOT (${cond}) THEN\n`;
+    out += `${this.pad(indent + 1)}${firedFlagName} := FALSE;\n`;
+    out += `${this.pad(indent)}END_IF;\n\n`;
+
+    out += `${this.pad(
+      indent
+    )}${tonName}(IN := ${cond} AND NOT ${firedFlagName});\n`;
     out += `${this.pad(indent)}IF ${tonName}.Q THEN\n`;
-    out += this.emitBlock((stmt as any).stmts ?? [], indent + 1);
-    out += `\n${this.pad(indent + 1)}${tonName}(IN := FALSE);`;
+    out += this.emitBlock(stmt.stmts ?? [], indent + 1);
+    out += `\n${this.pad(indent + 1)}${firedFlagName} := TRUE;`;
+
     return out + `\n${this.pad(indent)}END_IF;\n`;
   }
 
