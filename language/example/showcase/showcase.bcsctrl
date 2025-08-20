@@ -1,9 +1,27 @@
 control ShowcaseController {
     var alarm: BOOL = false;
     var doorIsOpen: BOOL = false;
+    functionblock HeatingLogic {
+        inputs {
+            var iTemp: REAL;
+            var iMode: BOOL;
+        }
+        outputs {
+            var oHeating: BOOL;
+        }
+        logic {
+            if (iMode == true && iTemp < 21.0){
+                oHeating = true;
+            } else {
+                oHeating = false;
+            }
+        }
+    }
     unit MyUnit {
         after T#5s if (doorIsOpen) {
-            alarm = !alarm;
+            alarm = true;
         }
+        var heat: BOOL = true;
+        use HeatingLogic(iMode: true, iTemp: 26.0) -> heat;
     }
 }

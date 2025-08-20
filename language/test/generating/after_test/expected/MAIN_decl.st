@@ -4,8 +4,8 @@ VAR
     conditionB: BOOL := FALSE;
     AfterUnit_x: INT;
     tonAfter1: TON := (PT := T#5s);
-    tonAfter1_hasFired: BOOL := FALSE;
+    rTrigAfter1: R_TRIG;
     tonAfter2: TON := (PT := T#10s);
-    tonAfter2_hasFired: BOOL := FALSE;
+    rTrigAfter2: R_TRIG;
     bRunOnlyOnce: BOOL := FALSE;
 END_VAR
