@@ -84,11 +84,13 @@ export class GlobalInstanceManager {
     }
     const idx = this.fbInstanceCounter++;
     const tonName = `tonAfter${idx}`;
+    const firedFlagName = `${tonName}_hasFired`;
     const ptValue = stmt.time;
     const info: AfterStmtInstanceInfo = {
       kind: "after",
       tonName,
       ptValue,
+      firedFlagName,
     };
     this.fbInstanceMap.set(stmt, info);
     return info;

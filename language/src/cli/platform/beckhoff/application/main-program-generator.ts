@@ -218,8 +218,9 @@ export class MainProgramGenerator {
             )}
             ${joinToNode(
               afterStmtDecls,
-              ({ tonName, ptValue }) => expandToNode`
+              ({ tonName, ptValue, firedFlagName }) => expandToNode`
                 ${tonName}: TON := (PT := ${ptValue});
+                ${firedFlagName}: BOOL := FALSE;
               `,
               { appendNewLineIfNotEmpty: true }
             )}
