@@ -1,4 +1,4 @@
-import { ValidationAcceptor, ValidationChecks } from "langium";
+import { AstUtils, ValidationAcceptor, ValidationChecks } from "langium";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
 import { DuplicationValidationUtils } from "./utils/duplication-validation-utils.js";
 import { ArrayValidationUtils } from "./utils/array-validation-utils.js";
@@ -28,6 +28,7 @@ import {
   isOnRisingEdgeStmt,
   Ref,
   isVarDecl,
+  isFunctionBlockDecl,
 } from "../generated/ast.js";
 import { TypeInferenceUtils } from "./utils/type-inference-utils.js";
 
@@ -53,7 +54,10 @@ export function registerBCSControlValidationChecks(
       validator.checkNoWriteToInputDatapoints,
     ],
     VarDecl: [validator.checkVarDeclTypes],
-    UseStmt: [validator.checkUseStmtTypes],
+    UseStmt: [
+      validator.checkUseStmtTypes,
+      validator.checkNoUseStmtInFunctionBlock,
+    ],
     Ref: [validator.checkArrayIndexTypes],
     SwitchStmt: [validator.checkSwitchCaseTypes],
     ForStmt: [validator.checkToExprType],
@@ -64,7 +68,24 @@ export function registerBCSControlValidationChecks(
 }
 
 export class BCSControlLangValidator {
-  checkRequiredLibraryReferenceForExternFBs(
+  public checkNoUseStmtInFunctionBlock(
+    useStmt: UseStmt,
+    accept: ValidationAcceptor
+  ): void {
+    // Traverse up the AST from the useStmt to find if it's inside a FunctionBlockDecl
+    const container = AstUtils.getContainerOfType(useStmt, isFunctionBlockDecl);
+    if (container) {
+      accept(
+        "error",
+        "Calling 'use' is not supported inside a function block in this version.",
+        {
+          node: useStmt,
+        }
+      );
+    }
+  }
+
+  public checkRequiredLibraryReferenceForExternFBs(
     fb: FunctionBlockDecl,
     accept: ValidationAcceptor
   ) {
@@ -77,7 +98,7 @@ export class BCSControlLangValidator {
     }
   }
 
-  checkToExprType(stmt: ForStmt, accept: ValidationAcceptor) {
+  public checkToExprType(stmt: ForStmt, accept: ValidationAcceptor) {
     const toExpr = stmt.toExpr;
     if (!toExpr) return;
 
@@ -91,7 +112,7 @@ export class BCSControlLangValidator {
     }
   }
 
-  checkNoWriteToInputDatapoints(
+  public checkNoWriteToInputDatapoints(
     stmt: AssignmentStmt,
     accept: ValidationAcceptor
   ) {
@@ -123,7 +144,7 @@ export class BCSControlLangValidator {
     }
   }
 
-  checkSwitchCaseTypes(sw: SwitchStmt, accept: ValidationAcceptor) {
+  public checkSwitchCaseTypes(sw: SwitchStmt, accept: ValidationAcceptor) {
     const switchType = TypeInferenceUtils.inferType(sw.expr, accept);
     if (!switchType) return;
 
@@ -160,28 +181,28 @@ export class BCSControlLangValidator {
       }
     }
   }
-  checkControlUnitVariableConflicts(
+  public checkControlUnitVariableConflicts(
     unit: ControlUnit,
     accept: ValidationAcceptor
   ) {
     DuplicationValidationUtils.checkControlUnitVariableConflicts(unit, accept);
   }
 
-  checkUniqueVarNamesInFunctionBlock(
+  public checkUniqueVarNamesInFunctionBlock(
     fb: FunctionBlockDecl,
     accept: ValidationAcceptor
   ) {
     DuplicationValidationUtils.checkUniqueVarNamesInFunctionBlock(fb, accept);
   }
 
-  checkUniqueGlobalDeclarations(
+  public checkUniqueGlobalDeclarations(
     model: ControlModel,
     accept: ValidationAcceptor
   ) {
     DuplicationValidationUtils.checkUniqueGlobalDeclarations(model, accept);
   }
 
-  checkWhenConditionType(unit: ControlUnit, accept: ValidationAcceptor) {
+  public checkWhenConditionType(unit: ControlUnit, accept: ValidationAcceptor) {
     if (unit.condition) {
       const type = TypeInferenceUtils.inferType(unit.condition, accept);
       if (type && type !== "BOOL") {
@@ -194,7 +215,7 @@ export class BCSControlLangValidator {
     }
   }
 
-  checkScanCycleUnits(unit: ControlUnit, accept: ValidationAcceptor) {
+  public checkScanCycleUnits(unit: ControlUnit, accept: ValidationAcceptor) {
     if (!unit.condition && !unit.time && unit.stmts.length > 0) {
       accept(
         "hint",
@@ -207,7 +228,7 @@ export class BCSControlLangValidator {
     }
   }
 
-  checkSingleBlockSectionsInFunctionBlock(
+  public checkSingleBlockSectionsInFunctionBlock(
     fb: FunctionBlockDecl,
     accept: ValidationAcceptor
   ) {
@@ -260,7 +281,8 @@ export class BCSControlLangValidator {
       );
     }
   }
-  checkUseStmtTypes(useStmt: UseStmt, accept: ValidationAcceptor) {
+
+  public checkUseStmtTypes(useStmt: UseStmt, accept: ValidationAcceptor) {
     const fb = useStmt.functionBlockRef?.ref;
     if (!fb) return;
 
@@ -284,7 +306,7 @@ export class BCSControlLangValidator {
    * @param varDecl - The variable declaration to validate.
    * @param accept - A function to report validation errors.
    */
-  checkVarDeclTypes(varDecl: VarDecl, accept: ValidationAcceptor) {
+  public checkVarDeclTypes(varDecl: VarDecl, accept: ValidationAcceptor) {
     AssignmentValidationUtils.validateVarDeclTypes(varDecl, accept);
   }
 
@@ -299,7 +321,10 @@ export class BCSControlLangValidator {
    * - If the type of either the target or the value cannot be inferred, a warning is reported.
    * - If the type of the value is not assignable to the type of the target, an error is reported.
    */
-  checkAssignmentTypes(stmt: AssignmentStmt, accept: ValidationAcceptor) {
+  public checkAssignmentTypes(
+    stmt: AssignmentStmt,
+    accept: ValidationAcceptor
+  ) {
     AssignmentValidationUtils.validateAssignmentTypes(
       stmt,
       accept,
@@ -307,7 +332,7 @@ export class BCSControlLangValidator {
     );
   }
 
-  checkArrayIndexTypes(expr: Ref, accept: ValidationAcceptor) {
+  public checkArrayIndexTypes(expr: Ref, accept: ValidationAcceptor) {
     // Only validate if this is actually an array access (has indices)
     if (expr.indices && expr.indices.length > 0) {
       const namedElement = expr.ref?.ref;
@@ -321,7 +346,7 @@ export class BCSControlLangValidator {
     }
   }
 
-  checkEdgeSignalType(
+  public checkEdgeSignalType(
     stmt: OnRisingEdgeStmt | OnFallingEdgeStmt,
     accept: ValidationAcceptor
   ) {

@@ -147,7 +147,9 @@ export class MainProgramGenerator {
   ): string {
     const { inputs, outputs } = hardware;
     const { scheduled, conditional } = controlUnits;
-    const fbInstanceDecls = this.instanceManager.getAllFBInstanceDeclarations();
+    const fbInstanceDecls =
+      this.instanceManager.getUseStmtInstanceDeclarations();
+    const edgeStmtDecls = this.instanceManager.getAllEdgeStmtDeclarations();
     const afterStmtDecls = this.instanceManager.getAllAfterStmtDeclarations();
     const allLoopVars = LoopVariableAnalyzer.collectLoopVars(mainStatements);
     const declaredVarNames = new Set(mainVars.map((v) => v.varDecl.name));
@@ -217,10 +219,16 @@ export class MainProgramGenerator {
               { appendNewLineIfNotEmpty: true }
             )}
             ${joinToNode(
+              edgeStmtDecls,
+              ({ instanceName, fbType }) =>
+                expandToNode`${instanceName}: ${fbType}; (* Function block instance *)`,
+              { appendNewLineIfNotEmpty: true }
+            )}
+            ${joinToNode(
               afterStmtDecls,
-              ({ tonName, ptValue, firedFlagName }) => expandToNode`
+              ({ tonName, ptValue, triggerName }) => expandToNode`
                 ${tonName}: TON := (PT := ${ptValue});
-                ${firedFlagName}: BOOL := FALSE;
+                ${triggerName}: R_TRIG;
               `,
               { appendNewLineIfNotEmpty: true }
             )}

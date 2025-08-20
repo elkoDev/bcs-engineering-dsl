@@ -4,20 +4,29 @@ import {
   Expr,
 } from "../../../../language/generated/ast.js";
 
-export interface FBInstanceInfo {
-  kind: "fb";
+export type InstanceInfo =
+  | UseStmtInstanceInfo
+  | EdgeStmtInstanceInfo
+  | AfterStmtInstanceInfo;
+
+export interface UseStmtInstanceInfo {
+  kind: "use";
   instanceName: string;
   fbType: string;
+}
+
+export interface EdgeStmtInstanceInfo {
+  kind: "edge";
+  instanceName: string;
+  edgeType: "rising" | "falling";
 }
 
 export interface AfterStmtInstanceInfo {
   kind: "after";
   tonName: string;
   ptValue: string;
-  firedFlagName: string;
+  triggerName: string;
 }
-
-export type InstanceInfo = FBInstanceInfo | AfterStmtInstanceInfo;
 
 export interface HardwareDatapoint {
   name: string;

@@ -1,9 +1,9 @@
 oOutput := iInput;
 tonAfter1(IN := oOutput = TRUE);
-IF tonAfter1.Q THEN
+rTrigAfter1(CLK := tonAfter1.Q);
+IF rTrigAfter1.Q THEN
     oOutput := FALSE;
-    tonAfter1(IN := FALSE);
-END_IF
+END_IF;
 r_TRIGInstance1(CLK := iInput);
 IF r_TRIGInstance1.Q THEN
     oOutput := TRUE;

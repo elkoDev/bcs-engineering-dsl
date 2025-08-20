@@ -1,4 +1,4 @@
-import { Statement } from "../../../../language/generated/ast.js";
+import { AfterStmt, OnFallingEdgeStmt, OnRisingEdgeStmt, Statement, UseStmt } from "../../../../language/generated/ast.js";
 
 /**
  * Generic statement traverser that can be used by different collectors.
@@ -11,11 +11,11 @@ export class StatementTraverser {
   public static traverse(
     stmts: Statement[],
     visitor: {
-      visitOnRisingEdge?(stmt: any): void;
-      visitOnFallingEdge?(stmt: any): void;
-      visitAfterStmt?(stmt: any): void;
-      visitUseStmt?(stmt: any): void;
-      visitOther?(stmt: any): void;
+      visitOnRisingEdge?(stmt: OnRisingEdgeStmt): void;
+      visitOnFallingEdge?(stmt: OnFallingEdgeStmt): void;
+      visitAfterStmt?(stmt: AfterStmt): void;
+      visitUseStmt?(stmt: UseStmt): void;
+      visitOther?(stmt: Statement): void;
     }
   ): void {
     const walk = (statements: Statement[]) => {

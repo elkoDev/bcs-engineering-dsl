@@ -7,11 +7,15 @@ import { LoopVariableAnalyzer } from "./loop-variable-analyzer.js";
 import { LocalInstanceRegistry } from "./local-instance-registry.js";
 import { TypeRefConverter } from "./type-ref-converter.js";
 import {
+  AfterStmt,
   EnumDecl,
   FunctionBlockDecl,
+  FunctionBlockLogic,
   isOnFallingEdgeStmt,
   isOnRisingEdgeStmt,
+  Statement,
   StructDecl,
+  VarDecl,
 } from "../../../../language/generated/ast.js";
 import {
   getInputs,
@@ -19,6 +23,11 @@ import {
   getLogic,
   getOutputs,
 } from "../../../../language/control/utils/function-block-utils.js";
+import {
+  AfterStmtInstanceInfo,
+  EdgeStmtInstanceInfo,
+  UseStmtInstanceInfo,
+} from "../models/types.js";
 
 /**
  * Handles writing/generation of type-related files (enums, structs, function blocks)
@@ -137,7 +146,10 @@ export class TypeGenerator {
     return { inputs, outputs, locals, logic, loopVarsToDeclare };
   }
 
-  private determineRequiredLoopVariables(locals: any[], statements: any[]) {
+  private determineRequiredLoopVariables(
+    locals: VarDecl[],
+    statements: Statement[]
+  ) {
     const allLoopVars = LoopVariableAnalyzer.collectLoopVars(statements);
     const localNames = new Set(locals.map((l) => l.name));
     return allLoopVars.filter((loopVar) => !localNames.has(loopVar.name));
@@ -145,35 +157,63 @@ export class TypeGenerator {
 
   private collectInstanceDeclarations(logic: any) {
     const statements = logic?.stmts ?? [];
-    const { fbInstanceMap, fbAfterMap } = this.collectFBInstances(statements);
+    const { edgeStmtInstanceMap, afterStmtInstanceMap, useStmtInstanceMap } =
+      this.collectFBInstances(statements);
 
     return {
-      fbInstanceMap,
-      fbAfterMap,
-      edgeDetectionDecls: this.extractEdgeDetectionDeclarations(fbInstanceMap),
-      timerDecls: this.extractTimerDeclarations(fbAfterMap),
+      edgeStmtInstanceMap,
+      afterStmtInstanceMap,
+      useStmtInstanceMap,
+      edgeDetectionDecls:
+        this.extractEdgeDetectionDeclarations(edgeStmtInstanceMap),
+      timerDecls: this.extractTimerDeclarations(afterStmtInstanceMap),
+      useDecls: this.extractUseDeclarations(useStmtInstanceMap),
     };
   }
 
-  private extractEdgeDetectionDeclarations(fbInstanceMap: Map<any, string>) {
+  private extractEdgeDetectionDeclarations(
+    edgeStmtInstanceMap: Map<any, EdgeStmtInstanceInfo>
+  ) {
     const declarations: Array<{ instanceName: string; fbType: string }> = [];
 
-    for (const [stmt, instanceName] of fbInstanceMap) {
+    for (const [stmt, instanceInfo] of edgeStmtInstanceMap) {
       if (isOnRisingEdgeStmt(stmt)) {
-        declarations.push({ instanceName, fbType: "R_TRIG" });
+        declarations.push({
+          instanceName: instanceInfo.instanceName,
+          fbType: "R_TRIG",
+        });
       } else if (isOnFallingEdgeStmt(stmt)) {
-        declarations.push({ instanceName, fbType: "F_TRIG" });
+        declarations.push({
+          instanceName: instanceInfo.instanceName,
+          fbType: "F_TRIG",
+        });
       }
     }
 
     return declarations;
   }
 
-  private extractTimerDeclarations(fbAfterMap: Map<any, string>) {
-    const declarations: Array<{ tonName: string; ptValue: any }> = [];
+  private extractTimerDeclarations(
+    fbAfterMap: Map<any, AfterStmtInstanceInfo>
+  ): Array<AfterStmtInstanceInfo> {
+    const declarations: Array<AfterStmtInstanceInfo> = [];
+    for (const [, afterStmtInfo] of fbAfterMap) {
+      declarations.push(afterStmtInfo);
+    }
 
-    for (const [stmt, tonName] of fbAfterMap) {
-      declarations.push({ tonName, ptValue: stmt.time });
+    return declarations;
+  }
+
+  private extractUseDeclarations(
+    useStmtInstanceMap: Map<any, UseStmtInstanceInfo>
+  ) {
+    const declarations: Array<{ instanceName: string; fbType: string }> = [];
+
+    for (const [, instanceInfo] of useStmtInstanceMap) {
+      declarations.push({
+        instanceName: instanceInfo.instanceName,
+        fbType: instanceInfo.fbType,
+      });
     }
 
     return declarations;
@@ -207,7 +247,8 @@ export class TypeGenerator {
         components.loopVarsToDeclare
       )}${this.generateInstanceDeclarations(
         instanceData.edgeDetectionDecls,
-        instanceData.timerDecls
+        instanceData.timerDecls,
+        instanceData.useDecls
       )}
         END_VAR
       `
@@ -243,7 +284,11 @@ export class TypeGenerator {
     );
   }
 
-  private generateInstanceDeclarations(edgeDecls: any[], timerDecls: any[]) {
+  private generateInstanceDeclarations(
+    edgeDecls: any[],
+    afterDecls: any[],
+    useDecls: any[]
+  ) {
     const edgeDeclarations = joinToNode(
       edgeDecls,
       (decl) =>
@@ -251,19 +296,27 @@ export class TypeGenerator {
       { appendNewLineIfNotEmpty: true }
     );
 
-    const timerDeclarations = joinToNode(
-      timerDecls,
+    const afterDeclarations = joinToNode(
+      afterDecls,
       (decl) =>
-        expandToNode`${decl.tonName}: TON := (PT := ${decl.ptValue}); (* Function block instance *)`,
+        expandToNode`${decl.tonName}: TON := (PT := ${decl.ptValue});
+${decl.triggerName}: R_TRIG;`,
       { appendNewLineIfNotEmpty: true }
     );
 
-    return expandToNode`${edgeDeclarations}${timerDeclarations}`;
+    const useDeclarations = joinToNode(
+      useDecls,
+      (decl) =>
+        expandToNode`${decl.instanceName}: ${decl.fbType}; (* Function block instance *)`,
+      { appendNewLineIfNotEmpty: true }
+    );
+
+    return expandToNode`${edgeDeclarations}${afterDeclarations}${useDeclarations}`;
   }
 
   private writeFunctionBlockImplementation(
     fbDecl: FunctionBlockDecl,
-    logic: any,
+    logic: FunctionBlockLogic | undefined,
     instanceData: any
   ): string {
     const filePath = path.join(
@@ -281,15 +334,18 @@ export class TypeGenerator {
   }
 
   private createLocalStatementConverter(instanceData: any) {
-    const { fbInstanceMap, fbAfterMap } = instanceData;
+    const { edgeStmtInstanceMap, afterStmtInstanceMap, useStmtInstanceMap } =
+      instanceData;
 
     return (stmt: any, indent: number): string => {
       switch (stmt.$type) {
         case "OnRisingEdgeStmt":
         case "OnFallingEdgeStmt":
-          return this.convertEdgeStatement(stmt, fbInstanceMap, indent);
+          return this.convertEdgeStatement(stmt, edgeStmtInstanceMap, indent);
         case "AfterStmt":
-          return this.convertAfterStatement(stmt, fbAfterMap, indent);
+          return this.convertAfterStatement(stmt, afterStmtInstanceMap, indent);
+        case "UseStmt":
+          return this.convertUseStatement(stmt, useStmtInstanceMap, indent);
         default:
           return this.statementConverter.emit(stmt, indent);
       }
@@ -298,58 +354,100 @@ export class TypeGenerator {
 
   private convertEdgeStatement(
     stmt: any,
-    fbInstanceMap: Map<any, string>,
+    edgeStmtInstanceMap: Map<any, EdgeStmtInstanceInfo>,
     indent: number
   ): string {
-    const triggerInstance = fbInstanceMap.get(stmt);
-    if (!triggerInstance) return "";
+    const instanceInfo = edgeStmtInstanceMap.get(stmt);
+    if (!instanceInfo) return "";
 
     const signal = this.expressionConverter.emit(stmt.signal);
+    // Correctly pass down the full context for recursion
     const body = this.convertStatementBody(
       stmt.stmts,
-      fbInstanceMap,
+      {
+        edgeStmtInstanceMap,
+        afterStmtInstanceMap: new Map(),
+        useStmtInstanceMap: new Map(),
+      },
       indent + 1
     );
 
-    return `${triggerInstance}(CLK := ${signal});\nIF ${triggerInstance}.Q THEN\n${body}\nEND_IF;`;
+    let out = `${this.pad(indent)}${
+      instanceInfo.instanceName
+    }(CLK := ${signal});\n`;
+    out += `${this.pad(indent)}IF ${instanceInfo.instanceName}.Q THEN\n`;
+    out += `${body}\n`;
+    out += `${this.pad(indent)}END_IF;`;
+    return out;
   }
 
   private convertAfterStatement(
-    stmt: any,
-    fbAfterMap: Map<any, string>,
+    stmt: AfterStmt,
+    afterStmtInstanceMap: Map<any, AfterStmtInstanceInfo>,
     indent: number
   ): string {
-    const timerInstance = fbAfterMap.get(stmt);
-    if (!timerInstance) return "";
+    const instanceInfo = afterStmtInstanceMap.get(stmt);
+    if (!instanceInfo) return "";
+    const { tonName, triggerName } = instanceInfo;
 
     const condition = this.expressionConverter.emit(stmt.condition);
-    const body = this.convertStatementBody(stmt.stmts, fbAfterMap, indent + 1);
+    // Correctly pass down the full context for recursion
+    const body = this.convertStatementBody(
+      stmt.stmts,
+      {
+        edgeStmtInstanceMap: new Map(),
+        afterStmtInstanceMap,
+        useStmtInstanceMap: new Map(),
+      },
+      indent + 1
+    );
 
-    return `${timerInstance}(IN := ${condition});\nIF ${timerInstance}.Q THEN\n${body}\n    ${timerInstance}(IN := FALSE);\nEND_IF`;
+    let out = `${this.pad(indent)}${tonName}(IN := ${condition});\n`;
+    out += `${this.pad(indent)}${triggerName}(CLK := ${tonName}.Q);\n`;
+    out += `${this.pad(indent)}IF ${triggerName}.Q THEN\n`;
+    out += `${body}\n`;
+    out += `${this.pad(indent)}END_IF;`;
+
+    return out;
+  }
+
+  private convertUseStatement(
+    stmt: any,
+    useStmtInstanceMap: Map<any, UseStmtInstanceInfo>,
+    indent: number
+  ): string {
+    throw Error("Use statements are not yet implemented in TypeGenerator");
   }
 
   private convertStatementBody(
     statements: any[],
-    instanceMap: Map<any, string>,
+    instanceData: {
+      edgeStmtInstanceMap: Map<any, EdgeStmtInstanceInfo>;
+      afterStmtInstanceMap: Map<any, AfterStmtInstanceInfo>;
+      useStmtInstanceMap: Map<any, UseStmtInstanceInfo>;
+    },
     indent: number
   ): string {
-    const converter = this.createLocalStatementConverter({
-      fbInstanceMap: instanceMap,
-      fbAfterMap: instanceMap,
-    });
+    const converter = this.createLocalStatementConverter(instanceData);
     return (statements ?? []).map((s: any) => converter(s, indent)).join("\n");
   }
 
   // Helper method to collect function block instances recursively
   private collectFBInstances(stmts: any[]): {
-    fbInstanceMap: Map<any, string>;
-    fbAfterMap: Map<any, string>;
+    edgeStmtInstanceMap: Map<Statement, EdgeStmtInstanceInfo>;
+    afterStmtInstanceMap: Map<Statement, AfterStmtInstanceInfo>;
+    useStmtInstanceMap: Map<Statement, UseStmtInstanceInfo>;
   } {
     const collector = new LocalInstanceRegistry();
     collector.collectFromStatements(stmts);
     return {
-      fbInstanceMap: collector.getFBInstanceMap(),
-      fbAfterMap: collector.getFBAfterMap(),
+      edgeStmtInstanceMap: collector.getEdgeStmtInstanceMap(),
+      afterStmtInstanceMap: collector.getAfterStmtInstanceMap(),
+      useStmtInstanceMap: collector.getUseStmtInstanceMap(),
     };
+  }
+
+  private pad(level: number): string {
+    return "    ".repeat(level);
   }
 }

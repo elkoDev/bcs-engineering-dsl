@@ -21,6 +21,7 @@ import {
   UseStmt,
   AfterStmt,
   Expr,
+  EdgeStmt,
 } from "../../../../language/generated/ast.js";
 import { ExpressionConverter } from "./expression-converter.js";
 import { GlobalInstanceManager } from "./global-instance-manager.js";
@@ -109,7 +110,7 @@ export class StatementConverter {
 
   private emitUse(stmt: UseStmt, indent: number): string {
     const p = this.pad(indent);
-    const { instanceName } = this.instances.getOrAssignFBInstance(stmt);
+    const { instanceName } = this.instances.getOrAssignUseStmtInstance(stmt);
     const inputs = stmt.inputArgs
       .map((arg) => `${arg.inputVar.ref?.name}:=${this.expr.emit(arg.value)}`)
       .join(", ");
@@ -134,7 +135,7 @@ export class StatementConverter {
   }
 
   private emitEdge(
-    stmt: Statement,
+    stmt: EdgeStmt,
     kind: "rising" | "falling",
     indent: number
   ): string {
@@ -146,7 +147,7 @@ export class StatementConverter {
 
     const signal = this.expr.emit((stmt as any).signal);
     const fbType = isR ? "R_TRIG" : "F_TRIG";
-    const { instanceName } = this.instances.getOrAssignEdgeFBInstance(
+    const { instanceName } = this.instances.getOrAssignEdgeStmtInstance(
       stmt,
       kind,
       fbType
@@ -159,20 +160,14 @@ export class StatementConverter {
   }
 
   private emitAfter(stmt: AfterStmt, indent: number): string {
-    const { tonName, firedFlagName } =
+    const { tonName, triggerName } =
       this.instances.getOrAssignAfterStmtInstance(stmt);
     const cond = this.expr.emit(stmt.condition);
 
-    let out = `${this.pad(indent)}IF NOT (${cond}) THEN\n`;
-    out += `${this.pad(indent + 1)}${firedFlagName} := FALSE;\n`;
-    out += `${this.pad(indent)}END_IF;\n\n`;
-
-    out += `${this.pad(
-      indent
-    )}${tonName}(IN := ${cond} AND NOT ${firedFlagName});\n`;
-    out += `${this.pad(indent)}IF ${tonName}.Q THEN\n`;
+    let out = `${this.pad(indent)}${tonName}(IN := ${cond});\n`;
+    out += `${this.pad(indent)}${triggerName}(CLK := ${tonName}.Q);\n`;
+    out += `${this.pad(indent)}IF ${triggerName}.Q THEN\n`;
     out += this.emitBlock(stmt.stmts ?? [], indent + 1);
-    out += `\n${this.pad(indent + 1)}${firedFlagName} := TRUE;`;
 
     return out + `\n${this.pad(indent)}END_IF;\n`;
   }
