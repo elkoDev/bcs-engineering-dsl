@@ -11,8 +11,7 @@ npm install
 ## 1.2 Build
 
 ```bash
-npm run langium:generate
-npm run build
+npm run langium:generate && npm run build
 ```
 
 ## 1.3 Generate Extension
