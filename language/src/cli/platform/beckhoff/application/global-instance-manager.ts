@@ -5,7 +5,6 @@ import {
   Statement,
   AfterStmt,
   ControlUnit,
-  isUseStmt,
   EdgeStmt,
 } from "../../../../language/generated/ast.js";
 import {
@@ -18,20 +17,14 @@ import { StatementTraverser } from "./statement-traverser.js";
 import { LibraryHandlerManager } from "./library-handlers/library-handler-manager.js";
 
 /**
- * Manages the assignment and tracking of global function block (FB) and timer instances
- * within the Beckhoff application platform. This class ensures unique instance names for
- * function blocks, handles edge detection and timer (AFTER) statements, and manages
- * additional required FB instances based on hardware and control model analysis.
- *
- * Responsibilities include:
- * - Assigning and retrieving unique FB instance information for `UseStmt` and edge detection statements.
- * - Managing timer-on (TON) instances for AFTER statements.
- * - Tracking and providing all declared FB and AFTER statement instances.
- * - Detecting and assigning required communication FBs (e.g., DALI) based on hardware configuration.
- * - Resetting instance state for reuse.
+ * Manages the assignment and tracking of global function block (FB) instances, edge detection instances,
+ * and timer instances within a Beckhoff application context.
  */
 export class GlobalInstanceManager {
-  private readonly fbInstanceMap = new Map<Statement | string, InstanceInfo>();
+  private readonly fbInstanceMap = new Map<
+    Statement | ControlUnit | string,
+    InstanceInfo
+  >();
   private fbInstanceCounter = 1;
   private readonly controlModel: ControlModel;
   private readonly hardwareModel: HardwareModel;
@@ -54,6 +47,23 @@ export class GlobalInstanceManager {
     const instanceName = this.createUniqueFBInstanceName(fbType);
     const info: FBInstanceInfo = { kind: "fb", instanceName, fbType };
     this.fbInstanceMap.set(useStmt, info);
+    return info;
+  }
+
+  public getOrAssignUnitTriggerInstance(
+    unit: ControlUnit
+  ): EdgeStmtInstanceInfo {
+    if (this.fbInstanceMap.has(unit)) {
+      return this.fbInstanceMap.get(unit)! as EdgeStmtInstanceInfo;
+    }
+    const instanceName = this.createUniqueFBInstanceName(`rTrig_${unit.name}`);
+    const info: EdgeStmtInstanceInfo = {
+      kind: "edge",
+      instanceName,
+      edgeType: "rising",
+      fbType: "R_TRIG",
+    };
+    this.fbInstanceMap.set(unit, info);
     return info;
   }
 
@@ -94,9 +104,7 @@ export class GlobalInstanceManager {
     return info;
   }
 
-  public getDaliComInstance(
-    daliComType: string
-  ): FBInstanceInfo | undefined {
+  public getDaliComInstance(daliComType: string): FBInstanceInfo | undefined {
     const key = `daliCom_${daliComType}`;
     const instance = this.fbInstanceMap.get(key);
     return instance?.kind === "fb" ? instance : undefined;
@@ -137,30 +145,30 @@ export class GlobalInstanceManager {
     );
   }
 
-  public assignFBInstancesFromControlUnit(controlUnit: ControlUnit) {
-    const useStmts = controlUnit.stmts.filter(isUseStmt);
-    for (const useStmt of useStmts) {
-      this.getOrAssignUseStmtInstance(useStmt);
-    }
-  }
-
-  public assignEdgeDetectionInstances(mainStatements: Statement[]) {
+  public assignFBInstances(
+    mainStatements: Statement[],
+    controlUnits: ControlUnit[]
+  ) {
     StatementTraverser.traverse(mainStatements, {
+      visitUseStmt: (stmt) => {
+        this.getOrAssignUseStmtInstance(stmt);
+      },
       visitOnRisingEdge: (stmt) => {
         this.getOrAssignEdgeStmtInstance(stmt, "rising", "R_TRIG");
       },
       visitOnFallingEdge: (stmt) => {
         this.getOrAssignEdgeStmtInstance(stmt, "falling", "F_TRIG");
       },
-    });
-  }
-
-  public assignAfterStmtInstances(mainStatements: Statement[]) {
-    StatementTraverser.traverse(mainStatements, {
       visitAfterStmt: (stmt) => {
         this.getOrAssignAfterStmtInstance(stmt);
       },
     });
+
+    controlUnits
+      .filter((unit) => unit.time || unit.isOnce)
+      .forEach((unit) => {
+        this.getOrAssignUnitTriggerInstance(unit);
+      });
   }
 
   private createUniqueFBInstanceName(fbType: string): string {

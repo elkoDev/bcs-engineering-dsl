@@ -9,12 +9,7 @@ import { LoopVariableAnalyzer } from "./loop-variable-analyzer.js";
 import { BoilerplateAnalyzer } from "./boilerplate-analyzer.js";
 import { LibraryHandlerManager } from "./library-handlers/library-handler-manager.js";
 import { EmittedVarDecl, HardwareDatapoint } from "../models/types.js";
-import {
-  extractControlUnits,
-  ScheduledControlUnit,
-  ConditionalControlUnit,
-  RegularControlUnit,
-} from "../utils.js";
+import { isScheduledControlUnit, isConditionalControlUnit } from "../utils.js";
 import { TypeRefConverter } from "./type-ref-converter.js";
 import {
   HardwareModel,
@@ -23,6 +18,7 @@ import {
   isControlUnit,
   isVarDecl,
   ControlUnit,
+  isStatement,
 } from "../../../../language/generated/ast.js";
 
 /**
@@ -66,27 +62,20 @@ export class MainProgramGenerator {
     );
 
     const globalVars = this.collectGlobalVarDecls();
-    const { controlUnitVars, mainStatements } = this.processControlUnits();
+    const { controlUnitVars, mainStatements } = this.collectControlUnitData();
     const mainVars = [...globalVars, ...controlUnitVars];
 
-    this.instanceManager.assignEdgeDetectionInstances(mainStatements);
-    this.instanceManager.assignAfterStmtInstances(mainStatements);
-
-    const { scheduled, conditional, regular } = extractControlUnits(
-      this.controlModel
+    this.instanceManager.assignFBInstances(
+      mainStatements,
+      this.controlModel.controlBlock.items.filter(isControlUnit)
     );
 
-    let implContent = this.generateMainImplContent(
-      scheduled,
-      conditional,
-      regular
-    );
+    let implContent = this.generateMainImplContent();
 
     const declContent = this.generateMainDeclContent(
       { inputs, outputs },
       mainStatements,
       mainVars,
-      { scheduled, conditional },
       BoilerplateAnalyzer.isTimeBoilerplateNeeded(implContent)
     );
 
@@ -99,7 +88,7 @@ export class MainProgramGenerator {
     return [declFilePath, implFilePath];
   }
 
-  private processControlUnits(): {
+  private collectControlUnitData(): {
     controlUnitVars: EmittedVarDecl[];
     mainStatements: Statement[];
   } {
@@ -109,14 +98,16 @@ export class MainProgramGenerator {
     for (const item of this.controlModel.controlBlock.items) {
       if (!isControlUnit(item)) continue;
       const controlUnit = item;
-      // Filter out variable declarations and only add executable statements
+
+      // Collect executable statements from the control unit
       const executableStmts = controlUnit.stmts.filter(
         (stmt) => !isVarDecl(stmt)
       ) as Statement[];
       mainStatements.push(...executableStmts);
+
+      // Collect variable declarations from the control unit
       const unitVars = this.getVarDeclsFromControlUnit(controlUnit);
       controlUnitVars.push(...unitVars);
-      this.instanceManager.assignFBInstancesFromControlUnit(controlUnit);
     }
 
     return { controlUnitVars, mainStatements };
@@ -139,14 +130,9 @@ export class MainProgramGenerator {
     hardware: { inputs: HardwareDatapoint[]; outputs: HardwareDatapoint[] },
     mainStatements: Statement[],
     mainVars: EmittedVarDecl[],
-    controlUnits: {
-      scheduled: ScheduledControlUnit[];
-      conditional: ConditionalControlUnit[];
-    },
     usesBoilerplate: boolean = true
   ): string {
     const { inputs, outputs } = hardware;
-    const { scheduled, conditional } = controlUnits;
     const fbInstanceDecls = this.instanceManager.getFBInstanceDeclarations();
     const edgeStmtDecls =
       this.instanceManager.getEdgeStmtInstanceDeclarations();
@@ -233,21 +219,6 @@ export class MainProgramGenerator {
               `,
               { appendNewLineIfNotEmpty: true }
             )}
-            ${joinToNode(
-              scheduled,
-              (unit) => expandToNode`
-                ${unit.name}_hasRun: BOOL := FALSE;
-                ${unit.name}_lastRunDay: DATE;
-              `,
-              { appendNewLineIfNotEmpty: true }
-            )}
-            ${joinToNode(
-              conditional.filter((unit) => unit.runOnce),
-              (unit) => expandToNode`
-                ${unit.name}_hasRun: BOOL := FALSE;
-              `,
-              { appendNewLineIfNotEmpty: true }
-            )}
             bRunOnlyOnce: BOOL := FALSE;${
               usesBoilerplate
                 ? BoilerplateAnalyzer.getTimeBoilerplateDeclarations()
@@ -258,80 +229,68 @@ export class MainProgramGenerator {
     );
   }
 
-  private generateMainImplContent(
-    scheduled: ScheduledControlUnit[],
-    conditional: ConditionalControlUnit[],
-    regular: RegularControlUnit[]
-  ): string {
+  private generateMainImplContent(): string {
     const units = this.controlModel.controlBlock.items.filter(isControlUnit);
 
     let mainBody = toString(expandToNode`
     ${joinToNode(
       units,
       (unit) => {
-        const sch = scheduled.find((u) => u.name === unit.name);
-        if (sch) {
+        let unitStatements = unit.stmts.filter(
+          (s) => isStatement(s) && !isVarDecl(s)
+        ) as Statement[];
+
+        if (isScheduledControlUnit(unit)) {
+          const { instanceName } =
+            this.instanceManager.getOrAssignUnitTriggerInstance(unit);
+          const condition = `todNow >= ${unit.timeLiteral}`;
           return expandToNode`
-          // Scheduled Control Unit '${sch.name}' @ ${sch.timeLiteral}
-          IF dNow <> ${sch.name}_lastRunDay THEN
-              ${sch.name}_hasRun := FALSE;
-          END_IF;
-          IF (NOT ${sch.name}_hasRun) AND (todNow >= ${sch.timeLiteral}) THEN
-          ${joinToNode(
-            sch.stmts.filter((s) => !isVarDecl(s)),
-            (stmt) => expandToNode`
-              ${this.statementConverter.emit(stmt, 1)}
-          `,
-            { appendNewLineIfNotEmpty: true }
-          )}
-              ${sch.name}_hasRun      := TRUE;
-              ${sch.name}_lastRunDay := dNow;
-          END_IF;
-        `;
+            // Scheduled Control Unit '${unit.name}' @ ${unit.timeLiteral}
+            ${instanceName}(CLK := ${condition});
+            IF ${instanceName}.Q THEN
+            ${joinToNode(
+              unitStatements,
+              (stmt: Statement) => this.statementConverter.emit(stmt, 1),
+              { appendNewLineIfNotEmpty: true }
+            )}
+            END_IF;
+          `;
         }
 
-        const cond = conditional.find((u) => u.name === unit.name);
-        if (cond) {
-          if (cond.runOnce) {
+        if (isConditionalControlUnit(unit)) {
+          const condition = this.expressionConverter.emit(unit.condition);
+          if (unit.isOnce) {
+            const { instanceName } =
+              this.instanceManager.getOrAssignUnitTriggerInstance(unit);
             return expandToNode`
-            // Conditional Control Unit '${cond.name}' (runOnce)
-            IF NOT (${this.expressionConverter.emit(cond.condition)}) THEN
-                ${cond.name}_hasRun := FALSE;
-            END_IF;
-            IF (NOT ${cond.name}_hasRun) AND (${this.expressionConverter.emit(
-              cond.condition
-            )}) THEN
-            ${joinToNode(
-              cond.stmts.filter((s) => !isVarDecl(s)),
-              (stmt) => expandToNode`
-                ${this.statementConverter.emit(stmt, 1)}
-            `,
-              { appendNewLineIfNotEmpty: true }
-            )}
-                ${cond.name}_hasRun := TRUE;
-            END_IF;
-          `;
+              // Conditional Control Unit '${unit.name}' (runOnce)
+              ${instanceName}(CLK := ${condition});
+              IF ${instanceName}.Q THEN
+              ${joinToNode(
+                unitStatements,
+                (stmt: Statement) => this.statementConverter.emit(stmt, 1),
+                { appendNewLineIfNotEmpty: true }
+              )}
+              END_IF;
+            `;
           } else {
             return expandToNode`
-            // Conditional Control Unit '${cond.name}'
-            IF ${this.expressionConverter.emit(cond.condition)} THEN
-            ${joinToNode(
-              cond.stmts.filter((s) => !isVarDecl(s)),
-              (stmt) => expandToNode`
-                ${this.statementConverter.emit(stmt, 1)}
-            `,
-              { appendNewLineIfNotEmpty: true }
-            )}
-            END_IF;
-          `;
+              // Conditional Control Unit '${unit.name}'
+              IF ${condition} THEN
+              ${joinToNode(
+                unitStatements,
+                (stmt: Statement) => this.statementConverter.emit(stmt, 1),
+                { appendNewLineIfNotEmpty: true }
+              )}
+              END_IF;
+            `;
           }
         }
 
-        const reg = regular.find((u) => u.name === unit.name)!;
         return expandToNode`
-        // Control Unit '${reg.name}'
+        // Control Unit '${unit.name}'
         ${joinToNode(
-          reg.stmts.filter((s) => !isVarDecl(s)),
+          unitStatements,
           (stmt) => expandToNode`
             ${this.statementConverter.emit(stmt, 0)}
         `,
