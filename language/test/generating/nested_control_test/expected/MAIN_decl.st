@@ -7,6 +7,5 @@ VAR
     TestNestedControls_result: REAL;
     TestNestedControls_status: STRING;
     TestNestedControls_processedItems: INT;
-    nestedControlsFBInstance1: NestedControlsFB; (* Function block instance *)
-    bRunOnlyOnce: BOOL := FALSE;
+    NestedControlsFBInstance1: NestedControlsFB;
 END_VAR

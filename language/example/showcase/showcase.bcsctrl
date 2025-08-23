@@ -1,9 +1,8 @@
 control ShowcaseController {
-    var alarm: BOOL = false;
-    var doorIsOpen: BOOL = false;
-    unit MyUnit {
-        after T#5s if(doorIsOpen){
-            alarm = true;
-        }
+    var presenceSensor: BOOL;
+    var roomOccupancy: INT = 0;
+    
+    unit CountPersonEntering once when (presenceSensor) {
+        roomOccupancy = roomOccupancy + 1;
     }
 }

@@ -26,11 +26,7 @@ export class BoilerplateAnalyzer {
 
   public static getTimeBoilerplateDeclarations(): string {
     return `
-    fbLocalTime: FB_LocalSystemTime := (
-      sNetID := '',
-      bEnable := TRUE,
-      dwCycle := 5
-    );
+    fbLocalTime: FB_LocalSystemTime := (bEnable := TRUE);
     timeNow: TIMESTRUCT;
     todNow: TIME_OF_DAY;
     dNow: DATE;`;

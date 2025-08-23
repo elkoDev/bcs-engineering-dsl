@@ -2,14 +2,9 @@ PROGRAM MAIN
 VAR
     x: INT;
     y: BOOL;
-    rTrig_ScheduledUnitInstance1: R_TRIG; (* Function block instance *)
-    rTrig_OnceConditionalUnitInstance2: R_TRIG; (* Function block instance *)
-    bRunOnlyOnce: BOOL := FALSE;
-    fbLocalTime: FB_LocalSystemTime := (
-      sNetID := '',
-      bEnable := TRUE,
-      dwCycle := 5
-    );
+    R_TrigInstance_ScheduledUnit_1: R_TRIG;
+    R_TrigInstance_OnceConditionalUnit_2: R_TRIG;
+    fbLocalTime: FB_LocalSystemTime := (bEnable := TRUE);
     timeNow: TIMESTRUCT;
     todNow: TIME_OF_DAY;
     dNow: DATE;

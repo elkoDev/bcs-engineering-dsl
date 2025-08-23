@@ -144,107 +144,103 @@ export class MainProgramGenerator {
       (loopVar) => !declaredVarNames.has(loopVar.name)
     );
 
-    return toString(
-      expandToNode`
-        PROGRAM MAIN
-        VAR
-            ${joinToNode(
-              inputs,
-              (input) => expandToNode`
-                ${input.name} AT %I*: ${input.type}; (* Input channel from hardware *)
-              `,
-              { appendNewLineIfNotEmpty: true }
-            )}
-            ${joinToNode(
-              outputs,
-              (output) => expandToNode`
-                ${output.name} AT %Q*: ${output.type}; (* Output channel to hardware *)
-              `,
-              { appendNewLineIfNotEmpty: true }
-            )}
-            ${joinToNode(
-              mainVars,
-              (v) => expandToNode`
-                ${v.name}: ${TypeRefConverter.emit(v.varDecl.typeRef)}${
-                v.varDecl.init
-                  ? ` := ${this.expressionConverter.emit(v.varDecl.init)}`
-                  : ""
-              };
-              `,
-              { appendNewLineIfNotEmpty: true }
-            )}
-            ${joinToNode(
-              loopVarsToDeclare,
-              (loopVar) => expandToNode`
-                ${loopVar.name}: ${loopVar.type}${
-                loopVar.init
-                  ? ` := ${this.expressionConverter.emit(loopVar.init)}`
-                  : ""
-              };
-              `,
-              { appendNewLineIfNotEmpty: true }
-            )}
-            ${joinToNode(
-              fbInstanceDecls,
-              ({ instanceName, fbType }) => {
-                // Library special handling for constructor
-                const special = LibraryHandlerManager.handleLibrarySpecials(
-                  fbType,
-                  "",
-                  this.instanceManager,
-                  this.hardwareModel
-                );
-                if (special.constructorArgs) {
-                  return expandToNode`
-                    ${instanceName}: ${fbType}(${special.constructorArgs}); (* Function block instance *)
-                  `;
-                }
-                return expandToNode`
-                  ${instanceName}: ${fbType}; (* Function block instance *)
-                `;
-              },
-              { appendNewLineIfNotEmpty: true }
-            )}
-            ${joinToNode(
-              edgeStmtDecls,
-              ({ instanceName, fbType }) =>
-                expandToNode`${instanceName}: ${fbType}; (* Function block instance *)`,
-              { appendNewLineIfNotEmpty: true }
-            )}
-            ${joinToNode(
-              afterStmtDecls,
-              ({ tonName, ptValue, triggerName }) => expandToNode`
-                ${tonName}: TON := (PT := ${ptValue});
-                ${triggerName}: R_TRIG;
-              `,
-              { appendNewLineIfNotEmpty: true }
-            )}
-            bRunOnlyOnce: BOOL := FALSE;${
-              usesBoilerplate
-                ? BoilerplateAnalyzer.getTimeBoilerplateDeclarations()
-                : ""
-            }
-        END_VAR
-      `
-    );
+    const declarations: string[] = [];
+
+    const addDecl = (declaration: string) =>
+      declarations.push(`    ${declaration}`);
+
+    // Add hardware inputs
+    inputs.forEach((input) => {
+      addDecl(
+        `${input.name} AT %I*: ${input.type}; (* Input channel from hardware *)`
+      );
+    });
+
+    // Add hardware outputs
+    outputs.forEach((output) => {
+      addDecl(
+        `${output.name} AT %Q*: ${output.type}; (* Output channel to hardware *)`
+      );
+    });
+
+    // Add main variables
+    mainVars.forEach((v) => {
+      const init = v.varDecl.init
+        ? ` := ${this.expressionConverter.emit(v.varDecl.init)}`
+        : "";
+      addDecl(`${v.name}: ${TypeRefConverter.emit(v.varDecl.typeRef)}${init};`);
+    });
+
+    // Add loop variables
+    loopVarsToDeclare.forEach((loopVar) => {
+      const init = loopVar.init
+        ? ` := ${this.expressionConverter.emit(loopVar.init)}`
+        : "";
+      addDecl(`${loopVar.name}: ${loopVar.type}${init};`);
+    });
+
+    // Add function block instances
+    fbInstanceDecls.forEach(({ instanceName, fbType }) => {
+      const special = LibraryHandlerManager.handleLibrarySpecials(
+        fbType,
+        "",
+        this.instanceManager,
+        this.hardwareModel
+      );
+      if (special.constructorArgs) {
+        addDecl(`${instanceName}: ${fbType}(${special.constructorArgs});`);
+      } else {
+        addDecl(`${instanceName}: ${fbType};`);
+      }
+    });
+
+    // Add edge statement instances
+    edgeStmtDecls.forEach(({ instanceName, fbType }) => {
+      addDecl(`${instanceName}: ${fbType};`);
+    });
+
+    // Add after statement instances
+    afterStmtDecls.forEach(({ tonName, ptValue, triggerName }) => {
+      addDecl(`${tonName}: TON := (PT := ${ptValue});`);
+      addDecl(`${triggerName}: R_TRIG;`);
+    });
+
+    // Add boilerplate if needed
+    if (usesBoilerplate) {
+      const boilerplateDecls =
+        BoilerplateAnalyzer.getTimeBoilerplateDeclarations().trim();
+      if (boilerplateDecls) {
+        boilerplateDecls.split("\n").forEach((line) => {
+          const trimmedLine = line.trim();
+          if (trimmedLine) {
+            addDecl(trimmedLine);
+          }
+        });
+      }
+    }
+
+    return `PROGRAM MAIN
+VAR
+${declarations.join("\n")}
+END_VAR`;
   }
 
   private generateMainImplContent(): string {
     const units = this.controlModel.controlBlock.items.filter(isControlUnit);
 
     let mainBody = toString(expandToNode`
-    ${joinToNode(
-      units,
-      (unit) => {
-        let unitStatements = unit.stmts.filter(
-          (s) => isStatement(s) && !isVarDecl(s)
-        ) as Statement[];
+${joinToNode(
+  units,
+  (unit) => {
+    let unitStatements = unit.stmts.filter(
+      (s) => isStatement(s) && !isVarDecl(s)
+    ) as Statement[];
 
-        if (isScheduledControlUnit(unit)) {
-          const { instanceName } =
-            this.instanceManager.getOrAssignUnitTriggerInstance(unit);
-          const condition = `todNow >= ${unit.time}`;
-          return expandToNode`
+    if (isScheduledControlUnit(unit)) {
+      const { instanceName } =
+        this.instanceManager.getOrAssignUnitTriggerInstance(unit);
+      const condition = `todNow >= ${unit.time}`;
+      return expandToNode`
             // Scheduled Control Unit '${unit.name}' @ ${unit.time}
             ${instanceName}(CLK := ${condition});
             IF ${instanceName}.Q THEN
@@ -255,14 +251,14 @@ export class MainProgramGenerator {
             )}
             END_IF;
           `;
-        }
+    }
 
-        if (isConditionalControlUnit(unit)) {
-          const condition = this.expressionConverter.emit(unit.condition);
-          if (unit.isOnce) {
-            const { instanceName } =
-              this.instanceManager.getOrAssignUnitTriggerInstance(unit);
-            return expandToNode`
+    if (isConditionalControlUnit(unit)) {
+      const condition = this.expressionConverter.emit(unit.condition);
+      if (unit.isOnce) {
+        const { instanceName } =
+          this.instanceManager.getOrAssignUnitTriggerInstance(unit);
+        return expandToNode`
               // Conditional Control Unit '${unit.name}' (runOnce)
               ${instanceName}(CLK := ${condition});
               IF ${instanceName}.Q THEN
@@ -273,8 +269,8 @@ export class MainProgramGenerator {
               )}
               END_IF;
             `;
-          } else {
-            return expandToNode`
+      } else {
+        return expandToNode`
               // Conditional Control Unit '${unit.name}'
               IF ${condition} THEN
               ${joinToNode(
@@ -284,10 +280,10 @@ export class MainProgramGenerator {
               )}
               END_IF;
             `;
-          }
-        }
+      }
+    }
 
-        return expandToNode`
+    return expandToNode`
         // Control Unit '${unit.name}'
         ${joinToNode(
           unitStatements,
@@ -297,18 +293,16 @@ export class MainProgramGenerator {
           { appendNewLineIfNotEmpty: true }
         )}
       `;
-      },
-      { appendNewLineIfNotEmpty: true, prefix: "\n" }
-    )}
-    `);
+  },
+  { appendNewLineIfNotEmpty: true }
+)}
+`);
 
     const boilerplateInit = BoilerplateAnalyzer.isTimeBoilerplateNeeded(
       mainBody
     )
       ? BoilerplateAnalyzer.getTimeInitializationCode()
       : "";
-    return `IF NOT bRunOnlyOnce THEN\n    ADSLOGSTR(\n      msgCtrlMask := ADSLOG_MSGTYPE_LOG,\n      msgFmtStr   := 'Program started %s',\n      strArg      := 'successfully!'\n    );\n    bRunOnlyOnce := TRUE;\nEND_IF;${
-      boilerplateInit.length == 0 ? "" : "\n"
-    }${boilerplateInit}\n${mainBody}`;
+    return `${boilerplateInit}${boilerplateInit ? "\n" : ""}${mainBody}`;
   }
 }

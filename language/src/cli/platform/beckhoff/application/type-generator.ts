@@ -289,8 +289,7 @@ export class TypeGenerator {
   ) {
     const edgeDeclarations = joinToNode(
       edgeDecls,
-      (decl) =>
-        expandToNode`${decl.instanceName}: ${decl.fbType}; (* Function block instance *)`,
+      (decl) => expandToNode`${decl.instanceName}: ${decl.fbType};`,
       { appendNewLineIfNotEmpty: true }
     );
 
@@ -304,8 +303,7 @@ ${decl.triggerName}: R_TRIG;`,
 
     const useDeclarations = joinToNode(
       useDecls,
-      (decl) =>
-        expandToNode`${decl.instanceName}: ${decl.fbType}; (* Function block instance *)`,
+      (decl) => expandToNode`${decl.instanceName}: ${decl.fbType};`,
       { appendNewLineIfNotEmpty: true }
     );
 

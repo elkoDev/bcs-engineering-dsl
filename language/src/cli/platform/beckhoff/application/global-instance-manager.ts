@@ -44,7 +44,8 @@ export class GlobalInstanceManager {
       return this.fbInstanceMap.get(useStmt)! as FBInstanceInfo;
     }
     const fbType = useStmt.functionBlockRef.ref?.name ?? "UNKNOWN_FB";
-    const instanceName = this.createUniqueFBInstanceName(fbType);
+    const idx = this.fbInstanceCounter++;
+    const instanceName = `${fbType}Instance${idx}`;
     const info: FBInstanceInfo = { kind: "fb", instanceName, fbType };
     this.fbInstanceMap.set(useStmt, info);
     return info;
@@ -56,7 +57,8 @@ export class GlobalInstanceManager {
     if (this.fbInstanceMap.has(unit)) {
       return this.fbInstanceMap.get(unit)! as EdgeStmtInstanceInfo;
     }
-    const instanceName = this.createUniqueFBInstanceName(`rTrig_${unit.name}`);
+    const idx = this.fbInstanceCounter++;
+    const instanceName = `R_TrigInstance_${unit.name}_${idx}`;
     const info: EdgeStmtInstanceInfo = {
       kind: "edge",
       instanceName,
@@ -75,7 +77,9 @@ export class GlobalInstanceManager {
     if (this.fbInstanceMap.has(stmt)) {
       return this.fbInstanceMap.get(stmt)! as EdgeStmtInstanceInfo;
     }
-    const instanceName = this.createUniqueFBInstanceName(fbType);
+    let prefix = edgeType === "rising" ? "R_TRIG_Instance" : "F_TRIG_Instance";
+    const idx = this.fbInstanceCounter++;
+    const instanceName = `${prefix}${idx}`;
     const info: EdgeStmtInstanceInfo = {
       kind: "edge",
       instanceName,
@@ -91,8 +95,8 @@ export class GlobalInstanceManager {
       return this.fbInstanceMap.get(stmt)! as AfterStmtInstanceInfo;
     }
     const idx = this.fbInstanceCounter++;
-    const tonName = `tonAfter${idx}`;
-    const triggerName = `rTrigAfter${idx}`;
+    const tonName = `TON_AfterInstance${idx}`;
+    const triggerName = `R_TRIG_AfterInstance${idx}`;
     const ptValue = stmt.time;
     const info: AfterStmtInstanceInfo = {
       kind: "after",
@@ -114,7 +118,8 @@ export class GlobalInstanceManager {
     const fbType = daliComType;
     const key = `daliCom_${fbType}`;
     if (!this.fbInstanceMap.has(key)) {
-      const instanceName = this.createUniqueFBInstanceName(fbType);
+      const idx = this.fbInstanceCounter++;
+      const instanceName = `${fbType}Instance${idx}`;
       this.fbInstanceMap.set(key, { kind: "fb", instanceName, fbType });
     }
   }
@@ -169,13 +174,5 @@ export class GlobalInstanceManager {
       .forEach((unit) => {
         this.getOrAssignUnitTriggerInstance(unit);
       });
-  }
-
-  private createUniqueFBInstanceName(fbType: string): string {
-    const name = `${fbType.charAt(0).toLowerCase()}${fbType.slice(1)}Instance${
-      this.fbInstanceCounter
-    }`;
-    this.fbInstanceCounter++;
-    return name;
   }
 }

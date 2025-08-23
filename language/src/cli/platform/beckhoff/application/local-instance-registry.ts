@@ -35,7 +35,7 @@ export class LocalInstanceRegistry {
         if (!this.edgeStmtInstanceMap.has(stmt)) {
           this.edgeStmtInstanceMap.set(stmt, {
             kind: "edge",
-            instanceName: `r_TRIGInstance${this.rTrigCounter++}`,
+            instanceName: `R_TRIG_Instance${this.rTrigCounter++}`,
             edgeType: "rising",
             fbType: "R_TRIG",
           });
@@ -45,7 +45,7 @@ export class LocalInstanceRegistry {
         if (!this.edgeStmtInstanceMap.has(stmt)) {
           this.edgeStmtInstanceMap.set(stmt, {
             kind: "edge",
-            instanceName: `f_TRIGInstance${this.fTrigCounter++}`,
+            instanceName: `F_TRIG_Instance${this.fTrigCounter++}`,
             edgeType: "falling",
             fbType: "F_TRIG",
           });
@@ -56,8 +56,8 @@ export class LocalInstanceRegistry {
           const idx = this.tonCounter++;
           this.afterStmtInstanceMap.set(stmt, {
             kind: "after",
-            tonName: `tonAfter${idx}`,
-            triggerName: `rTrigAfter${idx}`,
+            tonName: `TON_AfterInstance${idx}`,
+            triggerName: `R_TRIG_AfterInstance${idx}`,
             ptValue: stmt.time,
           });
         }

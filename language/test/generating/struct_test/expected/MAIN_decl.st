@@ -6,5 +6,4 @@ VAR
     TestStructs_perimeter: REAL;
     TestStructs_rects: ARRAY [0..1] OF Rectangle := [(x:=1, y:=2), (x:=3, y:=4)];
     TestStructs_area2: REAL := TestStructs_rects[0].x * TestStructs_rects[0].y;
-    bRunOnlyOnce: BOOL := FALSE;
 END_VAR

@@ -5,6 +5,5 @@ VAR
     TestSwitch_heatingValue: REAL;
     TestSwitch_coolingValue: REAL;
     TestSwitch_statusMsg: STRING;
-    switchFBInstance1: SwitchFB; (* Function block instance *)
-    bRunOnlyOnce: BOOL := FALSE;
+    SwitchFBInstance1: SwitchFB;
 END_VAR
