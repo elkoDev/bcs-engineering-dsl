@@ -58,7 +58,7 @@ export class GlobalInstanceManager {
       return this.fbInstanceMap.get(unit)! as EdgeStmtInstanceInfo;
     }
     const idx = this.fbInstanceCounter++;
-    const instanceName = `R_TrigInstance_${unit.name}_${idx}`;
+    const instanceName = `R_TRIG_UnitInstance_${unit.name}${idx}`;
     const info: EdgeStmtInstanceInfo = {
       kind: "edge",
       instanceName,
