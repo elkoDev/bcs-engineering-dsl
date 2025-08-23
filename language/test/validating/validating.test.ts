@@ -122,7 +122,7 @@ describe("BCS Control Validation Tests", () => {
       // 3. Wrong input types
       "Type mismatch for input 'iWindow': expected 'BOOL', got 'REAL'.",
       "Type mismatch for input 'iMode': expected 'ENUM:Mode', got 'ENUM:Status'.",
-      "Logical operator '||' can only be applied to BOOL operands, but got 'INT' and 'INT'.",
+      "Logical operator '||' requires both operands to be BOOL, but got 'INT' and 'INT'.",
       "Type mismatch for input 'iTemp': expected 'REAL', got 'BOOL'.",
       // 4. Output count mismatch for single assignment
       "Function block 'LightLogicFB' has 2 outputs, cannot use direct assignment. Use mapping instead.",
@@ -162,24 +162,25 @@ describe("BCS Control Validation Tests", () => {
     const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
-    expect(allDiagnostics.length).toBe(35);
+    expect(allDiagnostics.length).toBe(17);
     const expectedMessages = [
       "Duplicate enum 'DuplicateMode'.",
       "Duplicate struct 'DuplicateStruct'.",
+      "Duplicate function block 'DuplicateFB'.",
+      "Duplicate global variable 'duplicateVar'.",
+      "Duplicate control unit 'DuplicateUnit'.",
+      "Duplicate variable name 'iDuplicate' in function block 'DuplicateFB'.",
+      "Duplicate variable name 'oDuplicate' in function block 'DuplicateFB'.",
+      "Duplicate variable name 'lDuplicate' in function block 'DuplicateFB'.",
+      "Duplicate variable name 'duplicateFBVar' in function block 'DuplicateFB'.",
       "Only one 'inputs' block allowed in function block 'DuplicateFB', found 2.",
       "Only one 'outputs' block allowed in function block 'DuplicateFB', found 2.",
       "Only one 'locals' block allowed in function block 'DuplicateFB', found 2.",
-      "Only one 'logic' block allowed in function block 'DuplicateFB', found 2.",
-      "Duplicate variable name 'iDuplicate' in function block 'DuplicateFB'.",
-      "Duplicate variable name 'lDuplicate' in function block 'DuplicateFB'.",
-      "Duplicate variable name 'oDuplicate' in function block 'DuplicateFB'.",
-      "Duplicate variable name 'duplicateFBVar' in function block 'DuplicateFB'.",
-      "Duplicate function block 'DuplicateFB'.",
-      "Duplicate global variable 'duplicateVar'.",
-      "Duplicate local var name 'duplicateUnitVar' in unit 'DuplicateUnit'.",
-      "Duplicate control unit 'DuplicateUnit'.",
-      "Duplicate component name 'motor' in this controller.",
+      "Duplicate variable 'duplicateUnitVar' in unit 'DuplicateUnit'.",
+      "Variable 'globalVar' conflicts with global variable.",
       "Duplicate component name 'windowContact_duplicate' in this controller.",
+      "Duplicate component name 'motor' in this controller.",
+      "Link \"Channel 2^Input\" on module 'IOModule_DI1' is already used by 'windowContact_duplicate.value'.",
     ];
 
     expectedMessages.forEach((msg) => {
@@ -245,7 +246,7 @@ describe("BCS Control Validation Tests", () => {
     const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
-    expect(allDiagnostics.length).toBe(47);
+    expect(allDiagnostics.length).toBe(28);
 
     const expectedErrors = [
       'Type mismatch: Cannot assign "INT" to "BOOL".',
@@ -290,7 +291,7 @@ describe("BCS Control Validation Tests", () => {
     const allDiagnostics = getDiagnosticsWithoutHints(allDocs);
     const diagString = allDiagnostics.map((d) => d.message).join("\n");
 
-    expect(allDiagnostics.length).toBe(13);
+    expect(allDiagnostics.length).toBe(12);
 
     const expectedErrors = [
       "Unexpected field 'f' in struct literal for 'Rectangle'.",
@@ -299,7 +300,6 @@ describe("BCS Control Validation Tests", () => {
       "Missing field 'y' in struct literal for 'Rectangle'.",
       'Type mismatch: Cannot assign "STRUCT:Point" to "STRUCT:Rectangle".',
       "Unexpected field 'z' in struct literal for 'Rectangle'.",
-      "Cannot use struct declaration 'Rectangle' as a value for input 'i'.",
     ];
 
     for (const expected of expectedErrors) {

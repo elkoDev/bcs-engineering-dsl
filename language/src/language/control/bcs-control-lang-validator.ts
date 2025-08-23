@@ -1,20 +1,6 @@
-import { ValidationAcceptor, ValidationChecks } from "langium";
+import { AstUtils, ValidationAcceptor, ValidationChecks } from "langium";
 import { BCSControlLangServices } from "./bcs-control-lang-module.js";
-import {
-  inferBinaryExpressionType,
-  inferUnaryExpressionType,
-  inferArrayLiteralType,
-  inferPrimitiveLiteralType,
-  inferVarDeclType,
-  applyArrayIndexing,
-  inferStructPropertyType,
-  inferDatapointChannelType,
-  inferEnumDeclType,
-  validateArrayIndex,
-  inferCaseLiteralType,
-  isTypeAssignable,
-} from "./utils/type-inference-utils.js";
-import { DuplicationValidator } from "./utils/duplication-validation-utils.js";
+import { DuplicationValidationUtils } from "./utils/duplication-validation-utils.js";
 import { ArrayValidationUtils } from "./utils/array-validation-utils.js";
 import { UseStmtValidationUtils } from "./utils/usestmt-validation-utils.js";
 import { AssignmentValidationUtils } from "./utils/assignment-validation-utils.js";
@@ -36,17 +22,15 @@ import {
   isFunctionBlockLogic,
   UseStmt,
   VarDecl,
-  isVarDecl,
-  isArrayLiteral,
-  isStructLiteral,
-  isBinExpr,
-  isCaseLiteral,
-  isEnumDecl,
   Channel,
   OnRisingEdgeStmt,
   OnFallingEdgeStmt,
   isOnRisingEdgeStmt,
+  Ref,
+  isVarDecl,
+  isFunctionBlockDecl,
 } from "../generated/ast.js";
+import { TypeInferenceUtils } from "./utils/type-inference-utils.js";
 
 export function registerBCSControlValidationChecks(
   services: BCSControlLangServices
@@ -60,17 +44,21 @@ export function registerBCSControlValidationChecks(
       validator.checkRequiredLibraryReferenceForExternFBs,
     ],
     ControlUnit: [
-      validator.checkUniqueVarNamesInUnit,
       validator.checkScanCycleUnits,
       validator.checkWhenConditionType,
-      validator.checkNestedVarDuplicates,
+      validator.checkControlUnitVariableConflicts,
     ],
-    ControlModel: [validator.checkUniqueEnumsAndTypesAndUnits],
+    ControlModel: [validator.checkUniqueGlobalDeclarations],
     AssignmentStmt: [
       validator.checkAssignmentTypes,
       validator.checkNoWriteToInputDatapoints,
     ],
-    VarDecl: [validator.checkVarDeclTypes],    UseStmt: [validator.checkUseStmtTypes],
+    VarDecl: [validator.checkVarDeclTypes],
+    UseStmt: [
+      validator.checkUseStmtTypes,
+      validator.checkNoUseStmtInFunctionBlock,
+    ],
+    Ref: [validator.checkArrayIndexTypes],
     SwitchStmt: [validator.checkSwitchCaseTypes],
     ForStmt: [validator.checkToExprType],
     OnRisingEdgeStmt: [validator.checkEdgeSignalType],
@@ -80,7 +68,24 @@ export function registerBCSControlValidationChecks(
 }
 
 export class BCSControlLangValidator {
-  checkRequiredLibraryReferenceForExternFBs(
+  public checkNoUseStmtInFunctionBlock(
+    useStmt: UseStmt,
+    accept: ValidationAcceptor
+  ): void {
+    // Traverse up the AST from the useStmt to find if it's inside a FunctionBlockDecl
+    const container = AstUtils.getContainerOfType(useStmt, isFunctionBlockDecl);
+    if (container) {
+      accept(
+        "error",
+        "Calling 'use' is not supported inside a function block in this version.",
+        {
+          node: useStmt,
+        }
+      );
+    }
+  }
+
+  public checkRequiredLibraryReferenceForExternFBs(
     fb: FunctionBlockDecl,
     accept: ValidationAcceptor
   ) {
@@ -92,11 +97,12 @@ export class BCSControlLangValidator {
       );
     }
   }
-  checkToExprType(stmt: ForStmt, accept: ValidationAcceptor) {
+
+  public checkToExprType(stmt: ForStmt, accept: ValidationAcceptor) {
     const toExpr = stmt.toExpr;
     if (!toExpr) return;
 
-    const type = this.inferType(toExpr, accept);
+    const type = TypeInferenceUtils.inferType(toExpr, accept);
     if (type && type !== "INT") {
       accept(
         "error",
@@ -106,7 +112,7 @@ export class BCSControlLangValidator {
     }
   }
 
-  checkNoWriteToInputDatapoints(
+  public checkNoWriteToInputDatapoints(
     stmt: AssignmentStmt,
     accept: ValidationAcceptor
   ) {
@@ -138,8 +144,8 @@ export class BCSControlLangValidator {
     }
   }
 
-  checkSwitchCaseTypes(sw: SwitchStmt, accept: ValidationAcceptor) {
-    const switchType = this.inferType(sw.expr, accept);
+  public checkSwitchCaseTypes(sw: SwitchStmt, accept: ValidationAcceptor) {
+    const switchType = TypeInferenceUtils.inferType(sw.expr, accept);
     if (!switchType) return;
 
     const seen = new Set<string>();
@@ -149,7 +155,7 @@ export class BCSControlLangValidator {
 
     for (const c of sw.cases) {
       for (const lit of c.literals) {
-        const litType = this.inferType(lit, accept);
+        const litType = TypeInferenceUtils.inferType(lit, accept);
         const litKey = keyOf(lit);
 
         if (seen.has(litKey)) {
@@ -163,7 +169,7 @@ export class BCSControlLangValidator {
           // exact match
           litType === switchType ||
           // INT can stand in for REAL, etc.
-          isTypeAssignable(litType, switchType);
+          TypeInferenceUtils.isTypeAssignable(litType, switchType);
 
         if (!ok) {
           accept(
@@ -175,31 +181,30 @@ export class BCSControlLangValidator {
       }
     }
   }
-  checkNestedVarDuplicates(unit: ControlUnit, accept: ValidationAcceptor) {
-    DuplicationValidator.checkNestedScopeVariableDuplicates(unit, accept);
+  public checkControlUnitVariableConflicts(
+    unit: ControlUnit,
+    accept: ValidationAcceptor
+  ) {
+    DuplicationValidationUtils.checkControlUnitVariableConflicts(unit, accept);
   }
 
-  checkUniqueVarNamesInFunctionBlock(
+  public checkUniqueVarNamesInFunctionBlock(
     fb: FunctionBlockDecl,
     accept: ValidationAcceptor
   ) {
-    DuplicationValidator.checkUniqueVarNamesInFunctionBlock(fb, accept);
+    DuplicationValidationUtils.checkUniqueVarNamesInFunctionBlock(fb, accept);
   }
 
-  checkUniqueVarNamesInUnit(unit: ControlUnit, accept: ValidationAcceptor) {
-    DuplicationValidator.checkUniqueVarNamesInUnit(unit, accept);
-  }
-
-  checkUniqueEnumsAndTypesAndUnits(
+  public checkUniqueGlobalDeclarations(
     model: ControlModel,
     accept: ValidationAcceptor
   ) {
-    DuplicationValidator.checkUniqueGlobalDeclarations(model, accept);
+    DuplicationValidationUtils.checkUniqueGlobalDeclarations(model, accept);
   }
 
-  checkWhenConditionType(unit: ControlUnit, accept: ValidationAcceptor) {
+  public checkWhenConditionType(unit: ControlUnit, accept: ValidationAcceptor) {
     if (unit.condition) {
-      const type = this.inferType(unit.condition, accept);
+      const type = TypeInferenceUtils.inferType(unit.condition, accept);
       if (type && type !== "BOOL") {
         accept(
           "error",
@@ -210,7 +215,7 @@ export class BCSControlLangValidator {
     }
   }
 
-  checkScanCycleUnits(unit: ControlUnit, accept: ValidationAcceptor) {
+  public checkScanCycleUnits(unit: ControlUnit, accept: ValidationAcceptor) {
     if (!unit.condition && !unit.time && unit.stmts.length > 0) {
       accept(
         "hint",
@@ -223,7 +228,7 @@ export class BCSControlLangValidator {
     }
   }
 
-  checkSingleBlockSectionsInFunctionBlock(
+  public checkSingleBlockSectionsInFunctionBlock(
     fb: FunctionBlockDecl,
     accept: ValidationAcceptor
   ) {
@@ -276,16 +281,12 @@ export class BCSControlLangValidator {
       );
     }
   }
-  checkUseStmtTypes(useStmt: UseStmt, accept: ValidationAcceptor) {
+
+  public checkUseStmtTypes(useStmt: UseStmt, accept: ValidationAcceptor) {
     const fb = useStmt.functionBlockRef?.ref;
     if (!fb) return;
 
-    UseStmtValidationUtils.validateFunctionBlockInputs(
-      useStmt,
-      fb,
-      accept,
-      this.inferType.bind(this)
-    );
+    UseStmtValidationUtils.validateFunctionBlockInputs(useStmt, fb, accept);
     UseStmtValidationUtils.validateFunctionBlockOutputs(
       useStmt,
       fb,
@@ -304,12 +305,9 @@ export class BCSControlLangValidator {
    *
    * @param varDecl - The variable declaration to validate.
    * @param accept - A function to report validation errors.
-   */ checkVarDeclTypes(varDecl: VarDecl, accept: ValidationAcceptor) {
-    AssignmentValidationUtils.validateVarDeclTypes(
-      varDecl,
-      accept,
-      this.inferType.bind(this)
-    );
+   */
+  public checkVarDeclTypes(varDecl: VarDecl, accept: ValidationAcceptor) {
+    AssignmentValidationUtils.validateVarDeclTypes(varDecl, accept);
   }
 
   /**
@@ -322,179 +320,40 @@ export class BCSControlLangValidator {
    * @remarks
    * - If the type of either the target or the value cannot be inferred, a warning is reported.
    * - If the type of the value is not assignable to the type of the target, an error is reported.
-   */ checkAssignmentTypes(stmt: AssignmentStmt, accept: ValidationAcceptor) {
+   */
+  public checkAssignmentTypes(
+    stmt: AssignmentStmt,
+    accept: ValidationAcceptor
+  ) {
     AssignmentValidationUtils.validateAssignmentTypes(
       stmt,
       accept,
-      this.inferType.bind(this),
       ExpressionUtils.stringifyExpression
     );
   }
 
-  checkArrayIndexTypes(expr: any, accept: ValidationAcceptor) {
-    ArrayValidationUtils.checkArrayIndexTypes(
-      expr,
-      accept,
-      this.inferType.bind(this)
-    );
-  }
-
-  /**
-   * Infers the type of an expression by delegating to the type inference utilities
-   */
-  private inferType(expr: any, accept: ValidationAcceptor): string | undefined {
-    if (!expr) return undefined;
-
-    // 1) Binary expression (e.g., 1 + 2, x > y)
-    if (isBinExpr(expr)) {
-      const left = this.inferType(expr.e1, accept);
-      const right = this.inferType(expr.e2, accept);
-      return inferBinaryExpressionType(expr, left, right, expr.op, accept);
-    }
-
-    // 2) Unary expressions (negation, not, parenthesized)
-    if (
-      expr.$type === "NegExpr" ||
-      expr.$type === "NotExpr" ||
-      expr.$type === "ParenExpr"
-    ) {
-      return inferUnaryExpressionType(this.inferType(expr.expr, accept));
-    }
-
-    // 3) Reference expressions (variable, enum, etc.)
-    if (expr.$type === "Ref") {
-      return this.inferReferenceType(expr, accept);
-    }
-
-    // 4) Case literal with enum member
-    if (isCaseLiteral(expr)) {
-      return inferCaseLiteralType(expr, accept);
-    }
-
-    // 5) Array literal
-    if (isArrayLiteral(expr.val)) {
-      return inferArrayLiteralType(
-        expr,
-        expr.val,
-        this.inferType.bind(this),
-        accept
-      );
-    }
-
-    // 6) Struct literal
-    if (isStructLiteral(expr.val)) {
-      return "STRUCT";
-    }
-
-    // 7) Primitive literals (numbers, strings, booleans)
-    return inferPrimitiveLiteralType(expr);
-  }
-  /**
-   * Infers the type of a reference expression (variable, field access, array indexing)
-   */
-  private inferReferenceType(
-    expr: any,
-    accept: ValidationAcceptor
-  ): string | undefined {
-    const ref = expr.ref?.ref;
-    if (!ref) return undefined;
-
-    const type = this.inferBasicReferenceType(ref, expr, accept);
-
-    // Check array indices if this is an indexed access
-    if (ref && expr.indices.length > 0) {
-      this.validateArrayIndices(ref, expr, accept);
-    }
-
-    return type;
-  }
-
-  /**
-   * Infers the basic type of a reference before processing properties/indexing
-   */
-  private inferBasicReferenceType(
-    ref: any,
-    expr: any,
-    accept: ValidationAcceptor
-  ): string | undefined {
-    // Variable reference
-    if (isVarDecl(ref)) {
-      return this.processVariableReference(ref, expr, accept);
-    }
-    // Datapoint reference
-    else if (isDatapoint(ref)) {
-      return inferDatapointChannelType(ref, expr);
-    }
-    // Enum declaration reference
-    else if (isEnumDecl(ref)) {
-      return inferEnumDeclType(ref);
-    }
-
-    return undefined;
-  }
-
-  /**
-   * Processes variable reference with array indexing and struct properties
-   */
-  private processVariableReference(
-    ref: any,
-    expr: any,
-    accept: ValidationAcceptor
-  ): string | undefined {
-    let type = inferVarDeclType(ref);
-
-    // First: Apply array indexing if needed
-    if (expr.indices.length > 0 && type) {
-      type = applyArrayIndexing(expr, type, accept);
-      if (!type) return undefined;
-    }
-
-    // Then: Process struct properties
-    for (const prop of expr.properties) {
-      type = inferStructPropertyType(expr, type!, prop, accept);
-      if (!type) return undefined;
-    }
-
-    return type;
-  }
-
-  /**
-   * Validates the indices of an array reference expression
-   */
-  private validateArrayIndices(
-    ref: any,
-    expr: any,
-    accept: ValidationAcceptor
-  ): void {
-    const sizes = ref.typeRef?.sizes ?? [];
-
-    for (let i = 0; i < expr.indices.length && i < sizes.length; i++) {
-      const indexExpr = expr.indices[i];
-      const sizeExpr = sizes[i];
-
-      // Validate index type
-      const idxType = this.inferType(indexExpr, accept);
-      if (idxType !== "INT") {
-        accept(
-          "error",
-          `Array index must be of type INT, but got "${idxType}".`,
-          { node: indexExpr }
-        );
+  public checkArrayIndexTypes(expr: Ref, accept: ValidationAcceptor) {
+    // Only validate if this is actually an array access (has indices)
+    if (expr.indices && expr.indices.length > 0) {
+      const namedElement = expr.ref?.ref;
+      if (isVarDecl(namedElement) && namedElement.typeRef?.sizes?.length > 0) {
+        // This is an array variable with indices - validate both type and bounds
+        ArrayValidationUtils.validateArrayIndices(namedElement, expr, accept);
+      } else {
+        // Just validate index types (for the case where it's not a proper array)
+        ArrayValidationUtils.checkArrayIndexTypes(expr, accept);
       }
-
-      // Validate index bounds when possible
-      validateArrayIndex(expr, indexExpr, sizeExpr, accept);
     }
   }
 
-  checkEdgeSignalType(
+  public checkEdgeSignalType(
     stmt: OnRisingEdgeStmt | OnFallingEdgeStmt,
     accept: ValidationAcceptor
   ) {
     const signal = stmt.signal;
     if (!signal) return;
 
-    const signalType = this.inferType(signal, accept);
+    const signalType = TypeInferenceUtils.inferType(signal, accept);
     if (signalType && signalType !== "BOOL") {
       const stmtType = isOnRisingEdgeStmt(stmt) ? "on_rising" : "on_falling";
       accept(

@@ -17,5 +17,4 @@ VAR
     TestHardwareIOLogic_temp4: REAL;
     TestHardwareIOLogic_btn1: BOOL;
     TestHardwareIOLogic_btn2: BOOL;
-    bRunOnlyOnce: BOOL := FALSE;
 END_VAR

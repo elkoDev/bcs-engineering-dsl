@@ -10,6 +10,10 @@
       },
       "monarch": {
         "out": "syntaxes/bcs-hardware.monarch.ts"
+      },
+      "railroad": {
+        "out": "railroad/svg/bcs-hardware",
+        "mode": "svg"
       }
     },
     {
@@ -21,6 +25,10 @@
       },
       "monarch": {
         "out": "syntaxes/bcs-control.monarch.ts"
+      },
+      "railroad": {
+        "out": "railroad/svg/bcs-control",
+        "mode": "svg"
       }
     }
   ],

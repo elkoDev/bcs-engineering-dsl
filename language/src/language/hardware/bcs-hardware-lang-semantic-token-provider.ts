@@ -11,7 +11,6 @@ import {
   isDatapoint,
   isChannel,
   isPortGroup,
-  isBitRange,
   isBus,
   isBox,
   isModule,
@@ -85,18 +84,6 @@ export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenP
         type: SemanticTokenTypes.number,
       });
     }
-    if (isBitRange(node)) {
-      acceptor({
-        node,
-        property: "start",
-        type: SemanticTokenTypes.number,
-      });
-      acceptor({
-        node,
-        property: "end",
-        type: SemanticTokenTypes.number,
-      });
-    }
     if (isBus(node)) {
       acceptor({
         node,
@@ -122,7 +109,7 @@ export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenP
       });
       acceptor({
         node,
-        property: "productCode",
+        property: "product",
         type: SemanticTokenTypes.enumMember,
       });
       acceptor({
@@ -139,7 +126,7 @@ export class BCSHardwareLangSemanticTokenProvider extends AbstractSemanticTokenP
       });
       acceptor({
         node,
-        property: "productCode",
+        property: "product",
         type: SemanticTokenTypes.enumMember,
       });
       acceptor({

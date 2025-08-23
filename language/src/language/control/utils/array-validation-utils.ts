@@ -6,7 +6,7 @@ import {
   isPrimary,
   isArrayLiteral,
 } from "../../generated/ast.js";
-import { validateArrayIndex } from "./type-inference-utils.js";
+import { TypeInferenceUtils } from "./type-inference-utils.js";
 
 /**
  * Utility class for validating array-related operations in the BCS control language.
@@ -19,8 +19,7 @@ export class ArrayValidationUtils {
   static validateArrayIndices(
     ref: any,
     expr: any,
-    accept: ValidationAcceptor,
-    inferType: (expr: any, accept: ValidationAcceptor) => string | undefined
+    accept: ValidationAcceptor
   ): void {
     const sizes = ref.typeRef?.sizes ?? [];
 
@@ -29,7 +28,7 @@ export class ArrayValidationUtils {
       const sizeExpr = sizes[i];
 
       // Validate index type
-      const idxType = inferType(indexExpr, accept);
+      const idxType = TypeInferenceUtils.inferType(indexExpr, accept);
       if (idxType !== "INT") {
         accept(
           "error",
@@ -39,21 +38,17 @@ export class ArrayValidationUtils {
       }
 
       // Validate index bounds when possible
-      validateArrayIndex(expr, indexExpr, sizeExpr, accept);
+      this.validateArrayIndex(expr, indexExpr, sizeExpr, accept);
     }
   }
 
   /**
    * Checks array index types for expressions
    */
-  static checkArrayIndexTypes(
-    expr: any,
-    accept: ValidationAcceptor,
-    inferType: (expr: any, accept: ValidationAcceptor) => string | undefined
-  ): void {
+  static checkArrayIndexTypes(expr: any, accept: ValidationAcceptor): void {
     if (expr.$type === "Ref" && expr.indices.length > 0) {
       for (const idxExpr of expr.indices) {
-        const idxType = inferType(idxExpr, accept);
+        const idxType = TypeInferenceUtils.inferType(idxExpr, accept);
         if (idxType !== "INT") {
           accept(
             "error",
@@ -147,6 +142,7 @@ export class ArrayValidationUtils {
 
     if (expectedDimensions.length > 1) {
       // We expect nested arrays
+      let hasNonArrayElement = false;
       for (const element of arrayLiteral.elements) {
         if (isPrimary(element) && isArrayLiteral(element.val)) {
           this.validateArrayLiteralSize(
@@ -156,12 +152,53 @@ export class ArrayValidationUtils {
             node
           );
         } else {
-          accept(
-            "error",
-            `Expected nested array with ${expectedDimensions.length} dimensions.`,
-            { node }
-          );
+          hasNonArrayElement = true;
         }
+      }
+
+      // Report only one error for the entire array if it has non-array elements
+      if (hasNonArrayElement) {
+        accept(
+          "error",
+          `Expected nested array with ${expectedDimensions.length} dimensions.`,
+          { node }
+        );
+      }
+    }
+  }
+
+  /**
+   * Handles array indexing, checking array bounds and index types
+   *
+   * @param expr The array expression being indexed
+   * @param indexExpr The index expression
+   * @param sizeExpr The size expression from the array definition
+   * @param accept Function to report validation issues
+   */
+  private static validateArrayIndex(
+    expr: any,
+    indexExpr: any,
+    sizeExpr: any,
+    accept: ValidationAcceptor
+  ): void {
+    // Only check if both index and size are simple numbers
+    if (
+      isPrimary(indexExpr) &&
+      typeof indexExpr.val === "number" &&
+      isPrimary(sizeExpr) &&
+      typeof sizeExpr.val === "number"
+    ) {
+      const indexVal = indexExpr.val;
+      const maxVal = sizeExpr.val;
+
+      if (indexVal < 0 || indexVal >= maxVal) {
+        accept(
+          "error",
+          `Array index [${indexVal}] out of bounds: allowed range is 0 to ${
+            maxVal - 1
+          }.`,
+          { node: expr }
+        );
       }
     }
   }

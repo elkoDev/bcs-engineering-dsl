@@ -51,16 +51,14 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
 
       const enumDecls =
         controlModel?.controlBlock?.items.filter(isEnumDecl) ?? [];
-      const structDecls =
-        controlModel?.controlBlock?.items.filter(isStructDecl) ?? [];
 
-      const externalTypeDecls = controlModel?.externTypeDecls ?? [];
+      const externalEnumDecls =
+        controlModel?.externTypeDecls.filter(isEnumDecl) ?? [];
 
       const scopeNodes: AstNode[] = [
         ...localVars,
         ...enumDecls,
-        ...structDecls,
-        ...externalTypeDecls,
+        ...externalEnumDecls,
       ];
 
       const isInsideFunctionBlock =
@@ -81,23 +79,16 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
       const namedElement = container.ref.ref;
       if (isVarDecl(namedElement)) {
         const typeRef = namedElement.typeRef;
-        const structDecl = typeRef?.ref?.ref;
-
-        if (structDecl && isStructDecl(structDecl)) {
-          return this.createScopeForNodes(structDecl.fields);
+        const typeDecl = typeRef?.ref?.ref;
+        if (typeDecl && isStructDecl(typeDecl)) {
+          return this.createScopeForNodes(typeDecl.fields);
         }
       }
-      if (isStructDecl(namedElement)) {
-        const structDecl = namedElement;
-        return this.createScopeForNodes(structDecl.fields);
-      }
       if (isEnumDecl(namedElement)) {
-        const enumDecl = namedElement;
-        return this.createScopeForNodes(enumDecl.members);
+        return this.createScopeForNodes(namedElement.members);
       }
       if (isDatapoint(namedElement)) {
-        const datapoint = namedElement;
-        return this.createScopeForNodes(datapoint.channels);
+        return this.createScopeForNodes(namedElement.channels);
       }
     }
 
@@ -154,7 +145,7 @@ export class BCSControlLangScopeProvider extends DefaultScopeProvider {
       }
     }
 
-    // Collect variables from the enclosing function block (inputs, outputs, locals)
+    // Collect variables from the enclosing function block (inputs, outputs, locals) if the container is inside the function block
     const fb = AstUtils.getContainerOfType(container, isFunctionBlockDecl);
     if (fb) {
       vars.push(...getInputs(fb), ...getOutputs(fb), ...getLocals(fb));

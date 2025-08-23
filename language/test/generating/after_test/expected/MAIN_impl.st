@@ -1,23 +1,14 @@
-IF NOT bRunOnlyOnce THEN
-    ADSLOGSTR(
-      msgCtrlMask := ADSLOG_MSGTYPE_LOG,
-      msgFmtStr   := 'Program started %s',
-      strArg      := 'successfully!'
-    );
-    bRunOnlyOnce := TRUE;
-END_IF;
-
 // Control Unit 'AfterUnit'
-tonAfter1(IN := conditionA);
-IF tonAfter1.Q THEN
+TON_AfterInstance1(IN := conditionA);
+R_TRIG_AfterInstance1(CLK := TON_AfterInstance1.Q);
+IF R_TRIG_AfterInstance1.Q THEN
     conditionB := TRUE;
     conditionA := FALSE;
-    tonAfter1(IN := FALSE);
-END_IF
+END_IF;
 
-tonAfter2(IN := conditionB = TRUE);
-IF tonAfter2.Q THEN
+TON_AfterInstance2(IN := conditionB = TRUE);
+R_TRIG_AfterInstance2(CLK := TON_AfterInstance2.Q);
+IF R_TRIG_AfterInstance2.Q THEN
     conditionA := TRUE;
     conditionB := FALSE;
-    tonAfter2(IN := FALSE);
-END_IF
+END_IF;

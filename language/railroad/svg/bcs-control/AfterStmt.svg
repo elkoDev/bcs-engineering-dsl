@@ -1,0 +1,91 @@
+<svg class="railroad-diagram" xmlns="http://www.w3.org/2000/svg" width="593" height="62" viewBox="0 0 593 62">
+<style>
+    svg.railroad-diagram {
+        background-color: hsl(30,20%,95%);
+    }
+    svg.railroad-diagram path {
+        stroke-width: 3;
+        stroke: black;
+        fill: rgba(0,0,0,0);
+    }
+    svg.railroad-diagram text {
+        font: bold 14px monospace;
+        text-anchor: middle;
+    }
+    svg.railroad-diagram text.label {
+        text-anchor: start;
+    }
+    svg.railroad-diagram text.comment {
+        font: italic 12px monospace;
+    }
+    svg.railroad-diagram rect {
+        stroke-width: 3;
+        stroke: black;
+        fill: hsl(120,100%,90%);
+    }
+</style>
+<g transform="translate(.5 .5)">
+<path d="M 20 21 v 20 m 10 -20 v 20 m -10 -10 h 20.5"></path>
+<g>
+<path d="M40 31h0"></path>
+<path d="M552 31h0"></path>
+<path d="M40 31h10"></path>
+<g>
+<path d="M50 31h0"></path>
+<path d="M110 31h0"></path>
+<rect x="50" y="20" width="60" height="22" rx="10" ry="10"></rect>
+<text x="80" y="35">after</text>
+</g>
+<path d="M110 31h10"></path>
+<path d="M120 31h10"></path>
+<g>
+<path d="M130 31h0"></path>
+<path d="M238 31h0"></path>
+<rect x="130" y="20" width="108" height="22"></rect>
+<text x="184" y="35">TimeLiteral</text>
+</g>
+<path d="M238 31h10"></path>
+<path d="M248 31h10"></path>
+<g>
+<path d="M258 31h0"></path>
+<path d="M294 31h0"></path>
+<rect x="258" y="20" width="36" height="22" rx="10" ry="10"></rect>
+<text x="276" y="35">if</text>
+</g>
+<path d="M294 31h10"></path>
+<path d="M304 31h10"></path>
+<g>
+<path d="M314 31h0"></path>
+<path d="M342 31h0"></path>
+<rect x="314" y="20" width="28" height="22" rx="10" ry="10"></rect>
+<text x="328" y="35">(</text>
+</g>
+<path d="M342 31h10"></path>
+<path d="M352 31h10"></path>
+<g>
+<path d="M362 31h0"></path>
+<path d="M414 31h0"></path>
+<rect x="362" y="20" width="52" height="22"></rect>
+<text x="388" y="35">Expr</text>
+</g>
+<path d="M414 31h10"></path>
+<path d="M424 31h10"></path>
+<g>
+<path d="M434 31h0"></path>
+<path d="M462 31h0"></path>
+<rect x="434" y="20" width="28" height="22" rx="10" ry="10"></rect>
+<text x="448" y="35">)</text>
+</g>
+<path d="M462 31h10"></path>
+<path d="M472 31h10"></path>
+<g>
+<path d="M482 31h0"></path>
+<path d="M542 31h0"></path>
+<rect x="482" y="20" width="60" height="22"></rect>
+<text x="512" y="35">Block</text>
+</g>
+<path d="M542 31h10"></path>
+</g>
+<path d="M 552 31 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
+</g>
+</svg>

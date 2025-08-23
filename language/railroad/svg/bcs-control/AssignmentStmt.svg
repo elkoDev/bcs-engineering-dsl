@@ -1,0 +1,67 @@
+<svg class="railroad-diagram" xmlns="http://www.w3.org/2000/svg" width="313" height="62" viewBox="0 0 313 62">
+<style>
+    svg.railroad-diagram {
+        background-color: hsl(30,20%,95%);
+    }
+    svg.railroad-diagram path {
+        stroke-width: 3;
+        stroke: black;
+        fill: rgba(0,0,0,0);
+    }
+    svg.railroad-diagram text {
+        font: bold 14px monospace;
+        text-anchor: middle;
+    }
+    svg.railroad-diagram text.label {
+        text-anchor: start;
+    }
+    svg.railroad-diagram text.comment {
+        font: italic 12px monospace;
+    }
+    svg.railroad-diagram rect {
+        stroke-width: 3;
+        stroke: black;
+        fill: hsl(120,100%,90%);
+    }
+</style>
+<g transform="translate(.5 .5)">
+<path d="M 20 21 v 20 m 10 -20 v 20 m -10 -10 h 20.5"></path>
+<g>
+<path d="M40 31h0"></path>
+<path d="M272 31h0"></path>
+<path d="M40 31h10"></path>
+<g>
+<path d="M50 31h0"></path>
+<path d="M94 31h0"></path>
+<rect x="50" y="20" width="44" height="22"></rect>
+<text x="72" y="35">Ref</text>
+</g>
+<path d="M94 31h10"></path>
+<path d="M104 31h10"></path>
+<g>
+<path d="M114 31h0"></path>
+<path d="M142 31h0"></path>
+<rect x="114" y="20" width="28" height="22" rx="10" ry="10"></rect>
+<text x="128" y="35">=</text>
+</g>
+<path d="M142 31h10"></path>
+<path d="M152 31h10"></path>
+<g>
+<path d="M162 31h0"></path>
+<path d="M214 31h0"></path>
+<rect x="162" y="20" width="52" height="22"></rect>
+<text x="188" y="35">Expr</text>
+</g>
+<path d="M214 31h10"></path>
+<path d="M224 31h10"></path>
+<g>
+<path d="M234 31h0"></path>
+<path d="M262 31h0"></path>
+<rect x="234" y="20" width="28" height="22" rx="10" ry="10"></rect>
+<text x="248" y="35">;</text>
+</g>
+<path d="M262 31h10"></path>
+</g>
+<path d="M 272 31 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
+</g>
+</svg>

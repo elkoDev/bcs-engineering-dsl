@@ -1,0 +1,123 @@
+<svg class="railroad-diagram" xmlns="http://www.w3.org/2000/svg" width="253" height="362" viewBox="0 0 253 362">
+<style>
+    svg.railroad-diagram {
+        background-color: hsl(30,20%,95%);
+    }
+    svg.railroad-diagram path {
+        stroke-width: 3;
+        stroke: black;
+        fill: rgba(0,0,0,0);
+    }
+    svg.railroad-diagram text {
+        font: bold 14px monospace;
+        text-anchor: middle;
+    }
+    svg.railroad-diagram text.label {
+        text-anchor: start;
+    }
+    svg.railroad-diagram text.comment {
+        font: italic 12px monospace;
+    }
+    svg.railroad-diagram rect {
+        stroke-width: 3;
+        stroke: black;
+        fill: hsl(120,100%,90%);
+    }
+</style>
+<g transform="translate(.5 .5)">
+<path d="M 20 21 v 20 m 10 -20 v 20 m -10 -10 h 20.5"></path>
+<g>
+<path d="M40 31h0"></path>
+<path d="M212 31h0"></path>
+<path d="M40 31h20"></path>
+<g>
+<path d="M60 31h0"></path>
+<path d="M192 31h0"></path>
+<rect x="60" y="20" width="132" height="22"></rect>
+<text x="126" y="35">AssignmentStmt</text>
+</g>
+<path d="M192 31h20"></path>
+<path d="M40 31a10 10 0 0 1 10 10v10a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 61h32"></path>
+<path d="M160 61h32"></path>
+<rect x="92" y="50" width="68" height="22"></rect>
+<text x="126" y="65">IfStmt</text>
+</g>
+<path d="M192 61a10 10 0 0 0 10 -10v-10a10 10 0 0 1 10 -10"></path>
+<path d="M40 31a10 10 0 0 1 10 10v40a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 91h20"></path>
+<path d="M172 91h20"></path>
+<rect x="80" y="80" width="92" height="22"></rect>
+<text x="126" y="95">WhileStmt</text>
+</g>
+<path d="M192 91a10 10 0 0 0 10 -10v-40a10 10 0 0 1 10 -10"></path>
+<path d="M40 31a10 10 0 0 1 10 10v70a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 121h28"></path>
+<path d="M164 121h28"></path>
+<rect x="88" y="110" width="76" height="22"></rect>
+<text x="126" y="125">ForStmt</text>
+</g>
+<path d="M192 121a10 10 0 0 0 10 -10v-70a10 10 0 0 1 10 -10"></path>
+<path d="M40 31a10 10 0 0 1 10 10v100a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 151h16"></path>
+<path d="M176 151h16"></path>
+<rect x="76" y="140" width="100" height="22"></rect>
+<text x="126" y="155">SwitchStmt</text>
+</g>
+<path d="M192 151a10 10 0 0 0 10 -10v-100a10 10 0 0 1 10 -10"></path>
+<path d="M40 31a10 10 0 0 1 10 10v130a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 181h0"></path>
+<path d="M192 181h0"></path>
+<rect x="60" y="170" width="132" height="22"></rect>
+<text x="126" y="185">ExpressionStmt</text>
+</g>
+<path d="M192 181a10 10 0 0 0 10 -10v-130a10 10 0 0 1 10 -10"></path>
+<path d="M40 31a10 10 0 0 1 10 10v160a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 211h20"></path>
+<path d="M172 211h20"></path>
+<rect x="80" y="200" width="92" height="22"></rect>
+<text x="126" y="215">AfterStmt</text>
+</g>
+<path d="M192 211a10 10 0 0 0 10 -10v-160a10 10 0 0 1 10 -10"></path>
+<path d="M40 31a10 10 0 0 1 10 10v190a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 241h24"></path>
+<path d="M168 241h24"></path>
+<rect x="84" y="230" width="84" height="22"></rect>
+<text x="126" y="245">EdgeStmt</text>
+</g>
+<path d="M192 241a10 10 0 0 0 10 -10v-190a10 10 0 0 1 10 -10"></path>
+<path d="M40 31a10 10 0 0 1 10 10v220a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 271h28"></path>
+<path d="M164 271h28"></path>
+<rect x="88" y="260" width="76" height="22"></rect>
+<text x="126" y="275">UseStmt</text>
+</g>
+<path d="M192 271a10 10 0 0 0 10 -10v-220a10 10 0 0 1 10 -10"></path>
+<path d="M40 31a10 10 0 0 1 10 10v250a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 301h8"></path>
+<path d="M184 301h8"></path>
+<rect x="68" y="290" width="116" height="22"></rect>
+<text x="126" y="305">ContinueStmt</text>
+</g>
+<path d="M192 301a10 10 0 0 0 10 -10v-250a10 10 0 0 1 10 -10"></path>
+<path d="M40 31a10 10 0 0 1 10 10v280a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 331h20"></path>
+<path d="M172 331h20"></path>
+<rect x="80" y="320" width="92" height="22"></rect>
+<text x="126" y="335">BreakStmt</text>
+</g>
+<path d="M192 331a10 10 0 0 0 10 -10v-280a10 10 0 0 1 10 -10"></path>
+</g>
+<path d="M 212 31 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
+</g>
+</svg>

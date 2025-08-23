@@ -1,5 +1,5 @@
 {
-  "version": "0.0.12",
+  "version": "0.0.22",
   "name": "bcs-engineering-dsl",
   "displayName": "BCS Engineering DSL",
   "icon": "icon.png",
@@ -40,6 +40,7 @@
     "commander": "~11.0.0",
     "cross-spawn": "^7.0.6",
     "langium": "~3.5.0",
+    "langium-railroad": "^3.5.0",
     "monaco-editor": "npm:@codingame/monaco-vscode-editor-api@~3.2.3",
     "monaco-editor-wrapper": "~4.0.2",
     "monaco-languageclient": "~8.1.1",

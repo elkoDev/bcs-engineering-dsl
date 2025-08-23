@@ -1,0 +1,83 @@
+<svg class="railroad-diagram" xmlns="http://www.w3.org/2000/svg" width="457" height="62" viewBox="0 0 457 62">
+<style>
+    svg.railroad-diagram {
+        background-color: hsl(30,20%,95%);
+    }
+    svg.railroad-diagram path {
+        stroke-width: 3;
+        stroke: black;
+        fill: rgba(0,0,0,0);
+    }
+    svg.railroad-diagram text {
+        font: bold 14px monospace;
+        text-anchor: middle;
+    }
+    svg.railroad-diagram text.label {
+        text-anchor: start;
+    }
+    svg.railroad-diagram text.comment {
+        font: italic 12px monospace;
+    }
+    svg.railroad-diagram rect {
+        stroke-width: 3;
+        stroke: black;
+        fill: hsl(120,100%,90%);
+    }
+</style>
+<g transform="translate(.5 .5)">
+<path d="M 20 21 v 20 m 10 -20 v 20 m -10 -10 h 20.5"></path>
+<g>
+<path d="M40 31h0"></path>
+<path d="M416 31h0"></path>
+<path d="M40 31h10"></path>
+<g>
+<path d="M50 31h0"></path>
+<path d="M102 31h0"></path>
+<rect x="50" y="20" width="52" height="22" rx="10" ry="10"></rect>
+<text x="76" y="35">else</text>
+</g>
+<path d="M102 31h10"></path>
+<path d="M112 31h10"></path>
+<g>
+<path d="M122 31h0"></path>
+<path d="M158 31h0"></path>
+<rect x="122" y="20" width="36" height="22" rx="10" ry="10"></rect>
+<text x="140" y="35">if</text>
+</g>
+<path d="M158 31h10"></path>
+<path d="M168 31h10"></path>
+<g>
+<path d="M178 31h0"></path>
+<path d="M206 31h0"></path>
+<rect x="178" y="20" width="28" height="22" rx="10" ry="10"></rect>
+<text x="192" y="35">(</text>
+</g>
+<path d="M206 31h10"></path>
+<path d="M216 31h10"></path>
+<g>
+<path d="M226 31h0"></path>
+<path d="M278 31h0"></path>
+<rect x="226" y="20" width="52" height="22"></rect>
+<text x="252" y="35">Expr</text>
+</g>
+<path d="M278 31h10"></path>
+<path d="M288 31h10"></path>
+<g>
+<path d="M298 31h0"></path>
+<path d="M326 31h0"></path>
+<rect x="298" y="20" width="28" height="22" rx="10" ry="10"></rect>
+<text x="312" y="35">)</text>
+</g>
+<path d="M326 31h10"></path>
+<path d="M336 31h10"></path>
+<g>
+<path d="M346 31h0"></path>
+<path d="M406 31h0"></path>
+<rect x="346" y="20" width="60" height="22"></rect>
+<text x="376" y="35">Block</text>
+</g>
+<path d="M406 31h10"></path>
+</g>
+<path d="M 416 31 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
+</g>
+</svg>

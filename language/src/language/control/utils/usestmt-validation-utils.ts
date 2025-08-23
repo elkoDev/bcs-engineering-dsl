@@ -1,14 +1,8 @@
 import { ValidationAcceptor } from "langium";
-import {
-  UseStmt,
-  FunctionBlockDecl,
-  UseOutput,
-  isRef,
-  isStructDecl,
-} from "../../generated/ast.js";
+import { UseStmt, FunctionBlockDecl, UseOutput } from "../../generated/ast.js";
 import { getInputs, getOutputs } from "./function-block-utils.js";
-import { DuplicationValidator } from "./duplication-validation-utils.js";
-import { inferVarDeclType, isTypeAssignable } from "./type-inference-utils.js";
+import { DuplicationValidationUtils } from "./duplication-validation-utils.js";
+import { TypeInferenceUtils } from "./type-inference-utils.js";
 
 /**
  * Utility class for validating UseStmt (function block usage) operations.
@@ -21,8 +15,7 @@ export class UseStmtValidationUtils {
   static validateFunctionBlockInputs(
     useStmt: UseStmt,
     fb: FunctionBlockDecl,
-    accept: ValidationAcceptor,
-    inferType: (expr: any, accept: ValidationAcceptor) => string | undefined
+    accept: ValidationAcceptor
   ): void {
     // 1) Check: Number of input arguments vs number of inputs
     if (useStmt.inputArgs.length !== getInputs(fb).length) {
@@ -36,10 +29,10 @@ export class UseStmtValidationUtils {
     }
 
     // 2) Check: Input types
-    this.validateInputTypes(useStmt, fb, accept, inferType);
+    this.validateInputTypes(useStmt, fb, accept);
 
     // 3) Check: Duplicate input mappings
-    DuplicationValidator.checkDuplicateInputMappings(useStmt, fb, accept);
+    DuplicationValidationUtils.checkDuplicateInputMappings(useStmt, fb, accept);
   }
 
   /**
@@ -48,31 +41,20 @@ export class UseStmtValidationUtils {
   static validateInputTypes(
     useStmt: UseStmt,
     fb: FunctionBlockDecl,
-    accept: ValidationAcceptor,
-    inferType: (expr: any, accept: ValidationAcceptor) => string | undefined
+    accept: ValidationAcceptor
   ): void {
     for (const arg of useStmt.inputArgs) {
       const inputVarName = arg.inputVar.ref?.name;
       if (!inputVarName) continue;
 
       const paramDecl = getInputs(fb).find((i) => i.name === inputVarName);
-      const expectedType = inferVarDeclType(paramDecl);
-      const actualType = inferType(arg.value, accept);
-
-      // Check for struct type misuse
-      if (isRef(arg.value) && isStructDecl(arg.value.ref.ref)) {
-        accept(
-          "error",
-          `Cannot use struct declaration '${arg.value.ref?.ref.name}' as a value for input '${inputVarName}'.`,
-          { node: arg.value }
-        );
-        continue;
-      }
+      const expectedType = TypeInferenceUtils.inferVarDeclType(paramDecl);
+      const actualType = TypeInferenceUtils.inferType(arg.value, accept);
 
       if (
         expectedType &&
         actualType &&
-        !isTypeAssignable(actualType, expectedType)
+        !TypeInferenceUtils.isTypeAssignable(actualType, expectedType)
       ) {
         accept(
           "error",
@@ -151,13 +133,13 @@ export class UseStmtValidationUtils {
     const actual = output.singleOutput!.targetOutputVar?.ref;
 
     if (actual) {
-      const expectedType = inferVarDeclType(expected);
-      const actualType = inferVarDeclType(actual);
+      const expectedType = TypeInferenceUtils.inferVarDeclType(expected);
+      const actualType = TypeInferenceUtils.inferVarDeclType(actual);
 
       if (
         expectedType &&
         actualType &&
-        !isTypeAssignable(expectedType, actualType)
+        !TypeInferenceUtils.isTypeAssignable(expectedType, actualType)
       ) {
         accept(
           "error",
@@ -188,7 +170,7 @@ export class UseStmtValidationUtils {
     }
 
     // Check for duplicates and type compatibility
-    DuplicationValidator.checkDuplicateOutputMappings(
+    DuplicationValidationUtils.checkDuplicateOutputMappings(
       useStmt,
       fb,
       output,
@@ -203,13 +185,13 @@ export class UseStmtValidationUtils {
       if (!targetOutputVar || !fbOutputVar) continue;
 
       const expected = getOutputs(fb).find((o) => o.name === fbOutputVar.name);
-      const expectedType = expected ? inferVarDeclType(expected) : undefined;
-      const actualType = inferVarDeclType(targetOutputVar);
+      const expectedType = expected ? TypeInferenceUtils.inferVarDeclType(expected) : undefined;
+      const actualType = TypeInferenceUtils.inferVarDeclType(targetOutputVar);
 
       if (
         expectedType &&
         actualType &&
-        !isTypeAssignable(expectedType, actualType)
+        !TypeInferenceUtils.isTypeAssignable(expectedType, actualType)
       ) {
         accept(
           "error",

@@ -1,0 +1,78 @@
+<svg class="railroad-diagram" xmlns="http://www.w3.org/2000/svg" width="433" height="72" viewBox="0 0 433 72">
+<style>
+    svg.railroad-diagram {
+        background-color: hsl(30,20%,95%);
+    }
+    svg.railroad-diagram path {
+        stroke-width: 3;
+        stroke: black;
+        fill: rgba(0,0,0,0);
+    }
+    svg.railroad-diagram text {
+        font: bold 14px monospace;
+        text-anchor: middle;
+    }
+    svg.railroad-diagram text.label {
+        text-anchor: start;
+    }
+    svg.railroad-diagram text.comment {
+        font: italic 12px monospace;
+    }
+    svg.railroad-diagram rect {
+        stroke-width: 3;
+        stroke: black;
+        fill: hsl(120,100%,90%);
+    }
+</style>
+<g transform="translate(.5 .5)">
+<path d="M 20 31 v 20 m 10 -20 v 20 m -10 -10 h 20.5"></path>
+<g>
+<path d="M40 41h0"></path>
+<path d="M392 41h0"></path>
+<path d="M40 41h10"></path>
+<g>
+<path d="M50 41h0"></path>
+<path d="M94 41h0"></path>
+<rect x="50" y="30" width="44" height="22"></rect>
+<text x="72" y="45">Add</text>
+</g>
+<path d="M94 41h10"></path>
+<g>
+<path d="M104 41h0"></path>
+<path d="M392 41h0"></path>
+<path d="M104 41a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M124 21h248"></path>
+</g>
+<path d="M372 21a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M104 41h20"></path>
+<g>
+<path d="M124 41h0"></path>
+<path d="M372 41h0"></path>
+<g>
+<path d="M124 41h0"></path>
+<path d="M372 41h0"></path>
+<path d="M124 41h10"></path>
+<g>
+<path d="M134 41h0"></path>
+<path d="M298 41h0"></path>
+<rect x="134" y="30" width="164" height="22"></rect>
+<text x="216" y="45">ComparisonOperator</text>
+</g>
+<path d="M298 41h10"></path>
+<path d="M308 41h10"></path>
+<g>
+<path d="M318 41h0"></path>
+<path d="M362 41h0"></path>
+<rect x="318" y="30" width="44" height="22"></rect>
+<text x="340" y="45">Add</text>
+</g>
+<path d="M362 41h10"></path>
+</g>
+</g>
+<path d="M372 41h20"></path>
+</g>
+</g>
+<path d="M 392 41 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
+</g>
+</svg>

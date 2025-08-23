@@ -32,11 +32,8 @@ ControlItem:
 // 3) Declarations (types, vars, function blocks)
 // ==========================================================================
 Declaration:
-      EnumDecl
-    | StructDecl
+      TypeDecl
     | VarDecl
-    | FunctionBlockDecl
-    | TypeAlias
 ;
 
 TypeDecl:
@@ -120,17 +117,39 @@ TypeRef:
 // ==========================================================================
 ControlUnit:
     // Future Note: Support on `event` and raise `event` stmt
-    'unit' name=ID (((isOnce='once')? 'when' '(' condition=Expr ')') | ('at' time=TodLiteral))? Block
+    'unit' name=ID (((isOnce='once')? 'when' '(' condition=Expr ')') | ('at' time=TodLiteral))? ControlUnitBlock
 ;
 
+// Control unit block allows variable declarations at the top level
+fragment ControlUnitBlock:
+    '{' (stmts+=ControlUnitStatement)* '}'
+;
+
+// Top-level statements in control units (including variable declarations)
+ControlUnitStatement:
+      VarDecl
+    | AssignmentStmt
+    | IfStmt
+    | WhileStmt
+    | ForStmt
+    | SwitchStmt
+    | ExpressionStmt
+    | AfterStmt
+    | EdgeStmt
+    | UseStmt
+    | ContinueStmt
+    | BreakStmt
+;
 
 // ==========================================================================
 // 5) Blocks and Statements
 // ==========================================================================
+// Nested blocks (no variable declarations allowed)
 fragment Block:
     '{' (stmts+=Statement)* '}'
 ;
 
+// Nested statements (no variable declarations)
 Statement:
       AssignmentStmt
     | IfStmt
@@ -138,7 +157,6 @@ Statement:
     | ForStmt
     | SwitchStmt
     | ExpressionStmt
-    | LocalVarDeclStmt
     | AfterStmt
     | EdgeStmt
     | UseStmt
@@ -191,10 +209,6 @@ DefaultOption:
 
 ExpressionStmt:
     expr=Expr ';'
-;
-
-LocalVarDeclStmt infers VarDecl:
-    'var' VarDeclCore
 ;
 
 UseStmt:
@@ -340,7 +354,7 @@ ParenExpr:
 Ref:
     ref=[NamedElement] ('.' properties+=[NamedElement] | '[' indices+=Expr ']')*;
 
-type NamedElement = VarDecl | EnumDecl | StructDecl | Datapoint;
+type NamedElement = VarDecl | EnumDecl | Datapoint;
 
 ComparisonOperator returns string:
     '<' | '<=' | '==' | '!=' | '>=' | '>'

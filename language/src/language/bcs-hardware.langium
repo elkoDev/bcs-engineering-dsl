@@ -14,10 +14,10 @@ HardwareDefinition:
 // ----------------------------------------------------------------
 Controller:
     'controller' name=ID '{'
-        (components+=Component)*
+        (components+=ControllerComponent)*
     '}';
 
-Component:
+ControllerComponent:
     PortGroup | Datapoint
 ;
 
@@ -41,10 +41,6 @@ Channel:
 ;
 
 
-BitRange:
-    start=IntLiteral ('..' end=IntLiteral)?
-;
-
 type IOType = 'ANALOG_INPUT' | 'ANALOG_OUTPUT' |'DIGITAL_INPUT' | 'DIGITAL_OUTPUT';
 IOType returns string:
     'ANALOG_INPUT' | 'ANALOG_OUTPUT' | 'DIGITAL_INPUT' | 'DIGITAL_OUTPUT';
@@ -62,7 +58,7 @@ Bus:
 
 Box:
     'box' name=ID '{'
-        'product:' productCode=ID           // e.g. EK1100, CU1128
+        'product:' product=ID           // e.g. EK1100, CU1128
         ('revision:' rev=StringLiteral)?    // optional explicit rev
         modules+=Module*
     '}'
@@ -70,9 +66,9 @@ Box:
 
 Module:
     'module' name=ID '{'
-        'product:' productCode=ID           // e.g. EL1008, KL2408
+        'product:' product=ID           // e.g. EL1008, KL2408
         ('revision:' rev=StringLiteral)?
-        'position:' slot=IntLiteral         // term slot number
+        'slot:' slot=IntLiteral         // term slot number
     '}'
 ;
 

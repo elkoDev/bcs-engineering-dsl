@@ -2,15 +2,9 @@ PROGRAM MAIN
 VAR
     x: INT;
     y: BOOL;
-    ScheduledUnit_hasRun: BOOL := FALSE;
-    ScheduledUnit_lastRunDay: DATE;
-    OnceConditionalUnit_hasRun: BOOL := FALSE;
-    bRunOnlyOnce: BOOL := FALSE;
-    fbLocalTime: FB_LocalSystemTime := (
-      sNetID := '',
-      bEnable := TRUE,
-      dwCycle := 5
-    );
+    R_TRIG_UnitInstance_ScheduledUnit1: R_TRIG;
+    R_TRIG_UnitInstance_OnceConditionalUnit2: R_TRIG;
+    fbLocalTime: FB_LocalSystemTime := (bEnable := TRUE);
     timeNow: TIMESTRUCT;
     todNow: TIME_OF_DAY;
     dNow: DATE;
