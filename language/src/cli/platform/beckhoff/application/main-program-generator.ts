@@ -294,7 +294,7 @@ ${joinToNode(
         )}
       `;
   },
-  { appendNewLineIfNotEmpty: true }
+  { appendNewLineIfNotEmpty: true, separator: "\n" }
 )}
 `);
 
@@ -303,6 +303,8 @@ ${joinToNode(
     )
       ? BoilerplateAnalyzer.getTimeInitializationCode()
       : "";
-    return `${boilerplateInit}${boilerplateInit ? "\n" : ""}${mainBody}`;
+    return `${boilerplateInit}${
+      boilerplateInit ? "\n\n" : ""
+    }${mainBody.trimEnd()}`;
   }
 }
