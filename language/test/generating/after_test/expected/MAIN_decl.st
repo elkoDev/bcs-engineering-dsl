@@ -3,9 +3,8 @@ VAR
     conditionA: BOOL := TRUE;
     conditionB: BOOL := FALSE;
     AfterUnit_x: INT;
-    tonAfter1: TON := (PT := T#5s);
-    rTrigAfter1: R_TRIG;
-    tonAfter2: TON := (PT := T#10s);
-    rTrigAfter2: R_TRIG;
-    bRunOnlyOnce: BOOL := FALSE;
+    TON_AfterInstance1: TON := (PT := T#5s);
+    R_TRIG_AfterInstance1: R_TRIG;
+    TON_AfterInstance2: TON := (PT := T#10s);
+    R_TRIG_AfterInstance2: R_TRIG;
 END_VAR

@@ -663,7 +663,11 @@ describe("Beckhoff Generator Tests", () => {
       );
 
     // Generate code
-    const generateResult = genBeckhoff(controlModel, hardwareModels[0], outputDir);
+    const generateResult = genBeckhoff(
+      controlModel,
+      hardwareModels[0],
+      outputDir
+    );
 
     expect(generateResult.files.length).toBe(3);
 

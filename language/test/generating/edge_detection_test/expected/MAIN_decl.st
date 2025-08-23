@@ -7,10 +7,9 @@ VAR
     TestEdgeDetection_stopSignal: BOOL;
     TestEdgeDetection_toggleOutput: BOOL;
     TestEdgeDetection_pulseOutput: BOOL := FALSE;
-    r_TRIGInstance1: R_TRIG; (* Function block instance *)
-    f_TRIGInstance2: F_TRIG; (* Function block instance *)
-    r_TRIGInstance3: R_TRIG; (* Function block instance *)
-    r_TRIGInstance4: R_TRIG; (* Function block instance *)
-    f_TRIGInstance5: F_TRIG; (* Function block instance *)
-    bRunOnlyOnce: BOOL := FALSE;
+    R_TRIG_Instance1: R_TRIG;
+    F_TRIG_Instance2: F_TRIG;
+    R_TRIG_Instance3: R_TRIG;
+    R_TRIG_Instance4: R_TRIG;
+    F_TRIG_Instance5: F_TRIG;
 END_VAR

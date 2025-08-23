@@ -2,7 +2,7 @@ import { Statement } from "../../../../language/generated/ast.js";
 import {
   AfterStmtInstanceInfo,
   EdgeStmtInstanceInfo,
-  UseStmtInstanceInfo,
+  FBInstanceInfo,
 } from "../models/types.js";
 import { StatementTraverser } from "./statement-traverser.js";
 
@@ -20,10 +20,7 @@ export class LocalInstanceRegistry {
     Statement,
     AfterStmtInstanceInfo
   >();
-  private readonly useStmtInstanceMap = new Map<
-    Statement,
-    UseStmtInstanceInfo
-  >();
+  private readonly useStmtInstanceMap = new Map<Statement, FBInstanceInfo>();
   private rTrigCounter = 1;
   private fTrigCounter = 1;
   private tonCounter = 1;
@@ -38,8 +35,9 @@ export class LocalInstanceRegistry {
         if (!this.edgeStmtInstanceMap.has(stmt)) {
           this.edgeStmtInstanceMap.set(stmt, {
             kind: "edge",
-            instanceName: `r_TRIGInstance${this.rTrigCounter++}`,
+            instanceName: `R_TRIG_Instance${this.rTrigCounter++}`,
             edgeType: "rising",
+            fbType: "R_TRIG",
           });
         }
       },
@@ -47,8 +45,9 @@ export class LocalInstanceRegistry {
         if (!this.edgeStmtInstanceMap.has(stmt)) {
           this.edgeStmtInstanceMap.set(stmt, {
             kind: "edge",
-            instanceName: `f_TRIGInstance${this.fTrigCounter++}`,
+            instanceName: `F_TRIG_Instance${this.fTrigCounter++}`,
             edgeType: "falling",
+            fbType: "F_TRIG",
           });
         }
       },
@@ -57,8 +56,8 @@ export class LocalInstanceRegistry {
           const idx = this.tonCounter++;
           this.afterStmtInstanceMap.set(stmt, {
             kind: "after",
-            tonName: `tonAfter${idx}`,
-            triggerName: `rTrigAfter${idx}`,
+            tonName: `TON_AfterInstance${idx}`,
+            triggerName: `R_TRIG_AfterInstance${idx}`,
             ptValue: stmt.time,
           });
         }
@@ -67,8 +66,10 @@ export class LocalInstanceRegistry {
         if (!this.useStmtInstanceMap.has(stmt)) {
           const fbType = stmt.functionBlockRef.ref?.name ?? "UNKNOWN_FB";
           this.useStmtInstanceMap.set(stmt, {
-            kind: "use",
-            instanceName: `${fbType.charAt(0).toLowerCase()}${fbType.slice(1)}Instance${this.useCounter++}`,
+            kind: "fb",
+            instanceName: `${fbType.charAt(0).toLowerCase()}${fbType.slice(
+              1
+            )}Instance${this.useCounter++}`,
             fbType,
           });
         }
@@ -93,7 +94,7 @@ export class LocalInstanceRegistry {
   /**
    * Get the collected use statement instance map
    */
-  public getUseStmtInstanceMap(): Map<Statement, UseStmtInstanceInfo> {
+  public getUseStmtInstanceMap(): Map<Statement, FBInstanceInfo> {
     return this.useStmtInstanceMap;
   }
 }

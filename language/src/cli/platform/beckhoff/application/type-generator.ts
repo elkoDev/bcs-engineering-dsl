@@ -26,7 +26,7 @@ import {
 import {
   AfterStmtInstanceInfo,
   EdgeStmtInstanceInfo,
-  UseStmtInstanceInfo,
+  FBInstanceInfo,
 } from "../models/types.js";
 
 /**
@@ -204,9 +204,7 @@ export class TypeGenerator {
     return declarations;
   }
 
-  private extractUseDeclarations(
-    useStmtInstanceMap: Map<any, UseStmtInstanceInfo>
-  ) {
+  private extractUseDeclarations(useStmtInstanceMap: Map<any, FBInstanceInfo>) {
     const declarations: Array<{ instanceName: string; fbType: string }> = [];
 
     for (const [, instanceInfo] of useStmtInstanceMap) {
@@ -291,8 +289,7 @@ export class TypeGenerator {
   ) {
     const edgeDeclarations = joinToNode(
       edgeDecls,
-      (decl) =>
-        expandToNode`${decl.instanceName}: ${decl.fbType}; (* Function block instance *)`,
+      (decl) => expandToNode`${decl.instanceName}: ${decl.fbType};`,
       { appendNewLineIfNotEmpty: true }
     );
 
@@ -306,8 +303,7 @@ ${decl.triggerName}: R_TRIG;`,
 
     const useDeclarations = joinToNode(
       useDecls,
-      (decl) =>
-        expandToNode`${decl.instanceName}: ${decl.fbType}; (* Function block instance *)`,
+      (decl) => expandToNode`${decl.instanceName}: ${decl.fbType};`,
       { appendNewLineIfNotEmpty: true }
     );
 
@@ -413,7 +409,7 @@ ${decl.triggerName}: R_TRIG;`,
 
   private convertUseStatement(
     stmt: any,
-    useStmtInstanceMap: Map<any, UseStmtInstanceInfo>,
+    useStmtInstanceMap: Map<any, FBInstanceInfo>,
     indent: number
   ): string {
     throw Error("Use statements are not yet implemented in TypeGenerator");
@@ -424,7 +420,7 @@ ${decl.triggerName}: R_TRIG;`,
     instanceData: {
       edgeStmtInstanceMap: Map<any, EdgeStmtInstanceInfo>;
       afterStmtInstanceMap: Map<any, AfterStmtInstanceInfo>;
-      useStmtInstanceMap: Map<any, UseStmtInstanceInfo>;
+      useStmtInstanceMap: Map<any, FBInstanceInfo>;
     },
     indent: number
   ): string {
@@ -436,7 +432,7 @@ ${decl.triggerName}: R_TRIG;`,
   private collectFBInstances(stmts: any[]): {
     edgeStmtInstanceMap: Map<Statement, EdgeStmtInstanceInfo>;
     afterStmtInstanceMap: Map<Statement, AfterStmtInstanceInfo>;
-    useStmtInstanceMap: Map<Statement, UseStmtInstanceInfo>;
+    useStmtInstanceMap: Map<Statement, FBInstanceInfo>;
   } {
     const collector = new LocalInstanceRegistry();
     collector.collectFromStatements(stmts);

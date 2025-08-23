@@ -1,12 +1,3 @@
-IF NOT bRunOnlyOnce THEN
-    ADSLOGSTR(
-      msgCtrlMask := ADSLOG_MSGTYPE_LOG,
-      msgFmtStr   := 'Program started %s',
-      strArg      := 'successfully!'
-    );
-    bRunOnlyOnce := TRUE;
-END_IF;
-
 // Control Unit 'TestHardwareIOLogic'
 TestHardwareIOLogic_distance := UltrasonicSensor_Distance;
 TestHardwareIOLogic_error := UltrasonicSensor_Error;

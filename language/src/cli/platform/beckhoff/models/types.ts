@@ -5,12 +5,12 @@ import {
 } from "../../../../language/generated/ast.js";
 
 export type InstanceInfo =
-  | UseStmtInstanceInfo
+  | FBInstanceInfo
   | EdgeStmtInstanceInfo
   | AfterStmtInstanceInfo;
 
-export interface UseStmtInstanceInfo {
-  kind: "use";
+export interface FBInstanceInfo {
+  kind: "fb";
   instanceName: string;
   fbType: string;
 }
@@ -19,6 +19,7 @@ export interface EdgeStmtInstanceInfo {
   kind: "edge";
   instanceName: string;
   edgeType: "rising" | "falling";
+  fbType: string;
 }
 
 export interface AfterStmtInstanceInfo {
