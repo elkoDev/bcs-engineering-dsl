@@ -10,9 +10,9 @@ import {
 } from "../../../../language/generated/ast.js";
 import {
   InstanceInfo,
-  UseStmtInstanceInfo,
-  AfterStmtInstanceInfo,
+  FBInstanceInfo,
   EdgeStmtInstanceInfo,
+  AfterStmtInstanceInfo,
 } from "../models/types.js";
 import { StatementTraverser } from "./statement-traverser.js";
 import { LibraryHandlerManager } from "./library-handlers/library-handler-manager.js";
@@ -29,18 +29,9 @@ import { LibraryHandlerManager } from "./library-handlers/library-handler-manage
  * - Tracking and providing all declared FB and AFTER statement instances.
  * - Detecting and assigning required communication FBs (e.g., DALI) based on hardware configuration.
  * - Resetting instance state for reuse.
- *
- * @example
- * ```typescript
- * const manager = new GlobalInstanceManager(controlModel, hardwareModel);
- * manager.assignFBInstancesFromControlUnit(controlUnit);
- * manager.assignEdgeDetectionInstances(mainStatements);
- * manager.assignAfterStmtInstances(mainStatements);
- * const fbInstances = manager.getAllFBInstanceDeclarations();
- * ```
  */
 export class GlobalInstanceManager {
-  private readonly fbInstanceMap = new Map<any, InstanceInfo>();
+  private readonly fbInstanceMap = new Map<Statement | string, InstanceInfo>();
   private fbInstanceCounter = 1;
   private readonly controlModel: ControlModel;
   private readonly hardwareModel: HardwareModel;
@@ -55,13 +46,13 @@ export class GlobalInstanceManager {
     this.fbInstanceCounter = 1;
   }
 
-  public getOrAssignUseStmtInstance(useStmt: UseStmt): UseStmtInstanceInfo {
+  public getOrAssignUseStmtInstance(useStmt: UseStmt): FBInstanceInfo {
     if (this.fbInstanceMap.has(useStmt)) {
-      return this.fbInstanceMap.get(useStmt)! as UseStmtInstanceInfo;
+      return this.fbInstanceMap.get(useStmt)! as FBInstanceInfo;
     }
     const fbType = useStmt.functionBlockRef.ref?.name ?? "UNKNOWN_FB";
     const instanceName = this.createUniqueFBInstanceName(fbType);
-    const info: UseStmtInstanceInfo = { kind: "use", instanceName, fbType };
+    const info: FBInstanceInfo = { kind: "fb", instanceName, fbType };
     this.fbInstanceMap.set(useStmt, info);
     return info;
   }
@@ -75,7 +66,12 @@ export class GlobalInstanceManager {
       return this.fbInstanceMap.get(stmt)! as EdgeStmtInstanceInfo;
     }
     const instanceName = this.createUniqueFBInstanceName(fbType);
-    const info: EdgeStmtInstanceInfo = { kind: "edge", instanceName, edgeType };
+    const info: EdgeStmtInstanceInfo = {
+      kind: "edge",
+      instanceName,
+      edgeType,
+      fbType,
+    };
     this.fbInstanceMap.set(stmt, info);
     return info;
   }
@@ -100,10 +96,10 @@ export class GlobalInstanceManager {
 
   public getDaliComInstance(
     daliComType: string
-  ): UseStmtInstanceInfo | undefined {
+  ): FBInstanceInfo | undefined {
     const key = `daliCom_${daliComType}`;
     const instance = this.fbInstanceMap.get(key);
-    return instance?.kind === "use" ? instance : undefined;
+    return instance?.kind === "fb" ? instance : undefined;
   }
 
   public addDaliComInstance(daliComType: string): void {
@@ -111,42 +107,23 @@ export class GlobalInstanceManager {
     const key = `daliCom_${fbType}`;
     if (!this.fbInstanceMap.has(key)) {
       const instanceName = this.createUniqueFBInstanceName(fbType);
-      this.fbInstanceMap.set(key, { kind: "use", instanceName, fbType });
+      this.fbInstanceMap.set(key, { kind: "fb", instanceName, fbType });
     }
   }
 
-  public getUseStmtInstanceDeclarations(): Array<{
-    instanceName: string;
-    fbType: string;
-  }> {
-    const seen = new Set<string>();
-    const result: Array<{ instanceName: string; fbType: string }> = [];
-    for (const info of this.fbInstanceMap.values()) {
-      if (info.kind === "use" && !seen.has(info.instanceName)) {
-        seen.add(info.instanceName);
-        result.push({ instanceName: info.instanceName, fbType: info.fbType });
-      }
-    }
-    return result;
+  public getFBInstanceDeclarations(): FBInstanceInfo[] {
+    return Array.from(this.fbInstanceMap.values()).filter(
+      (info): info is FBInstanceInfo => info.kind === "fb"
+    );
   }
 
-  public getAllEdgeStmtDeclarations(): Array<{
-    instanceName: string;
-    fbType: string;
-  }> {
-    const seen = new Set<string>();
-    const result: Array<{ instanceName: string; fbType: string }> = [];
-    for (const info of this.fbInstanceMap.values()) {
-      if (info.kind === "edge" && !seen.has(info.instanceName)) {
-        seen.add(info.instanceName);
-        const fbType = info.edgeType === "rising" ? "R_TRIG" : "F_TRIG";
-        result.push({ instanceName: info.instanceName, fbType });
-      }
-    }
-    return result;
+  public getEdgeStmtInstanceDeclarations(): EdgeStmtInstanceInfo[] {
+    return Array.from(this.fbInstanceMap.values()).filter(
+      (info): info is EdgeStmtInstanceInfo => info.kind === "edge"
+    );
   }
 
-  public getAllAfterStmtDeclarations(): AfterStmtInstanceInfo[] {
+  public getAfterStmtInstanceDeclarations(): AfterStmtInstanceInfo[] {
     return Array.from(this.fbInstanceMap.values()).filter(
       (info): info is AfterStmtInstanceInfo => info.kind === "after"
     );

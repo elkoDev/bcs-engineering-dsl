@@ -147,10 +147,11 @@ export class MainProgramGenerator {
   ): string {
     const { inputs, outputs } = hardware;
     const { scheduled, conditional } = controlUnits;
-    const fbInstanceDecls =
-      this.instanceManager.getUseStmtInstanceDeclarations();
-    const edgeStmtDecls = this.instanceManager.getAllEdgeStmtDeclarations();
-    const afterStmtDecls = this.instanceManager.getAllAfterStmtDeclarations();
+    const fbInstanceDecls = this.instanceManager.getFBInstanceDeclarations();
+    const edgeStmtDecls =
+      this.instanceManager.getEdgeStmtInstanceDeclarations();
+    const afterStmtDecls =
+      this.instanceManager.getAfterStmtInstanceDeclarations();
     const allLoopVars = LoopVariableAnalyzer.collectLoopVars(mainStatements);
     const declaredVarNames = new Set(mainVars.map((v) => v.varDecl.name));
     const loopVarsToDeclare = allLoopVars.filter(
