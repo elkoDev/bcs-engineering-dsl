@@ -2,9 +2,8 @@ PROGRAM MAIN
 VAR
     x: INT;
     y: BOOL;
-    ScheduledUnit_hasRun: BOOL := FALSE;
-    ScheduledUnit_lastRunDay: DATE;
-    OnceConditionalUnit_hasRun: BOOL := FALSE;
+    rTrig_ScheduledUnitInstance1: R_TRIG; (* Function block instance *)
+    rTrig_OnceConditionalUnitInstance2: R_TRIG; (* Function block instance *)
     bRunOnlyOnce: BOOL := FALSE;
     fbLocalTime: FB_LocalSystemTime := (
       sNetID := '',

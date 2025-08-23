@@ -243,9 +243,9 @@ export class MainProgramGenerator {
         if (isScheduledControlUnit(unit)) {
           const { instanceName } =
             this.instanceManager.getOrAssignUnitTriggerInstance(unit);
-          const condition = `todNow >= ${unit.timeLiteral}`;
+          const condition = `todNow >= ${unit.time}`;
           return expandToNode`
-            // Scheduled Control Unit '${unit.name}' @ ${unit.timeLiteral}
+            // Scheduled Control Unit '${unit.name}' @ ${unit.time}
             ${instanceName}(CLK := ${condition});
             IF ${instanceName}.Q THEN
             ${joinToNode(

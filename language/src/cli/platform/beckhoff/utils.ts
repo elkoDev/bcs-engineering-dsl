@@ -1,41 +1,17 @@
-import {
-  ControlUnit,
-  Expr,
-  Statement,
-} from "../../../language/generated/ast.js";
-
-export interface RegularControlUnit {
-  name: string;
-  stmts: Statement[];
-}
-
-export interface ScheduledControlUnit {
-  name: string;
-  timeLiteral: string;
-  stmts: Statement[];
-}
-
-export interface ConditionalControlUnit {
-  name: string;
-  runOnce: boolean;
-  condition: Expr;
-  stmts: Statement[];
-}
+import { ControlUnit, Expr } from "../../../language/generated/ast.js";
 
 export function isScheduledControlUnit(
   unit: ControlUnit
-): unit is ControlUnit & ScheduledControlUnit {
+): unit is ControlUnit & { time: string } {
   return !!unit.time;
 }
 
 export function isConditionalControlUnit(
   unit: ControlUnit
-): unit is ControlUnit & ConditionalControlUnit {
+): unit is ControlUnit & { condition: Expr } {
   return !!unit.condition;
 }
 
-export function isRegularControlUnit(
-  unit: ControlUnit
-): unit is ControlUnit & RegularControlUnit {
+export function isRegularControlUnit(unit: ControlUnit): boolean {
   return !unit.time && !unit.condition;
 }
