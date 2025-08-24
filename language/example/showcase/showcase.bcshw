@@ -33,7 +33,7 @@ controller ShowcaseController {
         channels: 4
     }
 
-    portgroup TwoDigitalInputs {
+    portgroup Room1DigitalInputs {
         module: Zwei_Kanal_Digital_Eingang_Modul
         ioType: DIGITAL_INPUT
         channels: 2
@@ -50,7 +50,14 @@ controller ShowcaseController {
         ioType: ANALOG_OUTPUT
         channels: 4
     }
-}    
+
+    datapoint MotionSensor {
+        portgroup: Room1DigitalInputs
+        channels: {
+            channel Value: BOOL link "Channel 1^Input"
+        }
+    } 
+}   
 
 network {
     hostname: "CX-301714"

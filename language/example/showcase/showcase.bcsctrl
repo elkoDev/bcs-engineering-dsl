@@ -1,7 +1,18 @@
 control ShowcaseController {
-    var presenceSensor: BOOL;
-    var roomOccupancy: INT = 0;
-    unit CountPersonEntering once when (presenceSensor) {
-        roomOccupancy = roomOccupancy + 1;
+    enum OpMode {
+        Auto,
+        Manual,
+        Off
+    }
+    struct RoomStatus {
+        currentMode: OpMode = OpMode.Auto,
+        temperature: REAL,
+        isOccupied: BOOL
+    }
+    unit LightingControl {
+        var currentMode: OpMode = OpMode.;
+        if (MotionSensor.) {
+        // Turn on lights...
+        }
     }
 }
