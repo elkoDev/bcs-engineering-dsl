@@ -217,7 +217,7 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
       acceptor({
         node,
         property: "inputVar",
-        type: SemanticTokenTypes.comment,
+        type: SemanticTokenTypes.parameter,
       });
     }
     if (isEnumMemberLiteral(node)) {
