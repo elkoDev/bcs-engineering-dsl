@@ -57,6 +57,20 @@ controller ShowcaseController {
             channel Value: BOOL link "Channel 1^Input"
         }
     } 
+
+    datapoint RoomSensor {
+        portgroup: Room1DigitalInputs
+        channels: {
+            channel Temperature: REAL link "Channel 2^Input"
+        }
+    } 
+
+    datapoint HeatingActuator {
+        portgroup: TwoDigitalOutputs
+        channels: {
+            channel IsActive: BOOL link "Channel 1^Output"
+        }
+    } 
 }   
 
 network {

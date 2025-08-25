@@ -154,9 +154,9 @@ package "Literals" {
 
 ' Abstract element for what can be referenced by name
 abstract class NamedElement
-NamedElement <|--- VarDecl
-NamedElement <|--- EnumDecl
-NamedElement <|--- Datapoint
+NamedElement <|-- VarDecl
+NamedElement <|-- EnumDecl
+NamedElement <|-- Datapoint
 
 ' ===== RELATIONSHIPS =====
 
@@ -213,9 +213,9 @@ UseStmt "1" *-- "1" UseOutput : useOutput
 InputMapping "1" ..> "1" VarDecl : inputVar
 UseOutput "1" *-- "0..1" SimpleUseResult : singleOutput
 UseOutput "1" *-- "0..*" MappingUseResult : mappingOutputs
-SimpleUseResult "1" ..> "1" VarDecl : targetOutputVar
+SimpleUseResult "1" ..> "1" Ref : target
 MappingUseResult "1" ..> "1" VarDecl : fbOutputVar
-MappingUseResult "1" ..> "1" VarDecl : targetOutputVar
+MappingUseResult "1" ..> "1" Ref : target
 EdgeStmt "1" *-- "1" Ref : signal
 
 ' --- Expressions ---

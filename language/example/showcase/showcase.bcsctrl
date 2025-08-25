@@ -4,15 +4,20 @@ control ShowcaseController {
         Manual,
         Off
     }
-    struct RoomStatus {
-        currentMode: OpMode = OpMode.Auto,
-        temperature: REAL,
-        isOccupied: BOOL
-    }
-    unit LightingControl {
-        var currentMode: OpMode = OpMode.;
-        if (MotionSensor.) {
-        // Turn on lights...
+    functionblock HeatingLogic {
+        inputs {
+            var iTemp: REAL;
+            var iMode: OpMode;
         }
+        outputs {
+            var oHeating: BOOL;
+        }
+        logic {
+            oHeating = iMode == OpMode.Auto && iTemp < 20.5;
+        }
+    }
+    unit MorningWarmUp at TOD#06:00:00 {
+        var currentMode: OpMode = OpMode.Auto;
+        use HeatingLogic(iTemp: RoomSensor.Temperature, iMode: currentMode) -> HeatingActuator.IsActive;
     }
 }
