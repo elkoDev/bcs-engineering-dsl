@@ -4,15 +4,13 @@
 
 - Windows with TcXaeShell Version 15.0 or higher
 
-## 2 Installation and Usage
+## 2 Installation
 
 To install the complete framework, you need to install three components:
 
 1. VS Code extension: `BCS Engineering DSL`
 2. `bcs-engineering-cli` - The CLI to generate the artifacts from the DSL files.
 3. `TcAutomation` - The tool to create and deploy the TwinCAT project from the generated artifacts.
-
-After the installation you can have a look at the [example](language/example) folder to see how to use the framework.
 
 ### 2.1 Install bcs-engineering-cli and VS Code Extension
 
@@ -23,7 +21,7 @@ To install the `bcs-engineering-cli` and `BCS Engineering DSL` VS Code extension
 _TcAutomation_ is responsible for the creation and deployment of the corresponding TwinCAT project given the generated artifacts. To install it, you need to run the `TcAutomationInstaller.exe`.
 To create the installer, follow the steps described in the [TcAutomation](TcAutomation/README.md) README file.
 
-### 2.3 Check TcAutomation Installation
+#### Check TcAutomation Installation
 
 To check if _TcAutomation_ is installed correctly, you can run the following command in a command:
 
@@ -31,20 +29,21 @@ To check if _TcAutomation_ is installed correctly, you can run the following com
 TcAutomation --help
 ```
 
-### 2.5 BCS Engineering CLI
+## 3 Usage
 
-#### 2.5.1 Generate
+After installation, explore the [example](language/example) folder to get started with the framework. The examples demonstrate how to define control logic and hardware configurations using the BCS Engineering DSL. You can either generate some of the artifacts (ST and TwinCAT config files) without deployment or generate and deploy them to a Beckhoff device.
 
-To generate the artifacts, you can run the following command in the `language/example` folder:
+#### 3.1 Generate
+
+To generate the artifacts, you can run the following command in the `language/example` directory:
 
 ```bash
 bcs-engineering-cli beckhoff generate .\kBus\control.bcsctrl
 ```
 
-#### 2.5.2 Deploy
+#### 3.2 Deploy
 
-To deploy the generated artifacts, you can run the following command in the `language/example` folder.
-(Note: this command generates and deploys the artifacts)
+To generate and deploy the artifacts, you can run the following command in the `language/example` directory:
 
 ```bash
 bcs-engineering-cli beckhoff deploy .\kBus\control.bcsctrl
