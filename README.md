@@ -1,3 +1,5 @@
+[![BCS Engineering DSL](https://github.com/elkoDev/bcs-engineering-dsl/actions/workflows/ci.yml/badge.svg)](https://github.com/elkoDev/bcs-engineering-dsl/actions/workflows/ci.yml)
+
 # BCS Engineering Framework
 
 ## 1 Prerequisites
