@@ -1,5 +1,3 @@
-[![CI](https://github.com/elkoDev/bcs-engineering-dsl/actions/workflows/ci.yml/badge.svg)](https://github.com/elkoDev/bcs-engineering-dsl/actions/workflows/ci.yml)
-
 # BCS Engineering DSL
 
 ## 1 Publishing
