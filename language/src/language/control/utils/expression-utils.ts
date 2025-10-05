@@ -3,7 +3,7 @@
  * Contains methods for stringifying expressions and manipulating expression data.
  */
 export class ExpressionUtils {
-  static stringifyExpression(expr: any): string {
+  public static stringifyExpression(expr: any): string {
     if (!expr) return "undefined";
 
     switch (expr.$type) {
@@ -24,14 +24,12 @@ export class ExpressionUtils {
 
       case "Primary":
         if (expr.val) {
-          if (Array.isArray(expr.val?.elements)) {
-            // It's an ArrayLiteral
+          if (this.isArrayLiteral(expr)) {
             return `[${expr.val.elements
               .map((e: any) => this.stringifyExpression(e))
               .join(", ")}]`;
           }
-          if (Array.isArray(expr.val?.fields)) {
-            // It's a StructLiteral
+          if (this.isStructLiteral(expr)) {
             return `{${expr.val.fields
               .map(
                 (f: any) => `${f.name}: ${this.stringifyExpression(f.value)}`
@@ -45,5 +43,13 @@ export class ExpressionUtils {
       default:
         return `[${expr.$type}]`;
     }
+  }
+
+  private static isArrayLiteral(expr: any): boolean {
+    return expr?.$type === "Primary" && Array.isArray(expr.val?.elements);
+  }
+
+  private static isStructLiteral(expr: any): boolean {
+    return expr?.$type === "Primary" && Array.isArray(expr.val?.fields);
   }
 }

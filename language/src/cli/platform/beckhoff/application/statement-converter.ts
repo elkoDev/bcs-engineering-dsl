@@ -25,7 +25,6 @@ import {
 } from "../../../../language/generated/ast.js";
 import { ExpressionConverter } from "./expression-converter.js";
 import { GlobalInstanceManager } from "./global-instance-manager.js";
-import { getQualifiedReferenceName } from "./qualified_reference_name.js";
 
 /**
  * Converts DSL statements to IEC 61131-3 Structured Text and analyzes statement structures.
@@ -120,14 +119,12 @@ export class StatementConverter {
       const fb = stmt.functionBlockRef.ref;
       const outs = fb ? getOutputs(fb) : [];
       const fbOut = outs.length === 1 ? outs[0].name : "output";
-      const target = getQualifiedReferenceName(
-        stmt.useOutput.singleOutput.targetOutputVar
-      );
-      return out + `${p}${target} := ${instanceName}.${fbOut};\n`;
+      const target = this.expr.emit(stmt.useOutput.singleOutput.target);
+      return out + `${p}${target} := ${instanceName}.${fbOut};\n`.trimEnd();
     }
 
     for (const m of stmt.useOutput.mappingOutputs) {
-      const target = getQualifiedReferenceName(m.targetOutputVar);
+      const target = this.expr.emit(m.target);
       const fbOut = m.fbOutputVar.ref?.name ?? "output";
       out += `${p}${target} := ${instanceName}.${fbOut};\n`;
     }

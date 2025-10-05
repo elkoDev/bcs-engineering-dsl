@@ -1,7 +1,23 @@
 control ShowcaseController {
-    var presenceSensor: BOOL;
-    var roomOccupancy: INT = 0;
-    unit CountPersonEntering once when (presenceSensor) {
-        roomOccupancy = roomOccupancy + 1;
+    enum OpMode {
+        Auto,
+        Manual,
+        Off
+    }
+    functionblock HeatingLogic {
+        inputs {
+            var iTemp: REAL;
+            var iMode: OpMode;
+        }
+        outputs {
+            var oHeating: BOOL;
+        }
+        logic {
+            oHeating = iMode == OpMode.Auto && iTemp < 20.5;
+        }
+    }
+    unit MorningWarmUp at TOD#06:00:00 {
+        var currentMode: OpMode = OpMode.Auto;
+        use HeatingLogic(iTemp: RoomSensor.Temperature, iMode: currentMode) -> HeatingActuator.IsActive;
     }
 }

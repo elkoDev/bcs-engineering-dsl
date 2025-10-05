@@ -132,7 +132,7 @@ describe("BCS Control Validation Tests", () => {
       // 6. Output type mismatch (single)
       "Type mismatch for output 'oHeating': cannot assign to 'isHeating_should_fail_type_matching' of type 'INT', expected 'BOOL'.",
       // 7. Output type mismatch (mapping)
-      "Type mismatch for mapped output 'oHeating': expected 'BOOL', got 'INT'.",
+      "Type mismatch: cannot assign output 'oHeating' to 'isHeating_should_fail_type_matching'. Expected assignable type for 'BOOL', but got 'INT'.",
       // 8. Output mapping could not resolve
       "Could not resolve reference to VarDecl named 'oExtra'.",
       "Could not resolve reference to VarDecl named 'oWrong'.",

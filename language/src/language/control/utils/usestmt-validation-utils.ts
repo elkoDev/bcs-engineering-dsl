@@ -1,8 +1,16 @@
 import { ValidationAcceptor } from "langium";
-import { UseStmt, FunctionBlockDecl, UseOutput } from "../../generated/ast.js";
+import {
+  UseStmt,
+  FunctionBlockDecl,
+  UseOutput,
+  isDatapoint,
+  isEnumDecl,
+  Ref,
+} from "../../generated/ast.js";
 import { getInputs, getOutputs } from "./function-block-utils.js";
 import { DuplicationValidationUtils } from "./duplication-validation-utils.js";
 import { TypeInferenceUtils } from "./type-inference-utils.js";
+import { ExpressionUtils } from "./expression-utils.js";
 
 /**
  * Utility class for validating UseStmt (function block usage) operations.
@@ -130,11 +138,11 @@ export class UseStmtValidationUtils {
     }
 
     const expected = getOutputs(fb)[0];
-    const actual = output.singleOutput!.targetOutputVar?.ref;
+    const actualTarget = output.singleOutput!.target;
 
-    if (actual) {
+    if (UseStmtValidationUtils.checkTargetIsAssignable(actualTarget, accept)) {
       const expectedType = TypeInferenceUtils.inferVarDeclType(expected);
-      const actualType = TypeInferenceUtils.inferVarDeclType(actual);
+      const actualType = TypeInferenceUtils.inferType(actualTarget, accept);
 
       if (
         expectedType &&
@@ -143,8 +151,12 @@ export class UseStmtValidationUtils {
       ) {
         accept(
           "error",
-          `Type mismatch for output '${expected.name}': cannot assign to '${actual.name}' of type '${actualType}', expected '${expectedType}'.`,
-          { node: output.singleOutput!, property: "targetOutputVar" }
+          `Type mismatch for output '${
+            expected.name
+          }': cannot assign to '${ExpressionUtils.stringifyExpression(
+            actualTarget
+          )}' of type '${actualType}', expected '${expectedType}'.`,
+          { node: output.singleOutput!, property: "target" }
         );
       }
     }
@@ -180,25 +192,63 @@ export class UseStmtValidationUtils {
     // Perform type checking for mappings
     for (const map of output.mappingOutputs) {
       const fbOutputVar = map.fbOutputVar?.ref;
-      const targetOutputVar = map.targetOutputVar?.ref;
+      const targetRef = map.target;
 
-      if (!targetOutputVar || !fbOutputVar) continue;
+      if (!targetRef || !fbOutputVar) continue;
 
-      const expected = getOutputs(fb).find((o) => o.name === fbOutputVar.name);
-      const expectedType = expected ? TypeInferenceUtils.inferVarDeclType(expected) : undefined;
-      const actualType = TypeInferenceUtils.inferVarDeclType(targetOutputVar);
-
-      if (
-        expectedType &&
-        actualType &&
-        !TypeInferenceUtils.isTypeAssignable(expectedType, actualType)
-      ) {
-        accept(
-          "error",
-          `Type mismatch for mapped output '${fbOutputVar.name}': expected '${expectedType}', got '${actualType}'.`,
-          { node: map, property: "fbOutputVar" }
+      if (UseStmtValidationUtils.checkTargetIsAssignable(targetRef, accept)) {
+        const expected = getOutputs(fb).find(
+          (o) => o.name === fbOutputVar.name
         );
+        const expectedType = expected
+          ? TypeInferenceUtils.inferVarDeclType(expected)
+          : undefined;
+        const actualType = TypeInferenceUtils.inferType(targetRef, accept);
+
+        if (
+          expectedType &&
+          actualType &&
+          !TypeInferenceUtils.isTypeAssignable(expectedType, actualType)
+        ) {
+          accept(
+            "error",
+            `Type mismatch: cannot assign output '${
+              fbOutputVar.name
+            }' to '${ExpressionUtils.stringifyExpression(
+              targetRef
+            )}'. Expected assignable type for '${expectedType}', but got '${actualType}'.`,
+            { node: map, property: "target" }
+          );
+        }
       }
     }
+  }
+
+  private static checkTargetIsAssignable(
+    target: Ref,
+    accept: ValidationAcceptor
+  ): boolean {
+    const targetRef = target.ref?.ref;
+    if (!targetRef) return false;
+
+    if (isEnumDecl(targetRef)) {
+      accept("error", "Cannot assign a 'use' output to an enum type.", {
+        node: target,
+      });
+      return false;
+    }
+
+    if (isDatapoint(targetRef)) {
+      const portGroup = targetRef.portgroup?.ref;
+      if (portGroup?.ioType.includes("INPUT")) {
+        accept(
+          "error",
+          `Cannot assign a 'use' output to a read-only input channel.`,
+          { node: target }
+        );
+        return false;
+      }
+    }
+    return true;
   }
 }

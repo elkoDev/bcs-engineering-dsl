@@ -21,7 +21,7 @@ export class BCSControlLangCompletionProvider extends DefaultCompletionProvider 
   ): MaybePromise<void> {
     const node = context.node;
 
-    if (next.property === "property" && isRef(node)) {
+    if (next.property === "properties" && isRef(node)) {
       const namedElement = node.ref.ref;
 
       if (isDatapoint(namedElement)) {

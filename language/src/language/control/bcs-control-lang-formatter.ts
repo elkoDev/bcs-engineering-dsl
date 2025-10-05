@@ -59,7 +59,8 @@ export class BCSControlLangFormatter extends AbstractFormatter {
       return true;
     }
     return false;
-  }  private formatStatements(node: AstNode): boolean {
+  }
+  private formatStatements(node: AstNode): boolean {
     if (ast.isAssignmentStmt(node)) {
       this.formatAssignmentStmt(node);
       return true;
@@ -290,7 +291,8 @@ export class BCSControlLangFormatter extends AbstractFormatter {
 
     // Format closing brace
     closeBrace.prepend(Formatting.newLine());
-  }  private formatIfStmt(node: ast.IfStmt): void {
+  }
+  private formatIfStmt(node: ast.IfStmt): void {
     const formatter = this.getNodeFormatter(node);
     const openParen = formatter.keyword("(");
     const closeParen = formatter.keyword(")");
@@ -301,9 +303,9 @@ export class BCSControlLangFormatter extends AbstractFormatter {
     openParen.prepend(Formatting.oneSpace());
     openParen.append(Formatting.noSpace());
     closeParen.prepend(Formatting.noSpace());
-    closeParen.append(Formatting.oneSpace()); // Consistent space after closing paren
+    closeParen.append(Formatting.oneSpace());
 
-    // Format braces - no additional space before brace since we have space after paren
+    // Format braces
     openBrace.prepend(Formatting.noSpace());
     openBrace.append(Formatting.newLine());
 
@@ -322,14 +324,15 @@ export class BCSControlLangFormatter extends AbstractFormatter {
     if (node.elseStmt) {
       formatter.node(node.elseStmt).prepend(Formatting.oneSpace());
     }
-  }  private formatElseIfStmt(node: ast.ElseIfStmt): void {
+  }
+  private formatElseIfStmt(node: ast.ElseIfStmt): void {
     const formatter = this.getNodeFormatter(node);
     const openParen = formatter.keyword("(");
     const closeParen = formatter.keyword(")");
     const openBrace = formatter.keyword("{");
     const closeBrace = formatter.keyword("}");
 
-    // Format 'else if' keywords - ensure proper spacing
+    // Format 'else if' keywords
     formatter.keyword("else").append(Formatting.oneSpace());
     formatter.keyword("if").append(Formatting.noSpace());
 
@@ -337,9 +340,9 @@ export class BCSControlLangFormatter extends AbstractFormatter {
     openParen.prepend(Formatting.noSpace());
     openParen.append(Formatting.noSpace());
     closeParen.prepend(Formatting.noSpace());
-    closeParen.append(Formatting.oneSpace()); // Consistent space after closing paren
+    closeParen.append(Formatting.oneSpace());
 
-    // Format braces - no additional space before brace
+    // Format braces
     openBrace.prepend(Formatting.noSpace());
     openBrace.append(Formatting.newLine());
 
@@ -367,7 +370,8 @@ export class BCSControlLangFormatter extends AbstractFormatter {
 
     // Format closing brace
     closeBrace.prepend(Formatting.newLine());
-  }  private formatWhileStmt(node: ast.WhileStmt): void {
+  }
+  private formatWhileStmt(node: ast.WhileStmt): void {
     const formatter = this.getNodeFormatter(node);
     const openParen = formatter.keyword("(");
     const closeParen = formatter.keyword(")");
@@ -378,9 +382,9 @@ export class BCSControlLangFormatter extends AbstractFormatter {
     openParen.prepend(Formatting.oneSpace());
     openParen.append(Formatting.noSpace());
     closeParen.prepend(Formatting.noSpace());
-    closeParen.append(Formatting.oneSpace()); // Consistent space after closing paren
+    closeParen.append(Formatting.oneSpace());
 
-    // Format braces - no additional space before brace
+    // Format braces
     openBrace.prepend(Formatting.noSpace());
     openBrace.append(Formatting.newLine());
 
@@ -389,7 +393,8 @@ export class BCSControlLangFormatter extends AbstractFormatter {
 
     // Format closing brace
     closeBrace.prepend(Formatting.newLine());
-  }  private formatForStmt(node: ast.ForStmt): void {
+  }
+  private formatForStmt(node: ast.ForStmt): void {
     const formatter = this.getNodeFormatter(node);
     const openParen = formatter.keyword("(");
     const closeParen = formatter.keyword(")");
@@ -400,12 +405,12 @@ export class BCSControlLangFormatter extends AbstractFormatter {
     openParen.prepend(Formatting.oneSpace());
     openParen.append(Formatting.noSpace());
     closeParen.prepend(Formatting.noSpace());
-    closeParen.append(Formatting.oneSpace()); // Consistent space after closing paren
+    closeParen.append(Formatting.oneSpace());
     // Format 'to' and 'by' keywords
     formatter.keyword("to").surround(Formatting.oneSpace());
     formatter.keyword("by").surround(Formatting.oneSpace());
 
-    // Format braces - no additional space before brace
+    // Format braces
     openBrace.prepend(Formatting.noSpace());
     openBrace.append(Formatting.newLine());
 
@@ -653,10 +658,10 @@ export class BCSControlLangFormatter extends AbstractFormatter {
     const openBrace = formatter.keyword("{");
     const closeBrace = formatter.keyword("}");
 
-    // Format 'inputs' keyword - space before opening brace
+    // Format 'inputs' keyword
     formatter.keyword("inputs").append(Formatting.noSpace());
 
-    // Format braces - consistent with other blocks
+    // Format braces
     openBrace.prepend(Formatting.oneSpace());
     openBrace.append(Formatting.newLine());
 
@@ -672,10 +677,10 @@ export class BCSControlLangFormatter extends AbstractFormatter {
     const openBrace = formatter.keyword("{");
     const closeBrace = formatter.keyword("}");
 
-    // Format 'outputs' keyword - space before opening brace
+    // Format 'outputs' keyword
     formatter.keyword("outputs").append(Formatting.noSpace());
 
-    // Format braces - consistent with other blocks
+    // Format braces
     openBrace.prepend(Formatting.oneSpace());
     openBrace.append(Formatting.newLine());
 
@@ -691,10 +696,10 @@ export class BCSControlLangFormatter extends AbstractFormatter {
     const openBrace = formatter.keyword("{");
     const closeBrace = formatter.keyword("}");
 
-    // Format 'locals' keyword - space before opening brace
+    // Format 'locals' keyword
     formatter.keyword("locals").append(Formatting.noSpace());
 
-    // Format braces - consistent with other blocks
+    // Format braces
     openBrace.prepend(Formatting.oneSpace());
     openBrace.append(Formatting.newLine());
 
@@ -710,14 +715,14 @@ export class BCSControlLangFormatter extends AbstractFormatter {
     const openBrace = formatter.keyword("{");
     const closeBrace = formatter.keyword("}");
 
-    // Format 'logic' keyword - space before opening brace
+    // Format 'logic' keyword
     formatter.keyword("logic").append(Formatting.noSpace());
 
-    // Format braces - consistent with other blocks
+    // Format braces
     openBrace.prepend(Formatting.oneSpace());
     openBrace.append(Formatting.newLine());
 
-    // Indent logic statements - this is crucial for proper else statement formatting
+    // Indent logic statements
     formatter.interior(openBrace, closeBrace).prepend(Formatting.indent());
 
     // Format closing brace

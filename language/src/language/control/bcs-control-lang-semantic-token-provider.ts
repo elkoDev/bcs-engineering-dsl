@@ -21,7 +21,6 @@ import {
   isStructFieldDecl,
   isUseStmt,
   isMappingUseResult,
-  isSimpleUseResult,
   isInputMapping,
   isEnumMemberLiteral,
   isCaseLiteral,
@@ -213,24 +212,12 @@ export class BCSControlLangSemanticTokenProvider extends AbstractSemanticTokenPr
         property: "fbOutputVar",
         type: SemanticTokenTypes.parameter,
       });
-      acceptor({
-        node,
-        property: "targetOutputVar",
-        type: SemanticTokenTypes.variable,
-      });
-    }
-    if (isSimpleUseResult(node)) {
-      acceptor({
-        node,
-        property: "targetOutputVar",
-        type: SemanticTokenTypes.variable,
-      });
     }
     if (isInputMapping(node)) {
       acceptor({
         node,
         property: "inputVar",
-        type: SemanticTokenTypes.comment,
+        type: SemanticTokenTypes.parameter,
       });
     }
     if (isEnumMemberLiteral(node)) {

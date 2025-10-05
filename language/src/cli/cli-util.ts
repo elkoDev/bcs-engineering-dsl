@@ -13,14 +13,6 @@ import {
   isHardwareModel,
 } from "../language/generated/ast.js";
 
-/**
- * Read a requirement document with the complete workspace (with requirements and
- * tests) located in the folder of the file.
- * @param fileName the main requirement model file
- * @param services the language services
- * @returns a tuple with the document indicated by the fileName and a list of
- *          documents from the workspace.
- */
 export async function extractDocuments(
   fileName: string,
   services: LangiumCoreServices,

@@ -25,9 +25,11 @@ export function getReferenceName(ref: Reference<NamedElement>): string {
 
 /**
  * Check if a referenced element belongs to a control unit
- * This helps us determine if we need to qualify the variable name
+ * @param ref Reference to check
+ * @return Tuple where the first element indicates if it's in a control unit,
+ *         and the second element is the control unit name or null
  */
-export function isControlUnitVariable(
+function isControlUnitVariable(
   ref: Reference<NamedElement>
 ): [boolean, string | null] {
   const container = ref?.ref?.$container;
