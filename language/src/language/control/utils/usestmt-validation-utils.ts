@@ -229,7 +229,7 @@ export class UseStmtValidationUtils {
     accept: ValidationAcceptor
   ): boolean {
     const targetRef = target.ref?.ref;
-    if (!targetRef) return true; // Let other validators handle unresolved refs
+    if (!targetRef) return false;
 
     if (isEnumDecl(targetRef)) {
       accept("error", "Cannot assign a 'use' output to an enum type.", {

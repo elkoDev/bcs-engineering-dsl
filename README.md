@@ -1,20 +1,26 @@
-# bcs-engineering-dsl
+# BCS Engineering Framework
 
-## 1. Prerequisites
+## 1 Prerequisites
 
 - Windows with TcXaeShell Version 15.0 or higher
 
-## 2. Example
+## 2 Installation and Usage
 
-To run the example in the folder [language/example](language/example), you need to follow the following steps.
+To install the complete framework, you need to install three components:
 
-### 2.1 Generate the artifacts
+1. VS Code extension: `BCS Engineering DSL`
+2. `bcs-engineering-cli` - The CLI to generate the artifacts from the DSL files.
+3. `TcAutomation` - The tool to create and deploy the TwinCAT project from the generated artifacts.
 
-For this follow the installation instructions in the [bcs-engineering-dsl](language/README.md) README file.
+After the installation you can have a look at the [example](language/example) folder to see how to use the framework.
+
+### 2.1 Install bcs-engineering-cli and VS Code Extension
+
+To install the `bcs-engineering-cli` and `BCS Engineering DSL` VS Code extension, follow the installation and usage instructions in the [README](language/README.md) file.
 
 ### 2.2 Install TcAutomation
 
-_TcAutomation_ is responsible for the creation of the corresponding TwinCAT project given the generated artifacts. To install it, you need to run the `TcAutomationInstaller.exe`.
+_TcAutomation_ is responsible for the creation and deployment of the corresponding TwinCAT project given the generated artifacts. To install it, you need to run the `TcAutomationInstaller.exe`.
 To create the installer, follow the steps described in the [TcAutomation](TcAutomation/README.md) README file.
 
 ### 2.3 Check TcAutomation Installation

@@ -14,8 +14,6 @@ export default function () {
   program.version(pkg.version);
 
   program.addCommand(defineBeckhoffSubcommands());
-  // program.addCommand(defineSiemensSubcommands());
-  // program.addCommand(defineKnxSubcommands());
 
   program.parse();
 }

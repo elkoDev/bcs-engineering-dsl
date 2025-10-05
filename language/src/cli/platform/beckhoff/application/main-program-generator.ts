@@ -80,7 +80,6 @@ export class MainProgramGenerator {
     );
 
     const declFilePath = path.join(this.destination, `MAIN_decl.st`);
-    // Ensure the destination directory exists
     fs.mkdirSync(this.destination, { recursive: true });
     fs.writeFileSync(declFilePath, declContent);
     const implFilePath = path.join(this.destination, `MAIN_impl.st`);
