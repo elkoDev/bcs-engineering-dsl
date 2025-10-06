@@ -23,6 +23,7 @@ vsce package
 ```
 
 ### 1.4 Publish CLI
+
 NOTE: Previous versions have been published under the name `bcs-engineering-dsl` on my personal npm account. To avoid confusion, you might want to publish under a different name.
 
 ```bash
@@ -75,3 +76,14 @@ In addition to the standard libraries provided by Beckhoff, the following librar
 - `Tc3_DALI`: Please note that this library integration is not fully tested.
 
 ## 4 Future Work
+- Add support for more target platforms (e.g., Siemens, Codesys)
+- Add and test support for more bus systems (e.g., EtherCAT, Profinet)
+- Add a more sophisticated module system (e.g., support multiple files, packages, imports, etc.)
+- Support structs of structs
+- Support not only statefull FBs, but also stateless functions
+- Support FB properties (besides inputs, outputs, locals, and logic)
+- Support better scoping e.g. true block scoping for variables
+- Support UseStmt within FB logic
+- Look into debugging DSLs
+- Look into moving the framework to a web-based solution (both the DSL and the deployment tool)
+- Look into graphical modeling
