@@ -43,11 +43,11 @@ control NestedControlTestController {
                     
                     // Different processing based on state
                     switch (iState) {
-                        case ProcessState.INIT: {
+                        case ProcessState.INIT {
                             // Initialization processing
                             tempSum = tempSum + iValues[i] * 0.8;
                         }
-                        case ProcessState.PROCESSING: {
+                        case ProcessState.PROCESSING {
                             // Normal processing - with nested if
                             if (iValues[i] > iThreshold * 2.0) {
                                 tempSum = tempSum + iValues[i] * 1.5;
@@ -55,7 +55,7 @@ control NestedControlTestController {
                                 tempSum = tempSum + iValues[i];
                             }
                         }
-                        default: {
+                        default {
                             // Should not happen, but handle anyway
                             tempSum = tempSum + iValues[i] * 0.5;
                         }
