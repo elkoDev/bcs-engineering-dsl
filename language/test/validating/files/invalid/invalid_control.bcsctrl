@@ -9,6 +9,6 @@ control InvalidTestController {
         heater = 5.5;
 
         // Intentional type mismatch of sensor assign to local variable 
-        temp = windowContact;
+        temp = WindowContact.value;
     }
 }

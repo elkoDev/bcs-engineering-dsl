@@ -118,13 +118,13 @@ control EtherCATController {
     }
     unit AdjustLightLevelByMode {
         switch (mode){
-            case OperatingMode.COMFORT: {
+            case OperatingMode.COMFORT {
                 lightLevel = 100;
             }
-            case OperatingMode.ECO: {
+            case OperatingMode.ECO {
                 lightLevel = 50;
             }
-            default: {
+            default {
                 lightLevel = 0;
             }
         }

@@ -32,7 +32,7 @@ controller InvalidTestController {
         channels: 8
     }
 
-    datapoint windowContact {
+    datapoint WindowContact {
         portgroup: DigitalInputs
         channels: {
             channel value: BOOL link "Channel 1^Input"
