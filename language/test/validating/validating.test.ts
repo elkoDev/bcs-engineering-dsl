@@ -202,7 +202,7 @@ describe("BCS Control Validation Tests", () => {
 
     expect(allDiagnostics.length).toBe(1);
     const expectedMessages = [
-      "Condition in 'when (...)' of unit 'Test' must be of type BOOL, but got 'REAL'.",
+      "Condition in 'when (...)' of unit 'Test' must be of type BOOL, but got 'INT'.",
     ];
 
     expectedMessages.forEach((msg) => {

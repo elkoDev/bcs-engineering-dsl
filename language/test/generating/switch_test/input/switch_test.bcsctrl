@@ -24,22 +24,22 @@ control SwitchTestController {
             adjustedTemp = iTemperature * 1.05;
             
             switch (iMode) {
-                case OperationMode.IDLE: {
+                case OperationMode.IDLE {
                     oHeatingValue = 0.0;
                     oCoolingValue = 0.0;
                     oStatusMessage = "System idle";
                 }
-                case OperationMode.HEATING: {
+                case OperationMode.HEATING {
                     oHeatingValue = adjustedTemp;
                     oCoolingValue = 0.0;
                     oStatusMessage = "Heating active";
                 }
-                case OperationMode.COOLING: {
+                case OperationMode.COOLING {
                     oHeatingValue = 0.0;
                     oCoolingValue = adjustedTemp;
                     oStatusMessage = "Cooling active";
                 }
-                default: {
+                default {
                     oHeatingValue = 0.0;
                     oCoolingValue = 0.0;
                     oStatusMessage = "Error state";

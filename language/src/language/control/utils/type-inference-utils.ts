@@ -577,9 +577,9 @@ export class TypeInferenceUtils {
     accept: ValidationAcceptor,
     expr: any
   ): string | undefined {
-    const numericTypes = ["INT", "REAL"];
+    const numericTypes = new Set(["INT", "REAL"]);
 
-    if (!numericTypes.includes(left) || !numericTypes.includes(right)) {
+    if (!numericTypes.has(left) || !numericTypes.has(right)) {
       accept(
         "error",
         `Arithmetic operator '${op}' requires numeric operands, but got '${left}' and '${right}'.`,
@@ -588,11 +588,11 @@ export class TypeInferenceUtils {
       return undefined;
     }
 
-    // If either operand is REAL, result is REAL
-    if (left === "REAL" || right === "REAL") {
-      return "REAL";
+    // If either operand is INT, result is INT
+    if (left === "INT" || right === "INT") {
+      return "INT";
     }
 
-    return "INT";
+    return "REAL";
   }
 }

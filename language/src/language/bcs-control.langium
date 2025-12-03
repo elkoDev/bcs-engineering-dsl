@@ -200,11 +200,11 @@ SwitchStmt:
 ;
 
 CaseOption:
-    'case' (literals+=CaseLiteral (',' literals+=CaseLiteral)*) ':' Block
+    'case' (literals+=CaseLiteral (',' literals+=CaseLiteral)*) Block
 ;
 
 DefaultOption:
-    'default' ':' Block
+    'default'  Block
 ;
 
 ExpressionStmt:

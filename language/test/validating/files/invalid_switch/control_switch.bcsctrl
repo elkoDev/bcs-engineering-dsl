@@ -12,23 +12,23 @@ control InvalidSwitchTestController {
     unit TestUnit {
         var status_should_fail: Status; // Moved to unit level
         switch (mode_should_fail){
-            case Status.OFF:{
+            case Status.OFF{
             // Nested variable declarations no longer allowed
                 status_should_fail = Status.ON;
             }
-            case Mode.ECO:{
+            case Mode.ECO{
             // Nested variable declarations no longer allowed
                 status_should_fail = Status.OFF;
             }
-            case Mode.ECO:{
+            case Mode.ECO{
             // Nested variable declarations no longer allowed  
                 status_should_fail = Status.ON;
             }
-            case true:{
+            case true{
             // Nested variable declarations no longer allowed
                 status_should_fail = Status.OFF;
             }
-            default:{
+            default{
             // Nested variable declarations no longer allowed
                 status_should_fail = Status.ON;
             }

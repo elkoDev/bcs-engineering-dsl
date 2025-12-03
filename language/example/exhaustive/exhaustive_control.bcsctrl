@@ -87,7 +87,7 @@ control ExhaustiveController {
         var extractedBool: BOOL = arr1[2];
         var extractedInt: INT = arr2[3];
         var extractedReal: REAL = arr3[4];
-        var extractedBoolArray: BOOL[5] = arr4[2];
+        var extractedBoolArray: BOOL[5] = arr4[2];              // Note: not supported in generator
         var extractedBoolArrayElement: BOOL = arr4[2][3];
         var extractedMode: Mode = arr5[1];
 
@@ -100,8 +100,8 @@ control ExhaustiveController {
         arr2[0] = arr2[1] + arr2[2] - arr2[3] * arr2[4] / 2;
         arr3[0] = arr3[1] + arr3[2] - arr3[3] * arr3[4] / 2.0;
         arr4[0][0] = arr4[1][1] && arr4[2][2] || arr4[3][3] && arr4[4][4];
-        arr4[1] = [true, false, true, false, true];
-        arr4[1] = arr1;
+        arr4[1] = [true, false, true, false, true];            // Note: not supported in generator
+        arr4[1] = arr1;                                        // Note: not supported in generator
     }
 
     struct Rectangle {
@@ -149,7 +149,7 @@ control ExhaustiveController {
 
         // 6. Separate struct initialization after declaration
         var p: Point;
-        p = { x: 1.0, y: 2.0 };
+        p = { x: 1.0, y: 2.0 };                         // Note: not supported in generator
 
         // 7. Array element accessed and modified
         var tempX: REAL;
@@ -160,7 +160,7 @@ control ExhaustiveController {
         // 8. Valid reassignment of structs
         var c1: Circle = { radius: 5.0 };
         var c2: Circle;
-        c2 = { radius: 10.0 };
+        c2 = { radius: 10.0 };                         // Note: not supported in generator
         var newRadius: REAL = c2.radius;
     }
 

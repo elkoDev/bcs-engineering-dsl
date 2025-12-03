@@ -58,7 +58,7 @@ Bus:
 
 Box:
     'box' name=ID '{'
-        'product:' product=ID           // e.g. EK1100, CU1128
+        'product:' product=ID               // e.g. EK1100, CU1128
         ('revision:' rev=StringLiteral)?    // optional explicit rev
         modules+=Module*
     '}'
@@ -74,7 +74,7 @@ Module:
 
 NetworkSettings:
     'network' '{'        
-        'hostname:' hostname=StringLiteral          // e.g. "CX-301714"
+        'hostname:' hostname=StringLiteral      // e.g. "CX-301714"
         'ipAddress:' ipAddress=StringLiteral    // e.g. "192.168.1.100" TODO: IPLiteral
     '}'
 ;
