@@ -49,19 +49,36 @@ or link the local version
 npm link
 ```
 
-## 3 Usage
+## 3 Usage (Beckhoff)
 
 ### 3.1 Generate Code
 
 ```bash
-bcs-engineering-cli beckhoff generate <path-to-bcsctrl-file>
+bcs-engineering-cli beckhoff generate <path-to-bcsctrl-file> [options]
 ```
+
+**Options:**
+
+- `-d, --destination <dir>` - Output directory for generated files
+- `-q, --quiet` - Suppress output (default: false)
 
 ### 3.2 Generate Code and Deploy
 
 ```bash
-bcs-engineering-cli beckhoff deploy <path-to-bcsctrl-file>
+bcs-engineering-cli beckhoff deploy <path-to-bcsctrl-file> [options]
 ```
+
+**Options:**
+
+- `--template-path <path>` - TwinCAT template path
+- `--solution-name <name>` - Solution name (default: `MyGeneratedSolution`)
+- `--project-name <name>` - Project name (default: `MyTwinCATProject`)
+- `--plc-name <name>` - PLC project name (default: `MyPlcProject`)
+- `--tc-exe <path>` - Path to TcAutomation executable (default: `TcAutomation.exe`, resolved from PATH)
+- `--ads-username <username>` - ADS username for remote connection (default: `Administrator`)
+- `--ads-password <password>` - ADS password for remote connection (default: `1`)
+- `-d, --destination <dir>` - Output directory for generated files
+- `-q, --quiet` - Suppress output (default: false)
 
 **NOTE:** The working directory will be set to the root of the provided file. This means that the .bcsctrl file can contain cross-references to other files in the same directory.
 
@@ -76,6 +93,7 @@ In addition to the standard libraries provided by Beckhoff, the following librar
 - `Tc3_DALI`: Please note that this library integration is not fully tested.
 
 ## 4 Future Work
+
 - Add support for more target platforms (e.g., Siemens, Codesys)
 - Add and test support for more bus systems (e.g., EtherCAT, Profinet)
 - Add a more sophisticated module system (e.g., support multiple files, packages, imports, etc.)
