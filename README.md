@@ -4,7 +4,7 @@
 
 ## 1 Prerequisites
 
-- Windows with TcXaeShell Version 15.0 or higher
+- Windows with TcXaeShell Version 15.0 (other versions have not been tested)
 
 ## 2 Installation
 
