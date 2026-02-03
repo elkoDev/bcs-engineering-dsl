@@ -3,6 +3,7 @@
 ## 1 Prerequisites
 
 - [Inno Setup](https://jrsoftware.org/isinfo.php)
+- TwinCAT XAE Shell 15.0 properly installed and configured (see [TwinCAT Setup Guide](TWINCAT_SETUP.md))
 
 ## 2 Build Project
 
