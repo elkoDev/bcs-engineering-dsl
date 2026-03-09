@@ -40,9 +40,9 @@ TwinCAT requires a valid license to run. For development and testing purposes, y
 
 **Note:** The 7-day trial license needs to be renewed after expiration. You can renew it by repeating the process above.
 
-## 4 Hyper-V Compatibility Issue
+## 4 Windows Compatibility Issues
 
-TwinCAT requires direct hardware access and **does not work with Hyper-V enabled**. If you're running Windows with Hyper-V or WSL2, you need to disable it.
+TwinCAT requires direct hardware access and is incompatible with certain Windows security and virtualization features. Both **Hyper-V** and **Core Isolation** must be disabled.
 
 ### 4.1 Disable Windows Core Isolation (Memory Integrity)
 
@@ -52,7 +52,6 @@ Windows Core Isolation with Memory Integrity can interfere with TwinCAT. You nee
 2. Go to **Device Security** → **Core Isolation Details**
 3. Turn off **Memory Integrity**
 4. Restart your computer
-
 
 ### 4.2 Solution: Dual Boot Configuration
 

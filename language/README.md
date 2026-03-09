@@ -88,9 +88,12 @@ Currently the following target platforms are supported:
 
 #### 3.3.1 Beckhoff
 
+The end-to-end deployment has been validated on a **CX8190** with the following KBus terminals: KL1002, KL2622, KL3044, KL4004, KL9010. Other CX controllers and KBus terminals are modelled in the code but have not been tested.
+
 In addition to the standard libraries provided by Beckhoff, the following libraries are supported:
 
 - `Tc3_DALI`: Please note that this library integration is not fully tested.
+
 
 ## 4 Future Work
 
